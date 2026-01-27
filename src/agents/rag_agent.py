@@ -6,6 +6,7 @@ answering questions based on document/policy content.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -81,6 +82,8 @@ class RAGAgent:
         """
         self.config = config
         self._client = None
+        self._vs_client = None
+        self._llm = None
         self._index = None
 
     @property
@@ -94,6 +97,28 @@ class RAGAgent:
                 token=self.config.databricks_token,
             )
         return self._client
+
+    @property
+    def vs_client(self):
+        """Lazy-load the VectorSearchClient for VS operations."""
+        if self._vs_client is None and not self.config.mock_mode:
+            from databricks.vector_search.client import VectorSearchClient
+            self._vs_client = VectorSearchClient(
+                workspace_url=self.config.databricks_host,
+                personal_access_token=self.config.databricks_token,
+            )
+        return self._vs_client
+
+    @property
+    def llm(self):
+        """Lazy-load ChatDatabricks for answer generation."""
+        if self._llm is None and not self.config.mock_mode:
+            from databricks_langchain import ChatDatabricks
+            self._llm = ChatDatabricks(
+                endpoint=self.config.model_endpoint,
+                temperature=0.1,
+            )
+        return self._llm
 
     def query(
         self,
@@ -114,11 +139,7 @@ class RAGAgent:
 
         return self._real_query(question, num_results)
 
-    def _real_query(
-        self,
-        question: str,
-        num_results: int,
-    ) -> RAGResult:
+    def _real_query(self, question: str, num_results: int) -> RAGResult:
         """Execute a real query against Vector Search.
 
         Args:
@@ -132,37 +153,41 @@ class RAGAgent:
             if not self.config.vector_search_endpoint or not self.config.vector_search_index:
                 return RAGResult(
                     success=False,
-                    error="Vector Search endpoint or index not configured"
+                    error="Vector Search endpoint or index not configured. "
+                          "Set VECTOR_SEARCH_ENDPOINT and VECTOR_SEARCH_INDEX environment variables."
                 )
 
             # Get the Vector Search index
-            vs = self.client.vector_search_indexes
-
-            # Query the index
-            results = vs.query_index(
+            index = self.vs_client.get_index(
+                endpoint_name=self.config.vector_search_endpoint,
                 index_name=self.config.vector_search_index,
-                columns=["content", "source", "metadata"],
+            )
+
+            # Query the index using similarity search
+            results = index.similarity_search(
                 query_text=question,
+                columns=["id", "content", "source", "metadata"],
                 num_results=num_results,
             )
 
-            # Parse results
+            # Parse results into Document objects
+            # VectorSearchClient returns: {"result": {"data_array": [[col1, col2, ...], ...], "row_count": N}}
             documents = []
-            for row in results.result.data_array:
+            data_array = results.get("result", {}).get("data_array", [])
+
+            for row in data_array:
+                # Row format: [id, content, source, metadata, score]
+                # Score is typically the last column
                 doc = Document(
-                    content=row[0] if len(row) > 0 else "",
-                    source=row[1] if len(row) > 1 else "Unknown",
-                    score=row[-1] if isinstance(row[-1], float) else 0.0,
-                    metadata=row[2] if len(row) > 2 and isinstance(row[2], dict) else {},
+                    content=row[1] if len(row) > 1 else "",
+                    source=row[2] if len(row) > 2 else "Unknown",
+                    score=float(row[-1]) if len(row) > 0 and isinstance(row[-1], (int, float)) else 0.0,
+                    metadata=self._parse_metadata(row[3] if len(row) > 3 else None),
                 )
                 documents.append(doc)
 
-            # Generate answer (in a real implementation, this would use an LLM)
-            # For now, we'll concatenate the top document content
-            if documents:
-                answer = f"Based on the retrieved documents:\n\n{documents[0].content}"
-            else:
-                answer = "No relevant documents found."
+            # Generate answer using LLM with retrieved context
+            answer = self._generate_answer(question, documents)
 
             return RAGResult(
                 success=True,
@@ -172,6 +197,71 @@ class RAGAgent:
 
         except Exception as e:
             return RAGResult(success=False, error=str(e))
+
+    def _parse_metadata(self, metadata_value: Any) -> dict[str, Any]:
+        """Parse metadata from Vector Search result.
+
+        Args:
+            metadata_value: Raw metadata value (could be dict, JSON string, or None)
+
+        Returns:
+            Parsed metadata dictionary
+        """
+        if metadata_value is None:
+            return {}
+        if isinstance(metadata_value, dict):
+            return metadata_value
+        if isinstance(metadata_value, str):
+            try:
+                return json.loads(metadata_value)
+            except (json.JSONDecodeError, ValueError):
+                return {"raw": metadata_value}
+        return {}
+
+    def _generate_answer(self, question: str, documents: list[Document]) -> str:
+        """Generate an answer using ChatDatabricks with retrieved context.
+
+        Args:
+            question: The user's question
+            documents: Retrieved documents to use as context
+
+        Returns:
+            Generated answer grounded in the retrieved documents
+        """
+        if not documents:
+            return "No relevant documents found to answer your question."
+
+        # Build context from retrieved documents
+        context_parts = []
+        for i, doc in enumerate(documents, 1):
+            source_info = f"[Document {i}: {doc.source}]"
+            context_parts.append(f"{source_info}\n{doc.content}")
+
+        context = "\n\n---\n\n".join(context_parts)
+
+        # RAG prompt template
+        prompt = f"""You are a helpful assistant answering questions based on company documents.
+
+CONTEXT (Retrieved Documents):
+{context}
+
+USER QUESTION: {question}
+
+INSTRUCTIONS:
+- Answer the question based ONLY on the provided context above
+- If the context doesn't contain enough information to fully answer, acknowledge what you can answer and what's missing
+- Be concise but thorough
+- When referencing specific information, mention which document it came from
+
+ANSWER:"""
+
+        try:
+            from langchain_core.messages import HumanMessage
+            response = self.llm.invoke([HumanMessage(content=prompt)])
+            return response.content
+        except Exception as e:
+            # Fallback to simple concatenation if LLM fails
+            return f"Based on the retrieved documents:\n\n{documents[0].content}\n\n(Note: LLM answer generation failed: {e})"
 
     def _mock_query(self, question: str, num_results: int) -> RAGResult:
         """Return mock data for demonstration purposes.

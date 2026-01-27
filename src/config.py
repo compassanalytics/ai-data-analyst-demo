@@ -43,6 +43,7 @@ class Config:
         mock_mode: Enable mock mode for demos without real Genie access
         vector_search_endpoint: Optional Vector Search endpoint
         vector_search_index: Optional Vector Search index name
+        embedding_endpoint: Embedding model endpoint for Vector Search (managed embeddings)
     """
 
     databricks_host: str = field(default="")
@@ -53,6 +54,7 @@ class Config:
     mock_mode: bool = field(default=False)
     vector_search_endpoint: Optional[str] = field(default=None)
     vector_search_index: Optional[str] = field(default=None)
+    embedding_endpoint: str = field(default="databricks-bge-large-en")
 
     @classmethod
     def from_env(cls) -> Config:
@@ -67,6 +69,7 @@ class Config:
             MOCK_MODE: Enable mock mode (true/false)
             VECTOR_SEARCH_ENDPOINT: VS endpoint (optional)
             VECTOR_SEARCH_INDEX: VS index name (optional)
+            EMBEDDING_ENDPOINT: Embedding model endpoint (optional)
         """
         return cls(
             databricks_host=os.getenv("DATABRICKS_HOST", ""),
@@ -77,6 +80,7 @@ class Config:
             mock_mode=_str_to_bool(os.getenv("MOCK_MODE", "false")),
             vector_search_endpoint=os.getenv("VECTOR_SEARCH_ENDPOINT"),
             vector_search_index=os.getenv("VECTOR_SEARCH_INDEX"),
+            embedding_endpoint=os.getenv("EMBEDDING_ENDPOINT", "databricks-bge-large-en"),
         )
 
     @classmethod
@@ -115,6 +119,7 @@ class Config:
                 mock_mode=_str_to_bool(get_secret("mock_mode", "false")),
                 vector_search_endpoint=get_secret("vector_search_endpoint") or None,
                 vector_search_index=get_secret("vector_search_index") or None,
+                embedding_endpoint=get_secret("embedding_endpoint", "databricks-bge-large-en"),
             )
         except Exception as e:
             # Fall back to environment variables
@@ -140,6 +145,7 @@ class Config:
             mock_mode=_str_to_bool(params.get("mock_mode", "false")),
             vector_search_endpoint=params.get("vector_search_endpoint"),
             vector_search_index=params.get("vector_search_index"),
+            embedding_endpoint=params.get("embedding_endpoint", "databricks-bge-large-en"),
         )
 
     def validate(self) -> list[str]:
@@ -157,6 +163,26 @@ class Config:
                 errors.append("DATABRICKS_HOST is required when not in mock mode")
 
         return errors
+
+    def validate_rag(self) -> list[str]:
+        """Validate RAG-specific configuration.
+
+        Returns:
+            List of validation error messages for RAG features (empty if valid)
+        """
+        errors = []
+
+        if not self.mock_mode:
+            if not self.vector_search_endpoint:
+                errors.append("VECTOR_SEARCH_ENDPOINT is required for RAG in non-mock mode")
+            if not self.vector_search_index:
+                errors.append("VECTOR_SEARCH_INDEX is required for RAG in non-mock mode")
+
+        return errors
+
+    def is_rag_configured(self) -> bool:
+        """Check if RAG (Vector Search) is properly configured."""
+        return bool(self.vector_search_endpoint and self.vector_search_index)
 
     def is_valid(self) -> bool:
         """Check if the configuration is valid."""

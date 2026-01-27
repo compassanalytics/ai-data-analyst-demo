@@ -5,9 +5,11 @@ description = "AI Data Analyst Demo: Databricks Genie with LangGraph Multi-Agent
 requires-python = ">=3.10"
 dependencies = [
     "databricks-sdk>=0.40.0",
-    "databricks-langchain>=0.1.0",
+    "databricks-langchain>=0.13.0",
+    "databricks-vectorsearch>=0.64",
     "langgraph>=0.2.0",
     "langchain-core>=0.3.0",
+    "langchain-text-splitters>=0.3.0",
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0.0",

@@ -29,3 +29,7 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+
+# Project-specific
+.serena/
+.tdd/
