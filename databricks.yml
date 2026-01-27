@@ -16,6 +16,12 @@ variables:
   mock_mode:
     description: "Enable mock mode for demos without real Genie access"
     default: "false"
+  vector_search_endpoint:
+    description: "Vector Search endpoint name for RAG"
+    default: "rag-demo-endpoint"
+  vector_search_index:
+    description: "Vector Search index name (catalog.schema.index)"
+    default: "workspace.rag_demo.document_index"
 
 workspace:
   root_path: /Workspace/Users/${workspace.current_user.userName}/ai-data-analyst-demo
