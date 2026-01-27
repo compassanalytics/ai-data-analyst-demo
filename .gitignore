@@ -33,3 +33,7 @@ build/
 # Project-specific
 .serena/
 .tdd/
+
+# Generated data files
+dataset_generators/data/velocity_motors/*.parquet
+dataset_generators/data/velocity_motors/**/*.parquet
