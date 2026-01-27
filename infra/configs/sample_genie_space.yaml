@@ -1,0 +1,92 @@
+# Sample Genie Space Configuration
+# This file defines a Genie Space for sales analytics.
+#
+# Environment variables can be referenced using dollar-brace syntax.
+# Example: warehouse_id: "${WAREHOUSE_ID}"
+# Required env vars: WAREHOUSE_ID
+#
+# Usage:
+#   uv run python infra/cli.py deploy infra/configs/sample_genie_space.yaml
+
+title: "Sales Analytics Space"
+description: "AI-powered analytics for sales data"
+warehouse_id: "${WAREHOUSE_ID}"
+parent_path: "/Workspace/Shared/genie-spaces"
+
+tables:
+  - identifier: "main.sales.orders"
+  - identifier: "main.sales.customers"
+  - identifier: "main.sales.products"
+
+sample_questions:
+  - id: "q1"
+    question: ["What were our total sales last month?"]
+  - id: "q2"
+    question: ["Show top 10 products by revenue"]
+  - id: "q3"
+    question: ["Which regions had the highest growth?"]
+  - id: "q4"
+    question: ["What is our customer retention rate?"]
+  - id: "q5"
+    question: ["Compare Q1 vs Q2 performance"]
+
+instructions: |
+  This space analyzes sales performance data.
+
+  Business Rules:
+  - All monetary values are in USD
+  - Dates use YYYY-MM-DD format
+  - "Last month" means the previous calendar month
+  - "YTD" means year-to-date from January 1st
+  - "Quarter" refers to calendar quarters (Q1=Jan-Mar, Q2=Apr-Jun, etc.)
+
+  Table Relationships:
+  - Orders contain customer_id linking to customers table
+  - Orders contain product_id linking to products table
+  - Use customer_id for customer-level aggregations
+  - Use product_id for product-level aggregations
+
+  Metrics Definitions:
+  - Revenue = SUM(order_amount)
+  - Customer Count = COUNT(DISTINCT customer_id)
+  - Average Order Value = Revenue / COUNT(orders)
+  - Retention Rate = returning customers / total customers
+
+join_specs:
+  - left_table: "main.sales.orders"
+    right_table: "main.sales.customers"
+    join_keys: ["customer_id"]
+  - left_table: "main.sales.orders"
+    right_table: "main.sales.products"
+    join_keys: ["product_id"]
+
+example_sqls:
+  - question: "Total sales last month"
+    sql: |
+      SELECT SUM(order_amount) as total_sales
+      FROM main.sales.orders
+      WHERE order_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL 1 MONTH)
+        AND order_date < DATE_TRUNC('month', CURRENT_DATE)
+
+  - question: "Top 10 products by revenue"
+    sql: |
+      SELECT
+        p.product_name,
+        SUM(o.order_amount) as revenue,
+        COUNT(*) as order_count
+      FROM main.sales.orders o
+      JOIN main.sales.products p ON o.product_id = p.product_id
+      GROUP BY p.product_name
+      ORDER BY revenue DESC
+      LIMIT 10
+
+  - question: "Monthly revenue trend"
+    sql: |
+      SELECT
+        DATE_TRUNC('month', order_date) as month,
+        SUM(order_amount) as revenue,
+        COUNT(DISTINCT customer_id) as unique_customers
+      FROM main.sales.orders
+      WHERE order_date >= DATE_ADD(CURRENT_DATE, -365)
+      GROUP BY DATE_TRUNC('month', order_date)
+      ORDER BY month

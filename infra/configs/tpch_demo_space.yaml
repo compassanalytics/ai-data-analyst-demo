@@ -1,0 +1,105 @@
+# Genie Space for TPCH Demo Data
+# Uses Databricks sample tables (samples.tpch.*)
+
+title: "TPCH Sales Analytics Demo"
+description: "AI-powered analytics for sales orders, customers, and suppliers using TPCH benchmark data"
+warehouse_id: "b1f5c7733a6d7e1e"
+parent_path: "/Workspace/Users/redhawk1230@gmail.com/genie-spaces"
+
+tables:
+  - identifier: "samples.tpch.orders"
+  - identifier: "samples.tpch.customer"
+  - identifier: "samples.tpch.lineitem"
+  - identifier: "samples.tpch.part"
+  - identifier: "samples.tpch.supplier"
+  - identifier: "samples.tpch.nation"
+  - identifier: "samples.tpch.region"
+
+sample_questions:
+  - id: "q1"
+    question: ["What are the total sales by order status?"]
+  - id: "q2"
+    question: ["Show me the top 10 customers by total order value"]
+  - id: "q3"
+    question: ["What is the average order value by market segment?"]
+  - id: "q4"
+    question: ["Which suppliers have the most parts?"]
+  - id: "q5"
+    question: ["Show monthly order trends"]
+  - id: "q6"
+    question: ["What are the top selling parts by revenue?"]
+
+instructions: |
+  This space analyzes TPCH benchmark sales data.
+
+  Table Descriptions:
+  - orders: Customer orders with o_totalprice, o_orderdate, o_orderstatus
+  - customer: Customer info with c_name, c_mktsegment, c_nationkey
+  - lineitem: Order line items with l_quantity, l_extendedprice, l_discount
+  - part: Product catalog with p_name, p_type, p_size, p_retailprice
+  - supplier: Suppliers with s_name, s_nationkey
+  - nation: Country codes (n_nationkey, n_name, n_regionkey)
+  - region: Geographic regions (r_regionkey, r_name)
+
+  Key Relationships:
+  - orders.o_custkey = customer.c_custkey
+  - lineitem.l_orderkey = orders.o_orderkey
+  - lineitem.l_partkey = part.p_partkey
+  - lineitem.l_suppkey = supplier.s_suppkey
+  - customer.c_nationkey = nation.n_nationkey
+  - supplier.s_nationkey = nation.n_nationkey
+  - nation.n_regionkey = region.r_regionkey
+
+  Metrics:
+  - Revenue = SUM(l_extendedprice * (1 - l_discount))
+  - Order Value = o_totalprice
+  - Market Segments: AUTOMOBILE, BUILDING, FURNITURE, MACHINERY, HOUSEHOLD
+
+join_specs:
+  - left_table: "samples.tpch.orders"
+    right_table: "samples.tpch.customer"
+    join_keys: ["o_custkey=c_custkey"]
+  - left_table: "samples.tpch.lineitem"
+    right_table: "samples.tpch.orders"
+    join_keys: ["l_orderkey=o_orderkey"]
+  - left_table: "samples.tpch.lineitem"
+    right_table: "samples.tpch.part"
+    join_keys: ["l_partkey=p_partkey"]
+  - left_table: "samples.tpch.customer"
+    right_table: "samples.tpch.nation"
+    join_keys: ["c_nationkey=n_nationkey"]
+
+example_sqls:
+  - question: "Total sales by order status"
+    sql: |
+      SELECT
+        o_orderstatus,
+        COUNT(*) as order_count,
+        SUM(o_totalprice) as total_value
+      FROM samples.tpch.orders
+      GROUP BY o_orderstatus
+      ORDER BY total_value DESC
+
+  - question: "Top 10 customers by order value"
+    sql: |
+      SELECT
+        c.c_name,
+        c.c_mktsegment,
+        SUM(o.o_totalprice) as total_orders
+      FROM samples.tpch.orders o
+      JOIN samples.tpch.customer c ON o.o_custkey = c.c_custkey
+      GROUP BY c.c_name, c.c_mktsegment
+      ORDER BY total_orders DESC
+      LIMIT 10
+
+  - question: "Revenue by market segment"
+    sql: |
+      SELECT
+        c.c_mktsegment,
+        SUM(l.l_extendedprice * (1 - l.l_discount)) as revenue,
+        COUNT(DISTINCT o.o_orderkey) as order_count
+      FROM samples.tpch.lineitem l
+      JOIN samples.tpch.orders o ON l.l_orderkey = o.o_orderkey
+      JOIN samples.tpch.customer c ON o.o_custkey = c.c_custkey
+      GROUP BY c.c_mktsegment
+      ORDER BY revenue DESC

@@ -1,0 +1,56 @@
+# Databricks Asset Bundle Configuration
+# Deploy with: databricks bundle deploy -t dev
+bundle:
+  name: ai-data-analyst-demo
+
+variables:
+  genie_space_id:
+    description: "The Genie Space ID for data analysis"
+    default: "01f0fb3f3de619aebd30f7919b86e34c"
+  warehouse_id:
+    description: "SQL Warehouse ID"
+    default: "b1f5c7733a6d7e1e"
+  model_endpoint:
+    description: "The model serving endpoint for ChatDatabricks"
+    default: "databricks-meta-llama-3-3-70b-instruct"
+  mock_mode:
+    description: "Enable mock mode for demos without real Genie access"
+    default: "false"
+
+workspace:
+  root_path: /Workspace/Users/${workspace.current_user.userName}/ai-data-analyst-demo
+
+sync:
+  include:
+    - src/**
+    - notebooks/**
+
+resources:
+  jobs:
+    demo_setup:
+      name: "AI Data Analyst - Demo Setup"
+      tasks:
+        - task_key: run_demo
+          notebook_task:
+            notebook_path: notebooks/demo.ipynb
+            base_parameters:
+              genie_space_id: ${var.genie_space_id}
+              model_endpoint: ${var.model_endpoint}
+              mock_mode: ${var.mock_mode}
+            warehouse_id: ${var.warehouse_id}
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-19ccb338-5c57.cloud.databricks.com
+    variables:
+      mock_mode: "false"  # Using real Genie
+
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-19ccb338-5c57.cloud.databricks.com
+    variables:
+      mock_mode: "false"
