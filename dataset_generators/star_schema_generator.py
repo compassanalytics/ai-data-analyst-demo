@@ -21,15 +21,53 @@ Key Features (Why Genie will succeed):
 - Built for common analytical queries
 """
 
+from typing import Dict, Optional
+
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import random
 
-# Set seed for reproducibility
-np.random.seed(42)
-random.seed(42)
+from .base import BaseDataGenerator, GeneratorConfig, set_random_seed
 
+
+class StarSchemaGenerator(BaseDataGenerator):
+    """
+    Star schema generator using the new base architecture.
+
+    Produces a clean, well-modeled star schema with:
+    - dim_date: Date dimension with fiscal calendar
+    - dim_product: Product dimension with hierarchy
+    - dim_customer: Customer dimension with segments
+    - dim_store: Store dimension
+    - dim_promotion: Promotion dimension
+    - fact_sales: Fact table with measures
+    """
+
+    def generate(self) -> Dict[str, pd.DataFrame]:
+        """Generate complete star schema dataset."""
+        dim_date = self._generate_dim_date()
+        dim_product = self._generate_dim_product()
+        dim_customer = self._generate_dim_customer()
+        dim_store = self._generate_dim_store()
+        dim_promotion = self._generate_dim_promotion()
+        fact_sales = self._generate_fact_sales(
+            dim_date, dim_product, dim_customer, dim_store, dim_promotion
+        )
+
+        return {
+            'dim_date': dim_date,
+            'dim_product': dim_product,
+            'dim_customer': dim_customer,
+            'dim_store': dim_store,
+            'dim_promotion': dim_promotion,
+            'fact_sales': fact_sales,
+        }
+
+
+# =============================================================================
+# Legacy functions for backward compatibility
+# =============================================================================
 
 def generate_dim_date(start_date: str = "2023-01-01", end_date: str = "2025-12-31") -> pd.DataFrame:
     """
@@ -296,55 +334,36 @@ def generate_fact_sales(
     return pd.DataFrame(records)
 
 
-def generate_star_schema(output_dir: str = None) -> dict:
+def generate_star_schema(output_dir: Optional[str] = None) -> dict:
     """
     Generate complete star schema dataset.
 
-    Returns dict of DataFrames or saves to parquet files.
+    This is a backward-compatible wrapper around StarSchemaGenerator.
+
+    Args:
+        output_dir: Optional directory to save parquet files
+
+    Returns:
+        Dictionary of DataFrames keyed by table name
     """
+    # Use same default seed as before for backward compatibility
+    config = GeneratorConfig(seed=42, output_dir=output_dir)
+    generator = StarSchemaGenerator(config)
+
     print("Generating Star Schema Dataset...")
-
     print("  - dim_date")
-    dim_date = generate_dim_date()
-
     print("  - dim_product")
-    dim_product = generate_dim_product(150)
-
     print("  - dim_customer")
-    dim_customer = generate_dim_customer(500)
-
     print("  - dim_store")
-    dim_store = generate_dim_store(80)
-
     print("  - dim_promotion")
-    dim_promotion = generate_dim_promotion(50)
-
     print("  - fact_sales")
-    fact_sales = generate_fact_sales(
-        dim_date, dim_product, dim_customer, dim_store, dim_promotion,
-        n_transactions=50000
-    )
 
-    datasets = {
-        'dim_date': dim_date,
-        'dim_product': dim_product,
-        'dim_customer': dim_customer,
-        'dim_store': dim_store,
-        'dim_promotion': dim_promotion,
-        'fact_sales': fact_sales,
-    }
+    datasets = generator.generate()
 
     if output_dir:
-        import os
-        os.makedirs(output_dir, exist_ok=True)
-        for name, df in datasets.items():
-            path = os.path.join(output_dir, f'{name}.parquet')
-            df.to_parquet(path, index=False)
-            print(f"  Saved {path} ({len(df):,} rows)")
+        generator.save_to_parquet(datasets, output_dir)
 
-    print(f"\nStar Schema Summary:")
-    for name, df in datasets.items():
-        print(f"  {name}: {len(df):,} rows, {len(df.columns)} columns")
+    generator.print_summary(datasets, "Star Schema Summary")
 
     return datasets
 

@@ -30,7 +30,35 @@ import numpy as np
 from datetime import datetime, timedelta
 import random
 
-# Set seed for reproducibility
+from .base import GeneratorConfig, set_random_seed
+
+
+class SuperTableGenerator:
+    """
+    Super table generator for nightmare-mode data.
+
+    This class provides an alternative interface to the existing generate_super_table()
+    function. The existing function is kept for backward compatibility and serves as
+    the ground truth for cleanliness=0.
+
+    For new code, prefer using unified_generator.generate_dataset(cleanliness=0).
+    """
+
+    def __init__(self, config: GeneratorConfig):
+        self.config = config
+        set_random_seed(config.seed)
+
+    def generate(self) -> pd.DataFrame:
+        """Generate super table using existing logic."""
+        # Delegate to existing function for consistency
+        return generate_super_table(n_rows=self.config.n_transactions)
+
+
+# =============================================================================
+# Legacy functions for backward compatibility
+# =============================================================================
+
+# Set seed for reproducibility (kept for backward compatibility when called directly)
 np.random.seed(42)
 random.seed(42)
 
