@@ -43,6 +43,7 @@ class GenieResult:
     error: Optional[str] = None
     columns: list[str] = field(default_factory=list)
     error_details: Optional[AgentError] = None
+    from_cache: bool = False
 
     @property
     def is_retryable(self) -> bool:
@@ -179,7 +180,9 @@ class GenieDataAgent:
                 self.config.genie_space_id, question, fresh=fresh
             )
             if cached_result is not None:
-                return cached_result
+                # Mark as from cache (create new instance to avoid mutation)
+                from dataclasses import replace
+                return replace(cached_result, from_cache=True)
 
         # Execute query
         if self.config.mock_mode:

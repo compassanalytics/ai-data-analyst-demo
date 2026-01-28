@@ -316,13 +316,15 @@ class PipelineState:
                     else:
                         progress.status = SpaceQueryStatus.ERROR
 
-                # Update timing from metadata if not set
-                if progress.duration_seconds is None and metadata.query_time_seconds > 0:
-                    if progress.start_time is None:
-                        progress.start_time = time.time() - metadata.query_time_seconds
-                    progress.end_time = progress.start_time + metadata.query_time_seconds
+                # Always use metadata timing as authoritative source
+                # (callbacks may have race conditions with ThreadPoolExecutor)
+                if metadata.query_time_seconds > 0:
+                    now = time.time()
+                    progress.start_time = now - metadata.query_time_seconds
+                    progress.end_time = now
 
                 progress.current_attempt = metadata.retries_used + 1
+                progress.cached = metadata.cached
 
             # Capture errors from result
             for name, genie_result in result.results.items():

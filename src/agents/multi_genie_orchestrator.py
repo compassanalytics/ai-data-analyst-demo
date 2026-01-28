@@ -77,6 +77,7 @@ class ResultMetadata:
     retries_used: int = 0
     error_category: Optional[ErrorCategory] = None
     error_retryable: Optional[bool] = None
+    cached: bool = False
 
 
 @dataclass
@@ -566,6 +567,7 @@ class MultiGenieOrchestrator:
                         retries_used=retries,
                         error_category=classified_error.category if classified_error else None,
                         error_retryable=classified_error.retryable if classified_error else None,
+                        cached=query_result.from_cache,
                     )
 
                     if classified_error:
