@@ -1,0 +1,20 @@
+[
+  {
+    "space_id": "01f0fbe434961227ad8aa3ee3159260e",
+    "name": "Sales Analytics",
+    "domain": "sales, revenue, products, orders",
+    "timeout_seconds": 120
+  },
+  {
+    "space_id": "01f0fbe434e21d97a1926506258345db",
+    "name": "Customer Intelligence",
+    "domain": "customers, crm, segments, retention",
+    "timeout_seconds": 120
+  },
+  {
+    "space_id": "01f0fbe435191223b508acbdc20902cb",
+    "name": "Operations & Inventory",
+    "domain": "operations, inventory, stock, warehouse",
+    "timeout_seconds": 120
+  }
+]

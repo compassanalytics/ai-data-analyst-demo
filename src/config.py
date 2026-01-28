@@ -55,6 +55,7 @@ class Config:
     vector_search_endpoint: Optional[str] = field(default=None)
     vector_search_index: Optional[str] = field(default=None)
     embedding_endpoint: str = field(default="databricks-bge-large-en")
+    genie_spaces_json: Optional[str] = field(default=None)
 
     @classmethod
     def from_env(cls) -> Config:
@@ -81,6 +82,7 @@ class Config:
             vector_search_endpoint=os.getenv("VECTOR_SEARCH_ENDPOINT"),
             vector_search_index=os.getenv("VECTOR_SEARCH_INDEX"),
             embedding_endpoint=os.getenv("EMBEDDING_ENDPOINT", "databricks-bge-large-en"),
+            genie_spaces_json=os.getenv("GENIE_SPACES"),
         )
 
     @classmethod
@@ -157,12 +159,41 @@ class Config:
         errors = []
 
         if not self.mock_mode:
-            if not self.genie_space_id:
-                errors.append("GENIE_SPACE_ID is required when not in mock mode")
+            if not self.genie_space_id and not self.genie_spaces_json:
+                errors.append("GENIE_SPACE_ID or GENIE_SPACES is required when not in mock mode")
             if not self.databricks_host:
                 errors.append("DATABRICKS_HOST is required when not in mock mode")
 
         return errors
+
+    def get_genie_space_configs(self) -> list:
+        """Parse genie_spaces_json into GenieSpaceConfig objects.
+
+        Returns:
+            List of GenieSpaceConfig objects parsed from the JSON configuration
+        """
+        if not self.genie_spaces_json:
+            return []
+
+        import json
+        from src.agents.multi_genie_orchestrator import GenieSpaceConfig
+
+        try:
+            spaces_data = json.loads(self.genie_spaces_json)
+            return [
+                GenieSpaceConfig(
+                    space_id=s["space_id"],
+                    name=s["name"],
+                    domain=s.get("domain", ""),
+                    timeout_seconds=s.get("timeout_seconds", 120),
+                    retry_count=s.get("retry_count", 2),
+                    retry_delay=s.get("retry_delay", 1.0),
+                )
+                for s in spaces_data
+            ]
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            print(f"Warning: Failed to parse GENIE_SPACES: {e}")
+            return []
 
     def validate_rag(self) -> list[str]:
         """Validate RAG-specific configuration.
