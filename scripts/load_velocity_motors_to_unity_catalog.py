@@ -285,7 +285,7 @@ def verify_tables(
                     dry_run,
                 )
                 if result:
-                    count = result[0][0]
+                    count = int(result[0][0])
                     print(f"  ✓ {table}: {count:,} rows")
             except Exception as e:
                 print(f"  ✗ {table}: {e}")
