@@ -1,0 +1,82 @@
+{# Full pipeline progress display #}
+{% from "demo/progress_card.html.jinja2" import stage_card, space_card %}
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+.pipeline-progress {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    max-width: 800px;
+    padding: 16px;
+}
+.section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin: 16px 0 8px 0;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #E5E7EB;
+}
+.stages-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+.arrow {
+    color: #9CA3AF;
+    font-size: 18px;
+    margin: 0 2px;
+}
+.total-time {
+    margin-top: 16px;
+    padding: 12px;
+    background-color: #F3F4F6;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.total-time strong {
+    color: #111827;
+}
+</style>
+</head>
+<body>
+<div class="pipeline-progress">
+    {# Pipeline Stages #}
+    <div class="section-title">Pipeline Progress</div>
+    <div class="stages-row">
+        {% for stage in stages %}
+            {{ stage_card(stage.name, stage.status, stage.duration, stage.error) }}
+            {% if not loop.last %}
+            <span class="arrow">&#8594;</span>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    {# Space Queries #}
+    {% if spaces %}
+    <div class="section-title">Genie Space Queries</div>
+    <div>
+        {% for space in spaces %}
+            {{ space_card(space.name, space.status, space.duration, space.attempt, space.cached, space.error) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# Total Time #}
+    {% if total_duration is not none %}
+    <div class="total-time">
+        <strong>Total Time:</strong> {{ "%.2f" | format(total_duration) }}s
+        {% if cache_stats %}
+        &nbsp;|&nbsp;
+        <strong>Cache:</strong> {{ cache_stats.hits }} hits, {{ cache_stats.misses }} misses
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>

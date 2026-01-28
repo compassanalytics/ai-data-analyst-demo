@@ -1,0 +1,95 @@
+{# Individual progress card for a pipeline stage #}
+{% macro stage_card(stage_name, status, duration=None, error=None) %}
+{% set status_colors = {
+    'pending': '#6B7280',
+    'running': '#3B82F6',
+    'complete': '#10B981',
+    'error': '#EF4444'
+} %}
+{% set status_icons = {
+    'pending': '&#9711;',
+    'running': '&#9679;',
+    'complete': '&#10003;',
+    'error': '&#10007;'
+} %}
+{% set color = status_colors.get(status, '#6B7280') %}
+{% set icon = status_icons.get(status, '&#9711;') %}
+<div style="
+    display: inline-block;
+    padding: 12px 16px;
+    margin: 4px;
+    border-radius: 8px;
+    background-color: {{ color }}20;
+    border-left: 4px solid {{ color }};
+    min-width: 140px;
+">
+    <div style="font-size: 14px; font-weight: 600; color: {{ color }};">
+        {{ icon | safe }} {{ stage_name }}
+    </div>
+    <div style="font-size: 12px; color: #666; margin-top: 4px;">
+        {% if status == 'running' %}
+            <span style="animation: pulse 1.5s infinite;">Running...</span>
+        {% elif duration is not none %}
+            {{ "%.2f" | format(duration) }}s
+        {% elif status == 'pending' %}
+            Pending
+        {% elif status == 'error' %}
+            Failed
+        {% endif %}
+    </div>
+    {% if error %}
+    <div style="font-size: 11px; color: #EF4444; margin-top: 4px;">
+        {{ error[:50] }}{% if error|length > 50 %}...{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{# Space query progress card #}
+{% macro space_card(name, status, duration=None, attempt=1, cached=False, error=None) %}
+{% set status_colors = {
+    'pending': '#6B7280',
+    'querying': '#3B82F6',
+    'retrying': '#F59E0B',
+    'complete': '#10B981',
+    'error': '#EF4444',
+    'timeout': '#EF4444',
+    'circuit_open': '#EF4444'
+} %}
+{% set color = status_colors.get(status, '#6B7280') %}
+<div style="
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    margin: 2px 0;
+    background-color: {{ color }}10;
+    border-radius: 4px;
+    font-size: 13px;
+">
+    <div style="
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: {{ color }};
+        margin-right: 10px;
+        {% if status == 'querying' or status == 'retrying' %}
+        animation: pulse 1s infinite;
+        {% endif %}
+    "></div>
+    <div style="flex: 1; font-weight: 500;">{{ name }}</div>
+    <div style="color: #666; margin-left: 8px;">
+        {% if status == 'querying' %}
+            Querying{% if attempt > 1 %} (attempt {{ attempt }}){% endif %}
+        {% elif status == 'retrying' %}
+            Retrying ({{ attempt }})
+        {% elif status == 'complete' %}
+            {% if cached %}<span style="color: #8B5CF6;">cached</span> {% endif %}
+            {% if duration is not none %}{{ "%.2f" | format(duration) }}s{% endif %}
+        {% elif status == 'error' or status == 'timeout' or status == 'circuit_open' %}
+            <span style="color: #EF4444;">{{ status.replace('_', ' ').title() }}</span>
+        {% else %}
+            {{ status.title() }}
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}
