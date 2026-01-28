@@ -34,6 +34,12 @@ build/
 .serena/
 .tdd/
 
-# Generated data files
-dataset_generators/data/velocity_motors/*.parquet
-dataset_generators/data/velocity_motors/**/*.parquet
+# Generated data files (not tracked - participants generate locally)
+dataset_generators/data/
+
+# Internal documentation (not for public workshop repo)
+docs/research/
+plans/
+
+# Claude Code artifacts
+.claude/

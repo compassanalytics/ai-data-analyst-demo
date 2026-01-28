@@ -190,14 +190,21 @@ class GenieSpaceManager:
     # API endpoints
     _BASE_PATH = "/api/2.0/genie/spaces"
 
-    def __init__(self, workspace_client: Optional[Any] = None):
+    def __init__(
+        self,
+        workspace_client: Optional[Any] = None,
+        profile: Optional[str] = None,
+    ):
         """Initialize the Genie Space Manager.
 
         Args:
             workspace_client: Optional WorkspaceClient instance.
                               If not provided, creates one using default auth.
+            profile: Optional Databricks CLI profile name to use for authentication.
+                     Ignored if workspace_client is provided.
         """
         self._client = workspace_client
+        self._profile = profile
 
     @property
     def client(self) -> Any:
@@ -209,7 +216,10 @@ class GenieSpaceManager:
         if self._client is None:
             from databricks.sdk import WorkspaceClient
 
-            self._client = WorkspaceClient()
+            if self._profile:
+                self._client = WorkspaceClient(profile=self._profile)
+            else:
+                self._client = WorkspaceClient()
         return self._client
 
     def _build_serialized_space(self, config: GenieSpaceConfig) -> dict[str, Any]:

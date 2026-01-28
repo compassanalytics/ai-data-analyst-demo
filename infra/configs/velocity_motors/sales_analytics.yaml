@@ -1,0 +1,121 @@
+# Genie Space for Velocity Motors - Sales Analytics
+# Provides AI-powered analytics for vehicle sales, orders, and salesperson performance
+
+title: "Velocity Motors - Sales Analytics"
+description: "AI-powered analytics for vehicle sales, orders, and salesperson performance"
+warehouse_id: "${WAREHOUSE_ID}"
+parent_path: "${PARENT_PATH}"
+
+tables:
+  - identifier: "velocity_motors.sales.salespersons"
+  - identifier: "velocity_motors.sales.vehicles"
+  - identifier: "velocity_motors.sales.orders"
+  - identifier: "velocity_motors.sales.order_items"
+
+sample_questions:
+  - id: "sales_q1"
+    question: ["What is the total revenue by vehicle make?"]
+  - id: "sales_q2"
+    question: ["Who are the top 10 salespeople by total sales?"]
+  - id: "sales_q3"
+    question: ["What is the breakdown of orders by payment method?"]
+  - id: "sales_q4"
+    question: ["Show me monthly sales trends for the past 12 months"]
+  - id: "sales_q5"
+    question: ["What is the revenue split between new and used vehicles?"]
+  - id: "sales_q6"
+    question: ["Which region has the highest average order value?"]
+  - id: "sales_q7"
+    question: ["What are the most popular accessories sold with vehicles?"]
+  - id: "sales_q8"
+    question: ["Show quota attainment by salesperson for this year"]
+
+instructions: |
+  This space analyzes sales data for Velocity Motors, a multi-brand automotive dealership network.
+
+  Business Context:
+  - Velocity Motors sells new and used vehicles from major manufacturers (Ford, Toyota, Honda, Chevrolet, BMW, Mercedes-Benz)
+  - Dealership network operates across 6 regions: Northeast, Southeast, Midwest, Southwest, West, Pacific Northwest
+  - Sales patterns show Q4 spike (Nov-Dec have 1.2x baseline volume)
+  - Vehicle conditions: New (60%), Certified Pre-Owned (25%), Used (15%)
+
+  Table Descriptions:
+  - salespersons: Sales team members with quotas and commission rates. ~50 salespersons.
+  - vehicles: Vehicle inventory with VIN, make, model, year, condition, and status.
+  - orders: Customer vehicle orders with order date, status, and payment method.
+  - order_items: Line items per order including Vehicle (required), Accessories, and Services.
+
+  Key Relationships:
+  - orders.salesperson_id = salespersons.salesperson_id
+  - orders.vehicle_id = vehicles.vehicle_id
+  - order_items.order_id = orders.order_id
+
+  Key Metrics:
+  - Revenue: SUM of order_items.total_price for item_type = 'Vehicle'
+  - Units Sold: COUNT of completed orders
+  - Average Order Value: Total revenue / COUNT of orders
+  - Quota Attainment: (Salesperson revenue / quota) * 100
+
+  Business Rules:
+  - Each order has exactly 1 vehicle item plus optional accessories and services
+  - Order status values: Completed (85%), Pending (5%), Processing (5%), Cancelled (5%)
+  - Payment methods: Financing (55%), Cash (20%), Lease (15%), Trade-In + Financing (10%)
+  - Commission rates range from 1.5% to 4%, correlated with salesperson seniority
+
+join_specs:
+  - left_table: "velocity_motors.sales.orders"
+    right_table: "velocity_motors.sales.salespersons"
+    join_keys: ["salesperson_id=salesperson_id"]
+  - left_table: "velocity_motors.sales.orders"
+    right_table: "velocity_motors.sales.vehicles"
+    join_keys: ["vehicle_id=vehicle_id"]
+  - left_table: "velocity_motors.sales.order_items"
+    right_table: "velocity_motors.sales.orders"
+    join_keys: ["order_id=order_id"]
+
+example_sqls:
+  - question: "Total revenue by vehicle make"
+    sql: |
+      SELECT
+        v.make,
+        COUNT(DISTINCT o.order_id) as orders,
+        SUM(oi.total_price) as revenue
+      FROM velocity_motors.sales.orders o
+      JOIN velocity_motors.sales.vehicles v ON o.vehicle_id = v.vehicle_id
+      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      WHERE o.status = 'Completed' AND oi.item_type = 'Vehicle'
+      GROUP BY v.make
+      ORDER BY revenue DESC
+
+  - question: "Top salespeople by revenue with quota attainment"
+    sql: |
+      SELECT
+        s.name as salesperson,
+        s.region,
+        s.quota,
+        SUM(oi.total_price) as revenue,
+        ROUND(100.0 * SUM(oi.total_price) / s.quota, 1) as quota_attainment_pct
+      FROM velocity_motors.sales.orders o
+      JOIN velocity_motors.sales.salespersons s ON o.salesperson_id = s.salesperson_id
+      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      WHERE o.status = 'Completed' AND oi.item_type = 'Vehicle'
+        AND YEAR(o.order_date) = YEAR(CURRENT_DATE())
+      GROUP BY s.salesperson_id, s.name, s.region, s.quota
+      ORDER BY revenue DESC
+      LIMIT 10
+
+  - question: "Monthly sales trends"
+    sql: |
+      SELECT
+        DATE_TRUNC('month', o.order_date) as month,
+        COUNT(DISTINCT o.order_id) as orders,
+        SUM(oi.total_price) as revenue,
+        SUM(CASE WHEN v.condition = 'New' THEN oi.total_price ELSE 0 END) as new_vehicle_revenue,
+        SUM(CASE WHEN v.condition != 'New' THEN oi.total_price ELSE 0 END) as used_vehicle_revenue
+      FROM velocity_motors.sales.orders o
+      JOIN velocity_motors.sales.vehicles v ON o.vehicle_id = v.vehicle_id
+      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      WHERE o.status = 'Completed' AND oi.item_type = 'Vehicle'
+      GROUP BY DATE_TRUNC('month', o.order_date)
+      ORDER BY month DESC
+      LIMIT 12

@@ -14,6 +14,7 @@
 | `03_langgraph_databricks.md` | LangGraph + Databricks Integration | Full notebook patterns; GenieAgent + supervisor architecture |
 | `04_free_tier_workshop_setup.md` | Free Tier & Workshop Setup | Community Edition retired Jan 2026; use Free Edition or Trial |
 | `05_ai_data_analyst_patterns.md` | Enterprise AI Analyst Patterns | TAG architecture; 6% real-world vs 86% benchmark accuracy gap |
+| `06_workshop_code_data_sharing.md` | Workshop Code & Data Sharing | GitHub+Repos recommended; DBC archives for non-technical; Delta Sharing for cross-org |
 
 ---
 

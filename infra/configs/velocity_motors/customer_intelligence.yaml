@@ -1,0 +1,122 @@
+# Genie Space for Velocity Motors - Customer Intelligence
+# Provides AI-powered analytics for customer segments, interactions, and lead pipeline
+
+title: "Velocity Motors - Customer Intelligence"
+description: "AI-powered analytics for customer segments, interactions, and lead pipeline"
+warehouse_id: "${WAREHOUSE_ID}"
+parent_path: "${PARENT_PATH}"
+
+tables:
+  - identifier: "velocity_motors.crm.customer_segments"
+  - identifier: "velocity_motors.crm.customers"
+  - identifier: "velocity_motors.crm.interactions"
+  - identifier: "velocity_motors.crm.leads"
+  - identifier: "velocity_motors.sales.salespersons"
+
+sample_questions:
+  - id: "crm_q1"
+    question: ["What is our lead conversion rate by source?"]
+  - id: "crm_q2"
+    question: ["Show customer distribution across segments"]
+  - id: "crm_q3"
+    question: ["Who are the top 10 customers by lifetime value?"]
+  - id: "crm_q4"
+    question: ["Which lead sources generate the highest quality leads?"]
+  - id: "crm_q5"
+    question: ["What is the average interaction volume by customer segment?"]
+  - id: "crm_q6"
+    question: ["Show sentiment distribution across customer interactions"]
+  - id: "crm_q7"
+    question: ["Which salesperson has the best lead conversion rate?"]
+  - id: "crm_q8"
+    question: ["How many active vs inactive customers do we have by segment?"]
+
+instructions: |
+  This space analyzes CRM data for Velocity Motors, a multi-brand automotive dealership network.
+
+  Business Context:
+  - Customer base includes Individual buyers (70%), Fleet customers (20%), and Dealer partners (10%)
+  - Leads are captured from multiple sources with ~20% overall conversion rate
+  - Customer interactions are tracked across multiple channels with sentiment analysis
+  - Lifetime Value (LTV) correlates with segment type and customer tenure
+
+  Table Descriptions:
+  - customer_segments: Fixed dimension with 3 segments (Individual, Fleet, Dealer) defining discount tiers and credit limits.
+  - customers: Customer master data including contact info, address, credit score, and lifetime value.
+  - interactions: Customer interaction history with type, duration, outcome, and sentiment tracking.
+  - leads: Sales leads including converted and unconverted prospects with source and interest tracking.
+  - salespersons: Sales team members (cross-domain reference for lead assignment).
+
+  Key Relationships:
+  - customers.segment_id = customer_segments.segment_id
+  - interactions.customer_id = customers.customer_id
+  - leads.customer_id = customers.customer_id (null if unconverted)
+  - leads.salesperson_id = salespersons.salesperson_id
+
+  Key Metrics:
+  - Lead Conversion Rate: (Converted leads / Total leads) * 100
+  - Customer Lifetime Value (LTV): lifetime_value field in customers table
+  - Retention Rate: (Active customers / Total customers) * 100
+  - Interaction Frequency: COUNT of interactions per customer
+
+  Business Rules:
+  - Segment distribution: Individual 70%, Fleet 20%, Dealer 10%
+  - Lead status progression: Cold -> Contacted -> Qualified -> Proposal -> Converted/Lost
+  - Interaction sentiment: Positive (40%), Neutral (45%), Negative (15%)
+  - Lead sources: Website (35%), Phone Inquiry (20%), Walk-In (15%), Referral (12%), Social Media (8%), Auto Show (5%), Partner (5%)
+  - High-LTV customers have 10-50 interactions; Low-LTV have 1-5 interactions
+
+join_specs:
+  - left_table: "velocity_motors.crm.customers"
+    right_table: "velocity_motors.crm.customer_segments"
+    join_keys: ["segment_id=segment_id"]
+  - left_table: "velocity_motors.crm.interactions"
+    right_table: "velocity_motors.crm.customers"
+    join_keys: ["customer_id=customer_id"]
+  - left_table: "velocity_motors.crm.leads"
+    right_table: "velocity_motors.crm.customers"
+    join_keys: ["customer_id=customer_id"]
+  - left_table: "velocity_motors.crm.leads"
+    right_table: "velocity_motors.sales.salespersons"
+    join_keys: ["salesperson_id=salesperson_id"]
+
+example_sqls:
+  - question: "Lead conversion rate by source"
+    sql: |
+      SELECT
+        source,
+        COUNT(*) as total_leads,
+        SUM(CASE WHEN is_converted THEN 1 ELSE 0 END) as converted,
+        ROUND(100.0 * SUM(CASE WHEN is_converted THEN 1 ELSE 0 END) / COUNT(*), 1) as conversion_rate_pct
+      FROM velocity_motors.crm.leads
+      GROUP BY source
+      ORDER BY conversion_rate_pct DESC
+
+  - question: "Customer segment analysis with LTV"
+    sql: |
+      SELECT
+        cs.segment_name,
+        COUNT(*) as customer_count,
+        SUM(CASE WHEN c.is_active THEN 1 ELSE 0 END) as active_customers,
+        ROUND(AVG(c.lifetime_value), 2) as avg_ltv,
+        SUM(c.lifetime_value) as total_ltv,
+        ROUND(AVG(c.credit_score), 0) as avg_credit_score
+      FROM velocity_motors.crm.customers c
+      JOIN velocity_motors.crm.customer_segments cs ON c.segment_id = cs.segment_id
+      GROUP BY cs.segment_name
+      ORDER BY total_ltv DESC
+
+  - question: "Salesperson lead performance"
+    sql: |
+      SELECT
+        s.name as salesperson,
+        s.region,
+        COUNT(*) as assigned_leads,
+        SUM(CASE WHEN l.is_converted THEN 1 ELSE 0 END) as converted,
+        ROUND(100.0 * SUM(CASE WHEN l.is_converted THEN 1 ELSE 0 END) / COUNT(*), 1) as conversion_rate_pct
+      FROM velocity_motors.crm.leads l
+      JOIN velocity_motors.sales.salespersons s ON l.salesperson_id = s.salesperson_id
+      GROUP BY s.salesperson_id, s.name, s.region
+      HAVING COUNT(*) >= 10
+      ORDER BY conversion_rate_pct DESC
+      LIMIT 10

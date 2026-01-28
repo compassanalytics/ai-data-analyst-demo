@@ -1,0 +1,144 @@
+# Genie Space for Velocity Motors - Operations & Inventory
+# Provides AI-powered analytics for parts inventory, supplier performance, and service operations
+
+title: "Velocity Motors - Operations & Inventory"
+description: "AI-powered analytics for parts inventory, supplier performance, and service operations"
+warehouse_id: "${WAREHOUSE_ID}"
+parent_path: "${PARENT_PATH}"
+
+tables:
+  - identifier: "velocity_motors.operations.warehouse_locations"
+  - identifier: "velocity_motors.operations.suppliers"
+  - identifier: "velocity_motors.operations.parts_inventory"
+  - identifier: "velocity_motors.operations.service_orders"
+  - identifier: "velocity_motors.crm.customers"
+  - identifier: "velocity_motors.sales.vehicles"
+
+sample_questions:
+  - id: "ops_q1"
+    question: ["Which parts are below their reorder point?"]
+  - id: "ops_q2"
+    question: ["What is the current warehouse utilization by location?"]
+  - id: "ops_q3"
+    question: ["Show supplier ratings and lead times"]
+  - id: "ops_q4"
+    question: ["What is the total service revenue by service type?"]
+  - id: "ops_q5"
+    question: ["Which suppliers have the longest lead times?"]
+  - id: "ops_q6"
+    question: ["What is the service order completion rate?"]
+  - id: "ops_q7"
+    question: ["Show total inventory value by part category"]
+  - id: "ops_q8"
+    question: ["What is the average customer rating for completed services?"]
+
+instructions: |
+  This space analyzes operations and inventory data for Velocity Motors, a multi-brand automotive dealership network.
+
+  Business Context:
+  - Velocity Motors operates multiple warehouse facilities for parts distribution
+  - Parts are sourced from OEM (20%), Aftermarket (40%), Specialty (20%), and Wholesale (20%) suppliers
+  - Service department handles maintenance and repairs with parts cost and labor tracking
+  - Inventory levels are managed based on popularity tiers and reorder points
+
+  Part Categories:
+  - ENG: Engine parts
+  - BRK: Brake components
+  - ELE: Electrical systems
+  - BOD: Body parts
+  - SUS: Suspension components
+  - TRN: Transmission parts
+
+  Service Types:
+  - Oil Change, Tire Rotation, Brake Service, Transmission Service
+  - Engine Repair, AC Service, Battery Replacement, Alignment
+  - Inspection, Recall Service
+
+  Table Descriptions:
+  - warehouse_locations: Distribution centers and parts depots with capacity and utilization tracking.
+  - suppliers: Parts suppliers with ratings, lead times, and contract information.
+  - parts_inventory: Parts stock with quantity, reorder points, and popularity tiers.
+  - service_orders: Service and maintenance orders with labor/parts costs and customer ratings.
+  - customers: Customer master data (cross-domain reference for service context).
+  - vehicles: Vehicle inventory (cross-domain reference for service history).
+
+  Key Relationships:
+  - parts_inventory.supplier_id = suppliers.supplier_id
+  - parts_inventory.warehouse_id = warehouse_locations.warehouse_id
+  - service_orders.customer_id = customers.customer_id
+  - service_orders.vehicle_id = vehicles.vehicle_id
+
+  Key Metrics:
+  - Inventory Value: SUM(quantity_on_hand * unit_cost)
+  - Warehouse Utilization: current_utilization field (0.60 - 0.95)
+  - Supplier Rating: rating field (3.0 - 5.0)
+  - Service Revenue: SUM(total_cost) for completed orders
+  - Completion Rate: (Completed orders / Total orders) * 100
+  - Average Customer Rating: AVG(customer_rating) for rated services
+
+  Business Rules:
+  - Warehouse types: Distribution Center (50k-100k sqft), Regional (20k-50k), Parts Depot (5k-20k)
+  - Lead times vary: OEM (7-21 days), Wholesale (1-7 days)
+  - Parts status values: In Stock, Below Reorder, Critical Low, Out of Stock
+  - Service status: Completed (80%), In Progress (10%), Scheduled (5%), Waiting for Parts (3%), Cancelled (2%)
+  - ~60% of completed service orders have customer ratings
+
+join_specs:
+  - left_table: "velocity_motors.operations.parts_inventory"
+    right_table: "velocity_motors.operations.suppliers"
+    join_keys: ["supplier_id=supplier_id"]
+  - left_table: "velocity_motors.operations.parts_inventory"
+    right_table: "velocity_motors.operations.warehouse_locations"
+    join_keys: ["warehouse_id=warehouse_id"]
+  - left_table: "velocity_motors.operations.service_orders"
+    right_table: "velocity_motors.crm.customers"
+    join_keys: ["customer_id=customer_id"]
+  - left_table: "velocity_motors.operations.service_orders"
+    right_table: "velocity_motors.sales.vehicles"
+    join_keys: ["vehicle_id=vehicle_id"]
+
+example_sqls:
+  - question: "Parts below reorder point by category"
+    sql: |
+      SELECT
+        p.category,
+        p.part_number,
+        p.part_name,
+        p.quantity_on_hand,
+        p.reorder_point,
+        p.status,
+        s.supplier_name,
+        s.lead_time_days
+      FROM velocity_motors.operations.parts_inventory p
+      JOIN velocity_motors.operations.suppliers s ON p.supplier_id = s.supplier_id
+      WHERE p.quantity_on_hand <= p.reorder_point
+      ORDER BY p.category, p.quantity_on_hand ASC
+
+  - question: "Service revenue and ratings by type"
+    sql: |
+      SELECT
+        service_type,
+        COUNT(*) as total_orders,
+        SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed,
+        ROUND(100.0 * SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) / COUNT(*), 1) as completion_rate_pct,
+        SUM(total_cost) as total_revenue,
+        ROUND(AVG(CASE WHEN status = 'Completed' THEN total_cost END), 2) as avg_order_value,
+        ROUND(AVG(customer_rating), 2) as avg_rating
+      FROM velocity_motors.operations.service_orders
+      GROUP BY service_type
+      ORDER BY total_revenue DESC
+
+  - question: "Inventory value and status by warehouse"
+    sql: |
+      SELECT
+        w.warehouse_name,
+        w.warehouse_type,
+        w.current_utilization,
+        COUNT(p.part_id) as part_count,
+        SUM(p.quantity_on_hand * p.unit_cost) as inventory_value,
+        SUM(CASE WHEN p.status IN ('Below Reorder', 'Critical Low', 'Out of Stock') THEN 1 ELSE 0 END) as parts_needing_reorder
+      FROM velocity_motors.operations.warehouse_locations w
+      LEFT JOIN velocity_motors.operations.parts_inventory p ON w.warehouse_id = p.warehouse_id
+      WHERE w.is_active = true
+      GROUP BY w.warehouse_id, w.warehouse_name, w.warehouse_type, w.current_utilization
+      ORDER BY inventory_value DESC
