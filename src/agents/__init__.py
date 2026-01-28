@@ -9,6 +9,14 @@ from src.agents.multi_genie_orchestrator import (
     MultiGenieResult,
     ResultMetadata,
 )
+from src.agents.planner_agent import PlannerAgent, Plan, SubQuery
+from src.agents.synthesizer_agent import (
+    SynthesizerAgent,
+    SynthesisResult,
+    Insight,
+    Correlation,
+    Anomaly,
+)
 
 __all__ = [
     "GenieDataAgent",
@@ -19,4 +27,12 @@ __all__ = [
     "GenieSpaceConfig",
     "MultiGenieResult",
     "ResultMetadata",
+    "PlannerAgent",
+    "Plan",
+    "SubQuery",
+    "SynthesizerAgent",
+    "SynthesisResult",
+    "Insight",
+    "Correlation",
+    "Anomaly",
 ]
