@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or "Genie Evaluation Report" }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Fallback CSS in case Tailwind CDN is unavailable */
+        .fallback-container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+        .fallback-card { background: #fff; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1rem; margin-bottom: 1rem; }
+        .fallback-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+        /* Accuracy colors */
+        .accuracy-correct { background-color: #dcfce7; color: #166534; }
+        .accuracy-partial { background-color: #fef3c7; color: #92400e; }
+        .accuracy-wrong { background-color: #fee2e2; color: #991b1b; }
+        .accuracy-failed { background-color: #f3f4f6; color: #374151; }
+        /* SQL code block */
+        pre.sql-code { background: #1f2937; color: #e5e7eb; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; font-size: 0.875rem; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">{{ title or "Genie Evaluation Report" }}</h1>
+            {% if generated_at %}
+            <p class="text-gray-500 mt-2">Generated: {{ generated_at }}</p>
+            {% endif %}
+            {% if summary and summary.space_id %}
+            <div class="mt-2">
+                <span class="text-sm text-gray-600">Space ID:</span>
+                <code class="ml-2 bg-gray-100 px-2 py-1 rounded text-sm">{{ summary.space_id }}</code>
+            </div>
+            {% endif %}
+        </header>
+
+        {% if summary %}
+        <!-- Summary Metric Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- Total Queries -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Total Queries</p>
+                        <p class="text-2xl font-semibold text-gray-800">{{ summary.total_queries }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accuracy -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full {% if summary.overall_accuracy >= 80 %}bg-green-100 text-green-600{% elif summary.overall_accuracy >= 50 %}bg-yellow-100 text-yellow-600{% else %}bg-red-100 text-red-600{% endif %}">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Accuracy</p>
+                        <p class="text-2xl font-semibold text-gray-800">{{ summary.overall_accuracy | format_percent }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Correct Count -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Correct</p>
+                        <p class="text-2xl font-semibold text-gray-800">{{ summary.correct_count }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Failed Count -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-red-100 text-red-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Failed</p>
+                        <p class="text-2xl font-semibold text-gray-800">{{ summary.failed_count }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accuracy Breakdown Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p class="text-sm font-medium text-green-800">Correct</p>
+                <p class="text-xl font-bold text-green-700">{{ summary.correct_count }}</p>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p class="text-sm font-medium text-yellow-800">Partial</p>
+                <p class="text-xl font-bold text-yellow-700">{{ summary.partial_count }}</p>
+            </div>
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p class="text-sm font-medium text-red-800">Wrong</p>
+                <p class="text-xl font-bold text-red-700">{{ summary.wrong_count }}</p>
+            </div>
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p class="text-sm font-medium text-gray-600">Failed</p>
+                <p class="text-xl font-bold text-gray-700">{{ summary.failed_count }}</p>
+            </div>
+        </div>
+
+        <!-- Timing Info -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Execution Statistics</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <p class="text-sm text-gray-500">Total Execution Time</p>
+                    <p class="text-lg font-medium text-gray-800">{{ summary.total_execution_time_ms | format_duration }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Average Time per Query</p>
+                    <p class="text-lg font-medium text-gray-800">{{ summary.average_execution_time_ms | format_duration }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Success Rate</p>
+                    <p class="text-lg font-medium text-gray-800">{{ summary.success_rate | format_percent }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accuracy by Query Type -->
+        {% if summary.accuracy_by_query_type %}
+        <section class="mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Accuracy by Query Type</h2>
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Query Type</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correct</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Partial</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wrong</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Failed</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Accuracy</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for type_name, counts in summary.accuracy_by_query_type.items() %}
+                        {% set accuracy = (counts.correct / counts.total * 100) if counts.total > 0 else 0 %}
+                        <tr class="{% if loop.index is odd %}bg-white{% else %}bg-gray-50{% endif %}">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ type_name | capitalize }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ counts.total }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">{{ counts.correct }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">{{ counts.partial }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">{{ counts.wrong }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ counts.failed }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 text-xs font-semibold rounded {% if accuracy >= 80 %}bg-green-100 text-green-800{% elif accuracy >= 50 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ accuracy | format_percent }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Accuracy by Complexity -->
+        {% if summary.accuracy_by_complexity %}
+        <section class="mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Accuracy by Complexity</h2>
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Complexity</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correct</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Partial</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wrong</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Failed</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Accuracy</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for comp_name, counts in summary.accuracy_by_complexity.items() %}
+                        {% set accuracy = (counts.correct / counts.total * 100) if counts.total > 0 else 0 %}
+                        <tr class="{% if loop.index is odd %}bg-white{% else %}bg-gray-50{% endif %}">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ comp_name | capitalize }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ counts.total }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">{{ counts.correct }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">{{ counts.partial }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">{{ counts.wrong }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ counts.failed }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 text-xs font-semibold rounded {% if accuracy >= 80 %}bg-green-100 text-green-800{% elif accuracy >= 50 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ accuracy | format_percent }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Accuracy by Failure Category -->
+        {% if summary.accuracy_by_failure_category %}
+        <section class="mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Accuracy by Failure Category</h2>
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correct</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Partial</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wrong</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Failed</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Accuracy</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for cat_name, counts in summary.accuracy_by_failure_category.items() %}
+                        {% set accuracy = (counts.correct / counts.total * 100) if counts.total > 0 else 0 %}
+                        <tr class="{% if loop.index is odd %}bg-white{% else %}bg-gray-50{% endif %}">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ cat_name | replace('_', ' ') | title }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ counts.total }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">{{ counts.correct }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">{{ counts.partial }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">{{ counts.wrong }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ counts.failed }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 text-xs font-semibold rounded {% if accuracy >= 80 %}bg-green-100 text-green-800{% elif accuracy >= 50 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ accuracy | format_percent }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Failure Analysis -->
+        {% if summary.failure_type_counts %}
+        <section class="mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Failure Analysis</h2>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {% for failure_type, count in summary.failure_type_counts.items() %}
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <p class="text-sm font-medium text-red-800">{{ failure_type | replace('_', ' ') | title }}</p>
+                        <p class="text-xl font-bold text-red-700">{{ count }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+        {% endif %}
+
+        <!-- Detailed Results -->
+        <section class="mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">
+                Detailed Results
+                {% if truncated %}
+                <span class="text-sm font-normal text-gray-500">(showing {{ max_detailed_results }} of {{ total_results }})</span>
+                {% endif %}
+            </h2>
+
+            {% if results %}
+            <div class="space-y-4">
+                {% for result in results %}
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="p-4 border-l-4 {% if result.accuracy.value == 'correct' %}border-green-500{% elif result.accuracy.value == 'partial' %}border-yellow-500{% elif result.accuracy.value == 'wrong' %}border-red-500{% else %}border-gray-400{% endif %}">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-800">{{ result.test_query.question }}</h3>
+                                <p class="text-sm text-gray-500 mt-1">
+                                    <code class="bg-gray-100 px-1 rounded">{{ result.test_query.id }}</code>
+                                    <span class="mx-2">|</span>
+                                    {{ result.test_query.query_type.value | capitalize }}
+                                    <span class="mx-2">|</span>
+                                    {{ result.test_query.complexity.value | capitalize }}
+                                    <span class="mx-2">|</span>
+                                    {{ result.test_query.failure_category.value | replace('_', ' ') | title }}
+                                </p>
+                            </div>
+                            <div class="ml-4">
+                                <span class="px-3 py-1 text-sm font-semibold rounded {% if result.accuracy.value == 'correct' %}bg-green-100 text-green-800{% elif result.accuracy.value == 'partial' %}bg-yellow-100 text-yellow-800{% elif result.accuracy.value == 'wrong' %}bg-red-100 text-red-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    {{ result.accuracy.value | upper }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 text-sm text-gray-600 space-y-1">
+                            <p><span class="font-medium">Execution Time:</span> {{ result.execution_time_ms | format_duration }}</p>
+                            {% if result.failure_type.value != 'none' %}
+                            <p><span class="font-medium">Failure Type:</span> {{ result.failure_type.value | replace('_', ' ') | title }}</p>
+                            {% endif %}
+                            {% if result.error_message %}
+                            <p class="text-red-600"><span class="font-medium">Error:</span> {{ result.error_message }}</p>
+                            {% endif %}
+                            {% if result.comparison.comparison_notes %}
+                            <p><span class="font-medium">Notes:</span> {{ result.comparison.comparison_notes }}</p>
+                            {% endif %}
+                        </div>
+
+                        {% if result.comparison.missing_columns %}
+                        <div class="mt-2">
+                            <span class="text-sm font-medium text-gray-600">Missing Columns:</span>
+                            {% for col in result.comparison.missing_columns %}
+                            <span class="ml-1 px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded">{{ col }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if result.comparison.missing_tables %}
+                        <div class="mt-2">
+                            <span class="text-sm font-medium text-gray-600">Missing Tables:</span>
+                            {% for tbl in result.comparison.missing_tables %}
+                            <span class="ml-1 px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded">{{ tbl }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if result.comparison.sql_generated %}
+                        <details class="mt-3">
+                            <summary class="text-sm font-medium text-blue-600 cursor-pointer hover:text-blue-800">Show Generated SQL</summary>
+                            <pre class="sql-code mt-2">{{ result.comparison.sql_generated }}</pre>
+                        </details>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="bg-white rounded-lg shadow p-8 text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <h3 class="mt-4 text-lg font-medium text-gray-900">No results available</h3>
+                <p class="mt-2 text-gray-500">No evaluation results to display.</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center text-gray-500 text-sm mt-8 pb-4">
+            <p>Generated by Genie Evaluation Framework</p>
+        </footer>
+    </div>
+</body>
+</html>

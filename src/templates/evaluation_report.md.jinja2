@@ -1,0 +1,140 @@
+{# Markdown Report Template for Evaluation Results #}
+{% if title %}
+# {{ title }}
+{% else %}
+# Genie Evaluation Report
+{% endif %}
+
+{% if generated_at %}
+*Generated: {{ generated_at }}*
+{% endif %}
+
+{% if summary %}
+---
+
+## Summary
+
+| Metric | Value |
+|--------|-------|
+| Total Queries | {{ summary.total_queries }} |
+| Correct | {{ summary.correct_count }} ({{ summary.overall_accuracy | format_percent }}) |
+| Partial | {{ summary.partial_count }} |
+| Wrong | {{ summary.wrong_count }} |
+| Failed | {{ summary.failed_count }} |
+| Success Rate | {{ summary.success_rate | format_percent }} |
+| Total Time | {{ summary.total_execution_time_ms | format_duration }} |
+| Avg Time/Query | {{ summary.average_execution_time_ms | format_duration }} |
+
+{% if summary.space_id %}
+**Space ID:** `{{ summary.space_id }}`
+{% endif %}
+
+{% if summary.started_at and summary.completed_at %}
+**Duration:** {{ summary.started_at }} to {{ summary.completed_at }}
+{% endif %}
+
+---
+
+## Accuracy by Query Type
+
+| Query Type | Total | Correct | Partial | Wrong | Failed | Accuracy |
+|------------|-------|---------|---------|-------|--------|----------|
+{% for type_name, counts in summary.accuracy_by_query_type.items() %}
+{% set accuracy = (counts.correct / counts.total * 100) if counts.total > 0 else 0 %}
+| {{ type_name | capitalize }} | {{ counts.total }} | {{ counts.correct }} | {{ counts.partial }} | {{ counts.wrong }} | {{ counts.failed }} | {{ accuracy | format_percent }} |
+{% endfor %}
+
+---
+
+## Accuracy by Complexity
+
+| Complexity | Total | Correct | Partial | Wrong | Failed | Accuracy |
+|------------|-------|---------|---------|-------|--------|----------|
+{% for comp_name, counts in summary.accuracy_by_complexity.items() %}
+{% set accuracy = (counts.correct / counts.total * 100) if counts.total > 0 else 0 %}
+| {{ comp_name | capitalize }} | {{ counts.total }} | {{ counts.correct }} | {{ counts.partial }} | {{ counts.wrong }} | {{ counts.failed }} | {{ accuracy | format_percent }} |
+{% endfor %}
+
+---
+
+## Accuracy by Failure Category
+
+| Category | Total | Correct | Partial | Wrong | Failed | Accuracy |
+|----------|-------|---------|---------|-------|--------|----------|
+{% for cat_name, counts in summary.accuracy_by_failure_category.items() %}
+{% set accuracy = (counts.correct / counts.total * 100) if counts.total > 0 else 0 %}
+| {{ cat_name | replace('_', ' ') | title }} | {{ counts.total }} | {{ counts.correct }} | {{ counts.partial }} | {{ counts.wrong }} | {{ counts.failed }} | {{ accuracy | format_percent }} |
+{% endfor %}
+
+{% if summary.failure_type_counts %}
+---
+
+## Failure Analysis
+
+| Failure Type | Count |
+|--------------|-------|
+{% for failure_type, count in summary.failure_type_counts.items() %}
+| {{ failure_type | replace('_', ' ') | title }} | {{ count }} |
+{% endfor %}
+{% endif %}
+
+{% endif %}
+
+---
+
+## Detailed Results
+
+{% if truncated %}
+*Showing {{ max_detailed_results }} of {{ total_results }} results*
+{% endif %}
+
+{% for result in results %}
+### {{ loop.index }}. {{ result.test_query.question }}
+
+**ID:** `{{ result.test_query.id }}`
+**Type:** {{ result.test_query.query_type.value | capitalize }}
+**Complexity:** {{ result.test_query.complexity.value | capitalize }}
+**Category:** {{ result.test_query.failure_category.value | replace('_', ' ') | title }}
+
+**Result:** {% if result.accuracy.value == 'correct' %}CORRECT{% elif result.accuracy.value == 'partial' %}PARTIAL{% elif result.accuracy.value == 'wrong' %}WRONG{% else %}FAILED{% endif %}
+
+{% if result.failure_type.value != 'none' %}
+**Failure Type:** {{ result.failure_type.value | replace('_', ' ') | title }}
+{% endif %}
+
+**Execution Time:** {{ result.execution_time_ms | format_duration }}
+
+{% if result.error_message %}
+**Error:** {{ result.error_message }}
+{% endif %}
+
+{% if result.comparison.sql_generated %}
+<details>
+<summary>Generated SQL</summary>
+
+```sql
+{{ result.comparison.sql_generated }}
+```
+
+</details>
+{% endif %}
+
+{% if result.comparison.comparison_notes %}
+**Notes:** {{ result.comparison.comparison_notes }}
+{% endif %}
+
+{% if result.comparison.missing_columns %}
+**Missing Columns:** {{ result.comparison.missing_columns | join(', ') }}
+{% endif %}
+
+{% if result.comparison.missing_tables %}
+**Missing Tables:** {{ result.comparison.missing_tables | join(', ') }}
+{% endif %}
+
+---
+
+{% endfor %}
+
+{% if not results %}
+*No evaluation results available.*
+{% endif %}
