@@ -11,6 +11,7 @@ from typing import Any, Optional
 from enum import Enum
 
 from src.config import Config
+from src.utils.cache import QueryCache, get_query_cache
 from src.utils.errors import AgentError, classify_error
 
 
@@ -109,15 +110,26 @@ class GenieDataAgent:
         >>> print(result.to_markdown_table())
     """
 
-    def __init__(self, config: Config):
+    def __init__(
+        self,
+        config: Config,
+        cache: Optional[QueryCache] = None,
+    ):
         """Initialize the Genie Data Agent.
 
         Args:
             config: Configuration instance with Genie settings
+            cache: Optional query cache instance (uses global cache if not provided)
         """
         self.config = config
         self._client = None
         self._conversation_id: Optional[str] = None
+        self._cache = cache
+
+        # Determine cache usage from config
+        self._use_cache = config.cache_enabled
+        if config.demo_mode == "live":
+            self._use_cache = False
 
     @property
     def client(self):
@@ -138,6 +150,7 @@ class GenieDataAgent:
         question: str,
         timeout_seconds: int = 120,
         poll_interval: float = 2.0,
+        fresh: bool = False,
     ) -> GenieResult:
         """Query the Genie Space with a natural language question.
 
@@ -145,14 +158,41 @@ class GenieDataAgent:
             question: Natural language question about the data
             timeout_seconds: Maximum time to wait for query completion
             poll_interval: Seconds between status checks
+            fresh: If True, bypass cache and fetch fresh results
 
         Returns:
             GenieResult with query results or error
         """
-        if self.config.mock_mode:
-            return self._mock_query(question)
+        # CRITICAL: Only cache first-turn queries (no conversation context)
+        # This avoids returning wrong results for follow-up questions
+        can_use_cache = (
+            self._use_cache
+            and not self.config.mock_mode
+            and not fresh
+            and self._conversation_id is None  # First-turn only
+        )
 
-        return self._real_query(question, timeout_seconds, poll_interval)
+        # Check cache
+        if can_use_cache:
+            cache = self._cache or get_query_cache()
+            cached_result = cache.get(
+                self.config.genie_space_id, question, fresh=fresh
+            )
+            if cached_result is not None:
+                return cached_result
+
+        # Execute query
+        if self.config.mock_mode:
+            result = self._mock_query(question)
+        else:
+            result = self._real_query(question, timeout_seconds, poll_interval)
+
+        # Cache successful first-turn results
+        if result.success and can_use_cache:
+            cache = self._cache or get_query_cache()
+            cache.set(self.config.genie_space_id, question, result)
+
+        return result
 
     def _real_query(
         self,

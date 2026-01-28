@@ -11,6 +11,7 @@ import operator
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
 from langchain_core.tools import tool
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 
@@ -106,6 +107,7 @@ def create_supervisor_agent(
     config: Config,
     genie_agent: GenieDataAgent | None = None,
     rag_agent: RAGAgent | None = None,
+    checkpointer: MemorySaver | None = None,
 ) -> StateGraph:
     """Create the supervisor agent graph.
 
@@ -285,7 +287,9 @@ def create_supervisor_agent(
     workflow.add_edge("tools", "after_tools")
     workflow.add_edge("after_tools", "supervisor")
 
-    # Compile and return
+    # Compile and return with or without checkpointer
+    if checkpointer is not None:
+        return workflow.compile(checkpointer=checkpointer)
     return workflow.compile()
 
 
@@ -306,6 +310,8 @@ class SupervisorRunner:
         config: Config,
         genie_agent: GenieDataAgent | None = None,
         rag_agent: RAGAgent | None = None,
+        thread_id: str | None = None,
+        checkpointer: MemorySaver | None = None,
     ):
         """Initialize the supervisor runner.
 
@@ -313,14 +319,27 @@ class SupervisorRunner:
             config: Configuration instance
             genie_agent: Optional pre-configured Genie agent
             rag_agent: Optional pre-configured RAG agent
+            thread_id: Optional thread ID for checkpointer-based history
+            checkpointer: Optional pre-configured checkpointer
         """
         self.config = config
         self.genie_agent = genie_agent or GenieDataAgent(config)
         self.rag_agent = rag_agent or RAGAgent(config)
+        self._thread_id = thread_id
+
+        # Create checkpointer if thread_id provided
+        if checkpointer is not None:
+            self._checkpointer = checkpointer
+        elif thread_id is not None:
+            self._checkpointer = MemorySaver()
+        else:
+            self._checkpointer = None
+
         self.graph = create_supervisor_agent(
             config,
             self.genie_agent,
             self.rag_agent,
+            checkpointer=self._checkpointer,
         )
         self._message_history: list[BaseMessage] = []
 
@@ -337,30 +356,50 @@ class SupervisorRunner:
         if reset_history:
             self._message_history = []
 
-        # Add user message
         user_message = HumanMessage(content=question)
 
-        # Create initial state
-        initial_state: AgentState = {
-            "messages": self._message_history + [user_message],
-            "next_agent": "supervisor",
-            "genie_result": None,
-            "rag_result": None,
-            "iteration_count": 0,
-        }
+        # Build initial state
+        # When using checkpointer, don't pass full history - checkpointer manages it
+        if self._checkpointer and self._thread_id:
+            initial_state: AgentState = {
+                "messages": [user_message],  # Only new message
+                "next_agent": "supervisor",
+                "genie_result": None,
+                "rag_result": None,
+                "iteration_count": 0,
+            }
+            invoke_config = {"configurable": {"thread_id": self._thread_id}}
+        else:
+            initial_state: AgentState = {
+                "messages": self._message_history + [user_message],
+                "next_agent": "supervisor",
+                "genie_result": None,
+                "rag_result": None,
+                "iteration_count": 0,
+            }
+            invoke_config = {}
 
-        # Run the graph
-        final_state = self.graph.invoke(initial_state)
+        final_state = self.graph.invoke(initial_state, invoke_config)
 
-        # Update history with full conversation
-        self._message_history = list(final_state["messages"])
+        # Update local history (for non-checkpointer mode)
+        if not self._checkpointer:
+            self._message_history = list(final_state["messages"])
 
-        # Extract final response
+        # Extract response
         for message in reversed(final_state["messages"]):
             if isinstance(message, AIMessage) and not message.tool_calls:
                 return message.content
 
         return "I wasn't able to generate a response."
+
+    @property
+    def thread_id(self) -> str | None:
+        """Get the current thread ID.
+
+        Returns:
+            The thread ID if using checkpointer, None otherwise
+        """
+        return self._thread_id
 
     def get_history(self) -> list[BaseMessage]:
         """Get the conversation history.
@@ -376,13 +415,17 @@ class SupervisorRunner:
         self.genie_agent.reset_conversation()
 
 
-def create_simple_supervisor(config: Config) -> SupervisorRunner:
+def create_simple_supervisor(
+    config: Config,
+    thread_id: str | None = None,
+) -> SupervisorRunner:
     """Factory function to create a ready-to-use supervisor.
 
     Args:
         config: Configuration instance
+        thread_id: Optional thread ID for checkpointer-based history
 
     Returns:
         SupervisorRunner instance
     """
-    return SupervisorRunner(config)
+    return SupervisorRunner(config, thread_id=thread_id)

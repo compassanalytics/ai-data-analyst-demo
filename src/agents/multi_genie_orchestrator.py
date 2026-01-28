@@ -15,6 +15,7 @@ from typing import Any, Callable, Optional
 from src.config import Config
 from src.agents.genie_agent import GenieDataAgent, GenieResult
 from src.utils.errors import AgentError, classify_error, ErrorCategory
+from src.utils.cache import QueryCache, get_query_cache
 from src.utils.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
@@ -232,6 +233,7 @@ class MultiGenieOrchestrator:
         max_concurrency: int = 3,
         progress_callback: Optional[Callable[[str, str], None]] = None,
         circuit_breaker_registry: Optional[CircuitBreakerRegistry] = None,
+        cache: Optional[QueryCache] = None,
     ):
         """Initialize the Multi-Genie Orchestrator.
 
@@ -241,6 +243,7 @@ class MultiGenieOrchestrator:
             max_concurrency: Maximum number of parallel queries
             progress_callback: Optional callback for progress updates (space_name, status)
             circuit_breaker_registry: Optional registry for circuit breakers
+            cache: Optional query cache instance (uses global cache if not provided)
 
         Raises:
             ValueError: If no space configurations are provided
@@ -254,6 +257,7 @@ class MultiGenieOrchestrator:
         self._progress_callback = progress_callback
         self._agents: dict[str, GenieDataAgent] = {}
         self._circuit_breaker_registry = circuit_breaker_registry
+        self._cache = cache or get_query_cache()
 
     def _get_agent(self, space_config: GenieSpaceConfig) -> GenieDataAgent:
         """Get or create a GenieDataAgent for a space.
@@ -265,7 +269,7 @@ class MultiGenieOrchestrator:
             GenieDataAgent instance for the space
         """
         if space_config.name not in self._agents:
-            # Create a config copy with this space's ID
+            # Create a config copy with this space's ID and cache settings
             config = Config(
                 databricks_host=self._base_config.databricks_host,
                 databricks_token=self._base_config.databricks_token,
@@ -276,8 +280,13 @@ class MultiGenieOrchestrator:
                 vector_search_endpoint=self._base_config.vector_search_endpoint,
                 vector_search_index=self._base_config.vector_search_index,
                 embedding_endpoint=self._base_config.embedding_endpoint,
+                # Include cache configuration
+                cache_enabled=self._base_config.cache_enabled,
+                cache_ttl_seconds=self._base_config.cache_ttl_seconds,
+                demo_mode=self._base_config.demo_mode,
+                cache_max_size=self._base_config.cache_max_size,
             )
-            self._agents[space_config.name] = GenieDataAgent(config)
+            self._agents[space_config.name] = GenieDataAgent(config, cache=self._cache)
 
         return self._agents[space_config.name]
 
@@ -627,3 +636,39 @@ class MultiGenieOrchestrator:
         """Reset conversation state for all cached agents."""
         for agent in self._agents.values():
             agent.reset_conversation()
+
+    def get_cache_stats(self) -> dict[str, Any]:
+        """Get cache statistics.
+
+        Returns:
+            Dictionary with cache statistics including hits, misses, hit_rate, etc.
+        """
+        if self._cache:
+            stats = self._cache.get_stats()
+            return {
+                "hits": stats.hits,
+                "misses": stats.misses,
+                "hit_rate": stats.hit_rate,
+                "cache_size": stats.cache_size,
+                "evictions": stats.evictions,
+            }
+        return {}
+
+    def invalidate_cache(self, space_name: Optional[str] = None) -> int:
+        """Invalidate cache entries.
+
+        Args:
+            space_name: If provided, only invalidate entries for this space.
+                       If None, invalidate all entries.
+
+        Returns:
+            Number of entries invalidated
+        """
+        if not self._cache:
+            return 0
+        if space_name is None:
+            return self._cache.invalidate()
+        config = self._configs.get(space_name)
+        if config:
+            return self._cache.invalidate(config.space_id)
+        return 0

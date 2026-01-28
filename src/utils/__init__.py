@@ -4,8 +4,17 @@ This package provides:
 - Error classification and handling utilities
 - Retry policies using tenacity
 - Circuit breaker implementation for graceful degradation
+- Query result caching with TTL and LRU eviction
 """
 
+from .cache import (
+    CacheConfig,
+    CacheEntry,
+    CacheStats,
+    QueryCache,
+    clear_query_cache,
+    get_query_cache,
+)
 from .circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
@@ -36,6 +45,13 @@ from .retry_policies import (
 )
 
 __all__ = [
+    # Query cache
+    "CacheConfig",
+    "CacheEntry",
+    "CacheStats",
+    "QueryCache",
+    "clear_query_cache",
+    "get_query_cache",
     # Error handling
     "AgentError",
     "AgentTimeoutError",

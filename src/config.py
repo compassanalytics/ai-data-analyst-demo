@@ -73,6 +73,11 @@ class Config:
     circuit_breaker_enabled: bool = field(default=False)
     circuit_breaker_failure_threshold: int = field(default=5)
     circuit_breaker_timeout_seconds: float = field(default=60.0)
+    # Cache configuration
+    cache_enabled: bool = field(default=True)
+    cache_ttl_seconds: int = field(default=300)  # 5 minutes default
+    demo_mode: str = field(default="normal")  # "normal", "fast", "live"
+    cache_max_size: int = field(default=1000)  # Maximum cache entries
 
     @classmethod
     def from_env(cls) -> Config:
@@ -116,6 +121,11 @@ class Config:
             circuit_breaker_enabled=_str_to_bool(os.getenv("CIRCUIT_BREAKER_ENABLED", "false")),
             circuit_breaker_failure_threshold=int(os.getenv("CIRCUIT_BREAKER_FAILURE_THRESHOLD", "5")),
             circuit_breaker_timeout_seconds=float(os.getenv("CIRCUIT_BREAKER_TIMEOUT_SECONDS", "60.0")),
+            # Cache configuration
+            cache_enabled=_str_to_bool(os.getenv("CACHE_ENABLED", "true")),
+            cache_ttl_seconds=int(os.getenv("CACHE_TTL_SECONDS", "300")),
+            demo_mode=os.getenv("DEMO_MODE", "normal"),
+            cache_max_size=int(os.getenv("CACHE_MAX_SIZE", "1000")),
         )
 
     @classmethod
@@ -155,6 +165,11 @@ class Config:
                 vector_search_endpoint=get_secret("vector_search_endpoint") or None,
                 vector_search_index=get_secret("vector_search_index") or None,
                 embedding_endpoint=get_secret("embedding_endpoint", "databricks-bge-large-en"),
+                # Cache configuration
+                cache_enabled=_str_to_bool(get_secret("cache_enabled", "true")),
+                cache_ttl_seconds=int(get_secret("cache_ttl_seconds", "300") or "300"),
+                demo_mode=get_secret("demo_mode", "normal") or "normal",
+                cache_max_size=int(get_secret("cache_max_size", "1000") or "1000"),
             )
         except Exception as e:
             # Fall back to environment variables
@@ -181,6 +196,11 @@ class Config:
             vector_search_endpoint=params.get("vector_search_endpoint"),
             vector_search_index=params.get("vector_search_index"),
             embedding_endpoint=params.get("embedding_endpoint", "databricks-bge-large-en"),
+            # Cache configuration
+            cache_enabled=_str_to_bool(params.get("cache_enabled", "true")),
+            cache_ttl_seconds=int(params.get("cache_ttl_seconds", 300)),
+            demo_mode=params.get("demo_mode", "normal"),
+            cache_max_size=int(params.get("cache_max_size", 1000)),
         )
 
     def validate(self) -> list[str]:
