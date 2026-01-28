@@ -6,10 +6,10 @@ bundle:
 variables:
   genie_space_id:
     description: "The Genie Space ID for data analysis"
-    default: "01f0fb3f3de619aebd30f7919b86e34c"
+    default: ""  # Set via: databricks bundle deploy --var genie_space_id=YOUR_ID
   warehouse_id:
     description: "SQL Warehouse ID"
-    default: "b1f5c7733a6d7e1e"
+    default: ""  # Set via: databricks bundle deploy --var warehouse_id=YOUR_ID
   model_endpoint:
     description: "The model serving endpoint for ChatDatabricks"
     default: "databricks-meta-llama-3-3-70b-instruct"
@@ -49,14 +49,12 @@ targets:
   dev:
     mode: development
     default: true
-    workspace:
-      host: https://dbc-19ccb338-5c57.cloud.databricks.com
+    # Set workspace host via DATABRICKS_HOST env var or databricks CLI profile
     variables:
       mock_mode: "false"  # Using real Genie
 
   prod:
     mode: production
-    workspace:
-      host: https://dbc-19ccb338-5c57.cloud.databricks.com
+    # Set workspace host via DATABRICKS_HOST env var or databricks CLI profile
     variables:
       mock_mode: "false"

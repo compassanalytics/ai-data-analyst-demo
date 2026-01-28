@@ -3,8 +3,8 @@
 
 title: "TPCH Sales Analytics Demo"
 description: "AI-powered analytics for sales orders, customers, and suppliers using TPCH benchmark data"
-warehouse_id: "b1f5c7733a6d7e1e"
-parent_path: "/Workspace/Users/redhawk1230@gmail.com/genie-spaces"
+warehouse_id: "${WAREHOUSE_ID}"  # Set via environment variable
+parent_path: "${PARENT_PATH}"    # Set via environment variable (e.g., /Workspace/Users/you@email.com/genie-spaces)
 
 tables:
   - identifier: "samples.tpch.orders"

@@ -36,8 +36,8 @@ Examples:
     )
     parser.add_argument(
         "--space-id",
-        default="01f0fb3f3de619aebd30f7919b86e34c",
-        help="Genie Space ID (default: TPCH demo space)"
+        default=os.getenv("GENIE_SPACE_ID", ""),
+        help="Genie Space ID (default: from GENIE_SPACE_ID env var)"
     )
     parser.add_argument(
         "--mock",
