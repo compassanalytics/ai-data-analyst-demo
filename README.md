@@ -7,6 +7,7 @@ Build AI-powered data analysts using Databricks Genie Spaces and LangGraph.
 ## Workshop Overview
 
 This hands-on workshop teaches you to build AI data analysts that can:
+
 - Answer business questions in natural language
 - Query structured data via Genie Spaces
 - Search documents via RAG (Retrieval-Augmented Generation)
@@ -18,11 +19,11 @@ This hands-on workshop teaches you to build AI data analysts that can:
 
 ## Workshop Structure
 
-| Part | Focus | Audience |
-|------|-------|----------|
-| **Part 1** | Genie Spaces UI - What works, what breaks, why data quality matters | Everyone |
-| **Part 2** | Genie as a LangGraph node - Building multi-agent systems | Technical |
-| **Part 3** | Multi-Genie + Report Generator - Advanced orchestration | Technical |
+| Part       | Focus                                                               | Audience  |
+| ---------- | ------------------------------------------------------------------- | --------- |
+| **Part 1** | Genie Spaces UI - What works, what breaks, why data quality matters | Everyone  |
+| **Part 2** | Genie as a LangGraph node - Building multi-agent systems            | Technical |
+| **Part 3** | Multi-Genie + Report Generator - Advanced orchestration             | Technical |
 
 ## Quick Start
 
@@ -80,6 +81,7 @@ ai-data-analyst-workshop/
 ### Why Data Quality Matters
 
 In Part 1, we demonstrate:
+
 - **Dirty data** (139 columns, inconsistent naming) → Genie gets confused
 - **Clean data** (star schema, 6 tables) → Same questions work perfectly
 
@@ -108,7 +110,3 @@ User Question
 - [Databricks Genie Spaces Documentation](https://docs.databricks.com/aws/en/genie/)
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [Databricks Free Edition](https://www.databricks.com/learn/free-edition)
-
-## License
-
-MIT

@@ -37,6 +37,9 @@ build/
 # Generated data files (not tracked - participants generate locally)
 dataset_generators/data/
 
+# Deployment artifacts (environment-specific)
+config/velocity_motors_spaces.yaml
+
 # Internal documentation (not for public workshop repo)
 docs/research/
 plans/
