@@ -17,6 +17,7 @@ from src.agents.synthesizer_agent import (
     Correlation,
     Anomaly,
 )
+from src.agents.report_writer import ReportWriter, ReportConfig
 
 __all__ = [
     "GenieDataAgent",
@@ -35,4 +36,6 @@ __all__ = [
     "Insight",
     "Correlation",
     "Anomaly",
+    "ReportWriter",
+    "ReportConfig",
 ]

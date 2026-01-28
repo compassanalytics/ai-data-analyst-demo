@@ -1,0 +1,98 @@
+{# Markdown Report Template for SynthesisResult #}
+{% if title %}
+# {{ title }}
+{% else %}
+# Cross-Domain Analysis Report
+{% endif %}
+
+{% if generated_at %}
+*Generated: {{ generated_at }}*
+{% endif %}
+
+{% if not result.success %}
+---
+**ERROR:** {{ result.error or "Analysis could not be completed" }}
+
+---
+{% endif %}
+
+{% if result.warnings %}
+## Warnings
+
+{% for warning in result.warnings %}
+- {{ warning }}
+{% endfor %}
+
+{% endif %}
+{% if result.domains_analyzed %}
+**Domains Analyzed:** {{ result.domains_analyzed | join(", ") }}
+{% endif %}
+
+{% if result.domains_unavailable %}
+**Domains Unavailable:** {{ result.domains_unavailable | join(", ") }}
+{% endif %}
+
+{% if result.data_limitations %}
+## Data Limitations
+
+{% for limitation in result.data_limitations %}
+- {{ limitation }}
+{% endfor %}
+
+{% endif %}
+{% if result.key_insights %}
+## Key Insights
+
+{% for insight in result.key_insights %}
+### {{ loop.index }}. [{{ insight.importance | upper }}] {{ insight.insight }}
+
+**Domains:** {{ insight.domains | join(", ") if insight.domains else "General" }}
+{% if insight.evidence %}
+**Evidence:** {{ insight.evidence }}
+{% endif %}
+
+{% endfor %}
+{% endif %}
+
+{% if result.cross_domain_correlations %}
+## Cross-Domain Correlations
+
+{% for corr in result.cross_domain_correlations %}
+- **{{ corr.description }}**
+{% if corr.domain_a and corr.domain_b %}
+  - {{ corr.domain_a }} ({{ corr.metric_a }}) <-> {{ corr.domain_b }} ({{ corr.metric_b }})
+{% endif %}
+  - Relationship: {{ corr.relationship | capitalize if corr.relationship else "Unknown" }}
+
+{% endfor %}
+{% endif %}
+
+{% if result.anomalies %}
+## Anomalies Detected
+
+{% for anomaly in result.anomalies %}
+- [{{ anomaly.severity | upper }}] **{{ anomaly.description }}**
+{% if anomaly.domain %}
+  - Domain: {{ anomaly.domain }}
+{% endif %}
+{% if anomaly.metric %}
+  - Metric: {{ anomaly.metric }}
+{% endif %}
+{% if anomaly.expected_range and anomaly.actual_value %}
+  - Expected: {{ anomaly.expected_range }}, Actual: {{ anomaly.actual_value }}
+{% endif %}
+
+{% endfor %}
+{% endif %}
+
+{% if result.recommendations %}
+## Recommendations
+
+{% for rec in result.recommendations %}
+{{ loop.index }}. {{ rec }}
+{% endfor %}
+
+{% endif %}
+{% if not result.key_insights and not result.cross_domain_correlations and not result.anomalies and not result.recommendations %}
+*No insights could be generated from the available data.*
+{% endif %}
