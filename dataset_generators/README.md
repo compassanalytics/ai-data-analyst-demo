@@ -187,3 +187,289 @@ ALTER TABLE workshop.star_schema.dim_date
 ALTER COLUMN fiscal_quarter_name
 COMMENT 'Fiscal quarter in FY2024 Q1 format. Fiscal year starts February 1st.';
 ```
+
+---
+
+## Healthcare Dataset
+
+A healthcare-focused dataset demonstrating the same good vs bad data modeling principles.
+
+### Quick Start
+
+```bash
+# Generate healthcare datasets
+uv run python -m dataset_generators.generate_healthcare
+
+# Generate only star schema (clean)
+uv run python -m dataset_generators.generate_healthcare --clean-only
+
+# Generate at 10% scale for testing
+uv run python -m dataset_generators.generate_healthcare --scale 0.1
+```
+
+### Output Structure
+
+```
+./data/
+├── healthcare_star/
+│   ├── dim_patient.parquet        # Patient demographics
+│   ├── dim_provider.parquet       # Providers/physicians
+│   ├── dim_date.parquet           # Date dimension with flu season
+│   ├── dim_diagnosis.parquet      # ICD-10 codes
+│   ├── dim_procedure.parquet      # CPT codes
+│   ├── dim_payer.parquet          # Insurance payers
+│   ├── fact_encounters.parquet    # Patient encounters
+│   ├── fact_claims.parquet        # Insurance claims
+│   └── fact_prescriptions.parquet # Medications
+│
+└── healthcare_super/
+    └── healthcare_super_table.parquet  # 100+ column nightmare
+```
+
+### Star Schema (Clean) - 9 Tables
+
+```
+        dim_date
+            │
+            ▼
+    fact_encounters ◄──── dim_patient
+            │
+            ├──────────► dim_provider
+            │
+            └──────────► dim_diagnosis
+
+    fact_claims ◄──────► dim_payer
+            │
+            └──────────► fact_encounters
+
+    fact_prescriptions ◄──► dim_patient
+            │
+            ├──────────────► dim_provider
+            │
+            └──────────────► fact_encounters
+```
+
+### Super Table Anti-Patterns (Dirty) - 100+ Columns
+
+| Anti-Pattern | Example Columns |
+|--------------|-----------------|
+| Conflicting Patient IDs | `patient_id`, `patientID`, `PAT_ID` have DIFFERENT values! |
+| Multiple Date Formats | `service_date` (date), `ServiceDate` (MM/DD/YYYY), `svc_dt` (YYYYMMDD) |
+| Provider ID Chaos | `npi` and `NPI` have DIFFERENT values! |
+| Amount Ambiguity | `charge_amt`, `CHARGES`, `billed`, `billed_amt` all differ |
+| Boolean Chaos | `is_admitted` contains: 0, 1, 'Y', 'N', True, False, 'YES', 'NO' |
+| Cryptic Codes | `enc_type`, `flg1`, `cd1`, `status_cd` - undocumented |
+
+### Demo Questions
+
+**Questions that FAIL on Super Table:**
+
+1. **"How many unique patients do we have?"**
+   - Problem: 10+ patient ID columns with DIFFERENT values
+
+2. **"Show admissions from January 2024"**
+   - Problem: 10+ date columns with different formats
+
+3. **"What is our total revenue?"**
+   - Problem: 15+ amount columns, all different values
+
+4. **"Which provider has the most encounters?"**
+   - Problem: `provider_id` vs `PROVIDER_ID` have DIFFERENT values
+
+**Same Questions SUCCEED on Star Schema:**
+
+- Single `patient_key` in fact_encounters
+- Consistent `date_key` (YYYYMMDD integer)
+- Clear `billed_amount`, `paid_amount` columns
+- Single `provider_key` linking to dim_provider
+
+### Healthcare-Specific Features
+
+- **Real ICD-10 codes** in star schema (E11.x Diabetes, I10 Hypertension, etc.)
+- **Synthetic codes** in super table (DX-001, SYN-DIAB-01) to avoid PHI concerns
+- **Age-appropriate diagnoses** (pregnancy only for females 12-55, etc.)
+- **Flu season flag** in date dimension
+- **Claim status workflow** (Paid, Pending, Denied, Appealed)
+- **Realistic LOS** (Length of Stay) by encounter type
+
+---
+
+## Finance Banking Dataset
+
+A fictional bank dataset demonstrating the same good vs bad data modeling principles, focused on financial services use cases.
+
+### Quick Start
+
+```bash
+# Generate finance datasets (star schema + super table)
+uv run python dataset_generators/generate_finance.py
+
+# Generate only star schema (clean)
+uv run python dataset_generators/generate_finance.py --clean-only
+
+# Generate only super table (dirty)
+uv run python dataset_generators/generate_finance.py --dirty-only
+
+# Generate at 10% scale for testing
+uv run python dataset_generators/generate_finance.py --scale 0.1 --seed 42
+```
+
+### Output Structure
+
+```
+./data/
+├── finance_star_schema/
+│   ├── dim_customer.parquet       # Customer master data with segments
+│   ├── dim_product.parquet        # Banking products (loans, cards, deposits)
+│   ├── dim_account.parquet        # Customer accounts
+│   ├── dim_branch.parquet         # Bank branch locations
+│   ├── dim_employee.parquet       # Bank employees
+│   ├── dim_date.parquet           # Date dimension with fiscal calendar
+│   ├── fact_transaction.parquet   # Transaction records
+│   └── fact_account_balance.parquet # Daily balance snapshots
+│
+└── finance_super_table/
+    └── finance_super_table.parquet  # 80+ column nightmare
+```
+
+### Star Schema (Clean) - 8 Tables
+
+```
+        dim_date
+            │
+            ▼
+    fact_transaction ◄──── dim_account ◄──── dim_customer
+            │
+            ├──────────► dim_branch
+            │
+            └──────────► dim_employee
+
+    fact_account_balance ◄──► dim_account
+            │
+            └────────────────► dim_date
+
+    dim_product (standalone product catalog)
+```
+
+**Table Descriptions:**
+
+| Table | Records (scale=1.0) | Description |
+|-------|---------------------|-------------|
+| dim_customer | 5,000 | Customer master with segment, risk rating, KYC status |
+| dim_product | ~25 | Fixed banking products (loans, cards, deposits, investments) |
+| dim_account | 8,000 | Customer accounts with type, status, currency |
+| dim_branch | 50 | Branch locations with type, region, manager |
+| dim_employee | 200 | Employees with role, department, branch assignment |
+| dim_date | 1,096 | Date dimension (2023-2025) with fiscal calendar (Feb start) |
+| fact_transaction | 500,000 | Transactions with amounts, types, channels |
+| fact_account_balance | ~87,000 | Daily balance snapshots (10% sample rate) |
+
+### Super Table Anti-Patterns (Dirty) - 80+ Columns
+
+| Anti-Pattern | Example Columns | Problem |
+|--------------|-----------------|---------|
+| **6 Transaction IDs** | `txn_id`, `transaction_id`, `trans_id`, `TXN_KEY`, `ref_num`, `reference_number` | Which is the primary key? |
+| **6 Account Numbers** | `acct_num`, `account_number`, `ACCTNO`, `account_id`, `acct_id`, `acct` (last 4 only!) | `acct` is truncated! |
+| **6 Customer IDs** | `cust_id`, `customer_id`, `CUSTID`, `party_id`, `client_id`, `tax_id` (masked) | Inconsistent formats |
+| **10+ Dates** | Various formats: date, MM/DD/YYYY, YYYY-MM-DD, YYYYMMDD, DD-Mon-YYYY, separate yr/mth/dy | Which date to filter? |
+| **8 Amount Columns** | `amt`, `amount`, `AMT`, `amount_usd`, `amount_local`, `local_amt`, `trans_amt`, `TRANS_AMT` | Which is correct? |
+| **12 Balance Columns** | `balance`, `bal`, `BAL`, `current_balance`, `available_balance`, `ledger_balance`, etc. | Risk of double-counting |
+| **Segment Codes vs Names** | `seg='R'` vs `segment='Retail'`, `seg='HNW'` vs `segment='High Net Worth'` | Cryptic outputs |
+| **Boolean Chaos** | `is_pending` contains: 0, 1, 'Y', 'N', True, False, 'Yes', 'No' | Filters miss records |
+| **Mystery Columns** | `cd1`, `cd2`, `val`, `cnt`, `attr1`, `flg1`, `flg2` | No documentation |
+
+### Demo Questions
+
+**Questions that FAIL on Super Table:**
+
+1. **"What was total transaction volume last month?"**
+   - Problem: 8 different amount columns (amt, amount, AMT, amount_usd, etc.)
+   - AI picks wrong column, gets wrong answer
+
+2. **"How many unique customers transacted?"**
+   - Problem: 6 different customer ID columns with different formats
+   - Different counts depending on column used
+
+3. **"Show Q1 fiscal year revenue"**
+   - Problem: Multiple date columns, fiscal year starts Feb not Jan
+   - Uses wrong quarter boundaries
+
+4. **"Breakdown by customer segment"**
+   - Problem: Returns codes 'R', 'MA', 'HNW' instead of readable names
+   - Meaningless output
+
+5. **"Show pending transactions only"**
+   - Problem: `is_pending` has mixed boolean formats (0/1/Y/N/True/False)
+   - Partial matches, incorrect filtering
+
+6. **"What is total account balance?"**
+   - Problem: 12 balance columns with overlapping semantics
+   - Risk of summing related columns and double-counting
+
+**Same Questions SUCCEED on Star Schema:**
+
+- Single `amount` column in fact_transaction
+- Single `customer_key` linking to dim_customer
+- `fiscal_quarter_name` in dim_date (e.g., "FY2024 Q1")
+- `segment` contains readable names ('Retail', 'High Net Worth', etc.)
+- Consistent boolean flags (True/False only)
+- Clear `current_balance`, `available_balance` with distinct semantics
+
+### Banking-Specific Features
+
+- **Customer Segments**: Retail, Mass Affluent, High Net Worth, Private Banking, Institutional
+- **Risk Ratings**: Low, Medium, Medium-High, High (correlated with segment)
+- **KYC Status**: Verified, Pending, Expired, Enhanced Due Diligence
+- **Transaction Types**: Deposit, Withdrawal, Transfer, Payment, Fee, Interest, Charge, Refund
+- **Channels**: Online Banking, Mobile App, ATM, Branch, Wire, ACH
+- **Branch Types**: Full Service, Express, Private Banking Center, Commercial Center
+- **Products**: 25+ products across Loans, Cards, Deposits, Investments
+- **Fiscal Calendar**: Fiscal year starts February 1st (common in banking)
+- **Amount Distribution**: Lognormal with median ~$400, capped at $50K
+
+### Genie Knowledge Store Setup
+
+After uploading star schema to Databricks, add these SQL expressions:
+
+**Measures:**
+
+```sql
+-- Total Transaction Volume
+SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END)
+
+-- Net Transaction Flow
+SUM(amount)
+
+-- Average Transaction Size
+AVG(ABS(amount))
+
+-- Transaction Count by Channel
+COUNT(*) GROUP BY channel
+```
+
+**Filters:**
+
+```sql
+-- Active Customers Only
+customer_key IN (
+    SELECT DISTINCT customer_key FROM fact_transaction
+    WHERE date_key >= DATE_FORMAT(DATE_SUB(CURRENT_DATE(), 90), 'yyyyMMdd')
+)
+
+-- High Net Worth Segment
+segment = 'High Net Worth'
+
+-- Fiscal Q1 (Feb-Apr)
+fiscal_quarter = 1
+```
+
+**Example Questions to Configure:**
+
+```
+- What was total transaction volume last quarter?
+- Show transactions by customer segment
+- Compare deposit vs withdrawal trends
+- Which channel has highest transaction volume?
+- What is the average account balance by segment?
+- How many transactions processed by branch?
+```
