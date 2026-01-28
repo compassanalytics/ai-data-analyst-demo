@@ -6,12 +6,12 @@ for natural language to SQL data analysis.
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 from enum import Enum
 
 from src.config import Config
+from src.utils.errors import AgentError, classify_error
 
 
 class QueryStatus(Enum):
@@ -33,6 +33,7 @@ class GenieResult:
         description: Natural language description of results
         error: Error message if query failed
         columns: Column names in the result
+        error_details: Structured error information for classification
     """
     success: bool
     data: list[dict[str, Any]] = field(default_factory=list)
@@ -40,6 +41,28 @@ class GenieResult:
     description: Optional[str] = None
     error: Optional[str] = None
     columns: list[str] = field(default_factory=list)
+    error_details: Optional[AgentError] = None
+
+    @property
+    def is_retryable(self) -> bool:
+        """Check if the error is retryable.
+
+        Returns:
+            True if the error is retryable, False otherwise
+        """
+        if self.error_details is not None:
+            return self.error_details.retryable
+        return False
+
+    def get_user_message(self) -> str:
+        """Get a user-friendly error message.
+
+        Returns:
+            User-friendly message if error_details available, else raw error
+        """
+        if self.error_details is not None:
+            return self.error_details.to_user_message()
+        return self.error or "Unknown error"
 
     def to_markdown_table(self, max_rows: int = 10) -> str:
         """Convert results to a markdown table.
@@ -150,10 +173,12 @@ class GenieDataAgent:
             GenieResult with actual data from Genie
         """
         try:
+            from datetime import timedelta
             from databricks.sdk.service.dashboards import GenieMessage
 
             genie = self.client.genie
             space_id = self.config.genie_space_id
+            timeout_delta = timedelta(seconds=timeout_seconds)
 
             # Start a conversation or continue existing one
             if self._conversation_id is None:
@@ -161,6 +186,7 @@ class GenieDataAgent:
                 response = genie.start_conversation_and_wait(
                     space_id=space_id,
                     content=question,
+                    timeout=timeout_delta,
                 )
                 self._conversation_id = response.conversation_id
             else:
@@ -169,12 +195,22 @@ class GenieDataAgent:
                     space_id=space_id,
                     conversation_id=self._conversation_id,
                     content=question,
+                    timeout=timeout_delta,
                 )
 
             return self._parse_genie_response(response)
 
         except Exception as e:
-            return GenieResult(success=False, error=str(e))
+            # Classify the error while the exception is intact
+            classified_error = classify_error(
+                e,
+                context={"space_id": self.config.genie_space_id, "question": question},
+            )
+            return GenieResult(
+                success=False,
+                error=str(e),
+                error_details=classified_error,
+            )
 
     def _parse_genie_response(self, message_info: Any) -> GenieResult:
         """Parse the Genie API response into a GenieResult.

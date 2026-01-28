@@ -44,6 +44,14 @@ class Config:
         vector_search_endpoint: Optional Vector Search endpoint
         vector_search_index: Optional Vector Search index name
         embedding_endpoint: Embedding model endpoint for Vector Search (managed embeddings)
+        genie_spaces_json: JSON configuration for multiple Genie Spaces
+        default_max_retries: Maximum number of retry attempts for operations
+        default_retry_base_delay: Base delay between retries (seconds)
+        default_retry_max_delay: Maximum delay between retries (seconds)
+        default_timeout_seconds: Default timeout for operations (seconds)
+        circuit_breaker_enabled: Enable circuit breaker pattern
+        circuit_breaker_failure_threshold: Failures before circuit opens
+        circuit_breaker_timeout_seconds: Time before circuit transitions to half-open
     """
 
     databricks_host: str = field(default="")
@@ -56,6 +64,15 @@ class Config:
     vector_search_index: Optional[str] = field(default=None)
     embedding_endpoint: str = field(default="databricks-bge-large-en")
     genie_spaces_json: Optional[str] = field(default=None)
+    # Error handling and retry configuration
+    default_max_retries: int = field(default=3)
+    default_retry_base_delay: float = field(default=1.0)
+    default_retry_max_delay: float = field(default=30.0)
+    default_timeout_seconds: int = field(default=120)
+    # Circuit breaker configuration
+    circuit_breaker_enabled: bool = field(default=False)
+    circuit_breaker_failure_threshold: int = field(default=5)
+    circuit_breaker_timeout_seconds: float = field(default=60.0)
 
     @classmethod
     def from_env(cls) -> Config:
@@ -71,6 +88,13 @@ class Config:
             VECTOR_SEARCH_ENDPOINT: VS endpoint (optional)
             VECTOR_SEARCH_INDEX: VS index name (optional)
             EMBEDDING_ENDPOINT: Embedding model endpoint (optional)
+            DEFAULT_MAX_RETRIES: Maximum retry attempts (default: 3)
+            DEFAULT_RETRY_BASE_DELAY: Base retry delay in seconds (default: 1.0)
+            DEFAULT_RETRY_MAX_DELAY: Maximum retry delay in seconds (default: 30.0)
+            DEFAULT_TIMEOUT_SECONDS: Default operation timeout (default: 120)
+            CIRCUIT_BREAKER_ENABLED: Enable circuit breaker (default: false)
+            CIRCUIT_BREAKER_FAILURE_THRESHOLD: Failures before circuit opens (default: 5)
+            CIRCUIT_BREAKER_TIMEOUT_SECONDS: Circuit timeout duration (default: 60.0)
         """
         return cls(
             databricks_host=os.getenv("DATABRICKS_HOST", ""),
@@ -83,6 +107,15 @@ class Config:
             vector_search_index=os.getenv("VECTOR_SEARCH_INDEX"),
             embedding_endpoint=os.getenv("EMBEDDING_ENDPOINT", "databricks-bge-large-en"),
             genie_spaces_json=os.getenv("GENIE_SPACES"),
+            # Error handling configuration
+            default_max_retries=int(os.getenv("DEFAULT_MAX_RETRIES", "3")),
+            default_retry_base_delay=float(os.getenv("DEFAULT_RETRY_BASE_DELAY", "1.0")),
+            default_retry_max_delay=float(os.getenv("DEFAULT_RETRY_MAX_DELAY", "30.0")),
+            default_timeout_seconds=int(os.getenv("DEFAULT_TIMEOUT_SECONDS", "120")),
+            # Circuit breaker configuration
+            circuit_breaker_enabled=_str_to_bool(os.getenv("CIRCUIT_BREAKER_ENABLED", "false")),
+            circuit_breaker_failure_threshold=int(os.getenv("CIRCUIT_BREAKER_FAILURE_THRESHOLD", "5")),
+            circuit_breaker_timeout_seconds=float(os.getenv("CIRCUIT_BREAKER_TIMEOUT_SECONDS", "60.0")),
         )
 
     @classmethod

@@ -29,6 +29,12 @@ Analyze the data to identify:
 3. Anomalies - unexpected values or concerning trends
 4. Recommendations - actionable next steps
 
+CRITICAL: If any domains are listed as unavailable, you MUST:
+1. Acknowledge the missing data in your insights
+2. Clearly state which conclusions are limited by missing data
+3. Recommend re-running the analysis when the missing domains become available
+4. Do NOT make assumptions about what the missing data might show
+
 Output JSON in this exact structure:
 {
     "key_insights": [
@@ -92,6 +98,8 @@ class SynthesisResult:
     warnings: list[str] = field(default_factory=list)  # Partial failure disclaimers
     error: Optional[str] = None
     domains_analyzed: list[str] = field(default_factory=list)
+    data_limitations: list[str] = field(default_factory=list)  # Limitations due to missing data
+    domains_unavailable: list[str] = field(default_factory=list)  # Domains that were unavailable
 
     def to_markdown(self) -> str:
         """Format synthesis as markdown report."""
@@ -109,11 +117,21 @@ class SynthesisResult:
         if self.domains_analyzed:
             sections.append(f"\n**Domains Analyzed:** {', '.join(self.domains_analyzed)}")
 
+        # Domains unavailable
+        if self.domains_unavailable:
+            sections.append(f"\n**Domains Unavailable:** {', '.join(self.domains_unavailable)}")
+
         # Warnings
         if self.warnings:
             sections.append("\n## Warnings")
             for warning in self.warnings:
                 sections.append(f"- {warning}")
+
+        # Data limitations
+        if self.data_limitations:
+            sections.append("\n## Data Limitations")
+            for limitation in self.data_limitations:
+                sections.append(f"- {limitation}")
 
         # Key Insights
         if self.key_insights:
@@ -230,8 +248,27 @@ class SynthesizerAgent:
         Returns:
             Formatted user prompt string
         """
-        # Get combined markdown from successful results
-        combined_data = multi_result.to_combined_markdown(max_rows_per_space=10)
+        # Get combined markdown from successful results only
+        successful = multi_result.successful_results()
+
+        # Build data section from successful results only
+        data_sections = []
+        for name, result in successful.items():
+            meta = multi_result.metadata.get(name)
+            domain_info = f" ({meta.domain})" if meta and meta.domain else ""
+            timing = f" - {meta.query_time_seconds:.2f}s" if meta else ""
+
+            section = f"### {name}{domain_info}{timing}\n\n"
+
+            if result.description:
+                section += f"*{result.description}*\n\n"
+            section += result.to_markdown_table(max_rows=10)
+            if result.sql:
+                section += f"\n\n<details><summary>SQL</summary>\n\n```sql\n{result.sql}\n```\n\n</details>"
+
+            data_sections.append(section)
+
+        combined_data = "\n\n---\n\n".join(data_sections) if data_sections else "_No data available_"
 
         # Truncate cell values longer than 200 characters
         def truncate_long_values(text: str, max_len: int = 200) -> str:
@@ -259,6 +296,23 @@ class SynthesizerAgent:
             f"\n## Data from Multiple Domains\n{combined_data}",
         ]
 
+        # CRITICAL: Create SEPARATE section for missing domains
+        failed_spaces = multi_result.get_failed_spaces()
+        if failed_spaces:
+            failed_info = []
+            for name in failed_spaces:
+                result = multi_result.results.get(name)
+                meta = multi_result.metadata.get(name)
+                error_msg = result.error if result else "Unknown error"
+                domain_info = f" (domain: {meta.domain})" if meta and meta.domain else ""
+                failed_info.append(f"- **{name}**{domain_info}: {error_msg}")
+
+            prompt_parts.append(
+                f"\n## UNAVAILABLE DOMAINS\n"
+                f"The following data sources could not be queried. "
+                f"Your analysis is LIMITED without this data:\n\n" + "\n".join(failed_info)
+            )
+
         if context:
             context_str = "\n".join(f"- {k}: {v}" for k, v in context.items())
             prompt_parts.append(f"\n## Additional Context\n{context_str}")
@@ -266,7 +320,8 @@ class SynthesizerAgent:
         prompt_parts.append(
             "\n## Instructions\n"
             "Analyze the data above and provide cross-domain insights in the specified JSON format. "
-            "Focus on patterns that span multiple domains, unexpected correlations, and actionable recommendations."
+            "Focus on patterns that span multiple domains, unexpected correlations, and actionable recommendations. "
+            "If domains are unavailable, explicitly acknowledge how this limits your analysis."
         )
 
         return "\n".join(prompt_parts)
@@ -297,12 +352,23 @@ class SynthesizerAgent:
         successful = multi_result.successful_results()
         domains_analyzed = list(successful.keys())
 
-        # Build warnings for failed spaces
+        # Get unavailable domains
+        domains_unavailable = multi_result.get_failed_spaces()
+
+        # Build warnings and data limitations for failed spaces
         warnings = []
+        data_limitations = []
         for name, result in multi_result.results.items():
             if not result.success:
                 error_msg = result.error or "Unknown error"
                 warnings.append(f"Data from '{name}' unavailable: {error_msg}")
+                meta = multi_result.metadata.get(name)
+                if meta and meta.domain:
+                    data_limitations.append(
+                        f"Analysis lacks {meta.domain} data from '{name}'"
+                    )
+                else:
+                    data_limitations.append(f"Analysis lacks data from '{name}'")
 
         try:
             from langchain_core.messages import HumanMessage, SystemMessage
@@ -315,6 +381,8 @@ class SynthesizerAgent:
                     success=False,
                     error="LLM not available - check configuration",
                     domains_analyzed=domains_analyzed,
+                    domains_unavailable=domains_unavailable,
+                    data_limitations=data_limitations,
                     warnings=warnings,
                 )
 
@@ -323,17 +391,23 @@ class SynthesizerAgent:
                 HumanMessage(content=user_prompt),
             ])
 
-            return self._parse_llm_response(
+            result = self._parse_llm_response(
                 response.content,
                 domains_analyzed=domains_analyzed,
                 warnings=warnings,
             )
+            # Add the unavailable domains and limitations
+            result.domains_unavailable = domains_unavailable
+            result.data_limitations = data_limitations
+            return result
 
         except Exception as e:
             return SynthesisResult(
                 success=False,
                 error=f"Synthesis failed: {e}",
                 domains_analyzed=domains_analyzed,
+                domains_unavailable=domains_unavailable,
+                data_limitations=data_limitations,
                 warnings=warnings,
             )
 
@@ -453,12 +527,23 @@ class SynthesizerAgent:
         domains_analyzed = list(successful.keys())
         num_successful = len(successful)
 
-        # Build warnings for failed spaces
+        # Get unavailable domains
+        domains_unavailable = multi_result.get_failed_spaces()
+
+        # Build warnings and data limitations for failed spaces
         warnings = []
+        data_limitations = []
         for name, result in multi_result.results.items():
             if not result.success:
                 error_msg = result.error or "Unknown error"
                 warnings.append(f"Data from '{name}' unavailable: {error_msg}")
+                meta = multi_result.metadata.get(name)
+                if meta and meta.domain:
+                    data_limitations.append(
+                        f"Analysis lacks {meta.domain} data from '{name}'"
+                    )
+                else:
+                    data_limitations.append(f"Analysis lacks data from '{name}'")
 
         query_lower = query.lower()
 
@@ -468,6 +553,8 @@ class SynthesizerAgent:
                 success=False,
                 error="No successful query results to synthesize",
                 warnings=warnings,
+                domains_unavailable=domains_unavailable,
+                data_limitations=data_limitations,
             )
 
         # Scenario: Single domain - limited insights
@@ -491,6 +578,8 @@ class SynthesizerAgent:
                 ],
                 warnings=warnings,
                 domains_analyzed=domains_analyzed,
+                domains_unavailable=domains_unavailable,
+                data_limitations=data_limitations,
             )
 
         # Scenario: Sales + Inventory keywords - stockout risk
@@ -539,6 +628,8 @@ class SynthesizerAgent:
                 ],
                 warnings=warnings,
                 domains_analyzed=domains_analyzed,
+                domains_unavailable=domains_unavailable,
+                data_limitations=data_limitations,
             )
 
         # Scenario: Customer-related keywords - enterprise segment insights
@@ -586,6 +677,8 @@ class SynthesizerAgent:
                 ],
                 warnings=warnings,
                 domains_analyzed=domains_analyzed,
+                domains_unavailable=domains_unavailable,
+                data_limitations=data_limitations,
             )
 
         # Default scenario: Generic cross-domain analysis
@@ -623,4 +716,6 @@ class SynthesizerAgent:
             ],
             warnings=warnings,
             domains_analyzed=domains_analyzed,
+            domains_unavailable=domains_unavailable,
+            data_limitations=data_limitations,
         )

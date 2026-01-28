@@ -14,6 +14,13 @@ from typing import Any, Callable, Optional
 
 from src.config import Config
 from src.agents.genie_agent import GenieDataAgent, GenieResult
+from src.utils.errors import AgentError, classify_error, ErrorCategory
+from src.utils.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerConfig,
+    CircuitBreakerRegistry,
+    CircuitOpenError,
+)
 
 
 @dataclass
@@ -57,6 +64,8 @@ class ResultMetadata:
         query_time_seconds: Total time taken for the query
         success: Whether the query succeeded
         retries_used: Number of retries that were needed
+        error_category: Category of error if failed
+        error_retryable: Whether the error was retryable
     """
 
     space_id: str
@@ -65,6 +74,8 @@ class ResultMetadata:
     query_time_seconds: float
     success: bool
     retries_used: int = 0
+    error_category: Optional[ErrorCategory] = None
+    error_retryable: Optional[bool] = None
 
 
 @dataclass
@@ -75,11 +86,13 @@ class MultiGenieResult:
         results: Query results keyed by space name
         metadata: Query metadata keyed by space name
         errors: List of error messages encountered
+        classified_errors: Classified AgentError objects keyed by space name
     """
 
     results: dict[str, GenieResult] = field(default_factory=dict)
     metadata: dict[str, ResultMetadata] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
+    classified_errors: dict[str, AgentError] = field(default_factory=dict)
 
     @property
     def overall_success(self) -> bool:
@@ -137,6 +150,26 @@ class MultiGenieResult:
             Dictionary of successful results keyed by space name
         """
         return {name: result for name, result in self.results.items() if result.success}
+
+    def get_failed_spaces(self) -> list[str]:
+        """Get names of spaces that failed.
+
+        Returns:
+            List of space names that failed
+        """
+        return [name for name, result in self.results.items() if not result.success]
+
+    def get_retryable_failures(self) -> dict[str, AgentError]:
+        """Get failures that are retryable.
+
+        Returns:
+            Dictionary of retryable AgentError objects keyed by space name
+        """
+        return {
+            name: error
+            for name, error in self.classified_errors.items()
+            if error.retryable
+        }
 
     def to_combined_markdown(self, max_rows_per_space: int = 5) -> str:
         """Combine all results into a single markdown document.
@@ -198,6 +231,7 @@ class MultiGenieOrchestrator:
         base_config: Optional[Config] = None,
         max_concurrency: int = 3,
         progress_callback: Optional[Callable[[str, str], None]] = None,
+        circuit_breaker_registry: Optional[CircuitBreakerRegistry] = None,
     ):
         """Initialize the Multi-Genie Orchestrator.
 
@@ -206,6 +240,7 @@ class MultiGenieOrchestrator:
             base_config: Base configuration (uses Config.from_env() if not provided)
             max_concurrency: Maximum number of parallel queries
             progress_callback: Optional callback for progress updates (space_name, status)
+            circuit_breaker_registry: Optional registry for circuit breakers
 
         Raises:
             ValueError: If no space configurations are provided
@@ -218,6 +253,7 @@ class MultiGenieOrchestrator:
         self._max_concurrency = max_concurrency
         self._progress_callback = progress_callback
         self._agents: dict[str, GenieDataAgent] = {}
+        self._circuit_breaker_registry = circuit_breaker_registry
 
     def _get_agent(self, space_config: GenieSpaceConfig) -> GenieDataAgent:
         """Get or create a GenieDataAgent for a space.
@@ -263,7 +299,7 @@ class MultiGenieOrchestrator:
         self,
         space_config: GenieSpaceConfig,
         question: str,
-    ) -> tuple[GenieResult, float, int]:
+    ) -> tuple[GenieResult, float, int, Optional[AgentError]]:
         """Query a single space with retry logic.
 
         Args:
@@ -271,25 +307,30 @@ class MultiGenieOrchestrator:
             question: The natural language question
 
         Returns:
-            Tuple of (result, elapsed_seconds, retries_used)
+            Tuple of (result, elapsed_seconds, retries_used, classified_error)
         """
         start_time = time.time()
         timeout_deadline = start_time + space_config.timeout_seconds
         agent = self._get_agent(space_config)
         retries_used = 0
         last_result: Optional[GenieResult] = None
+        last_classified_error: Optional[AgentError] = None
 
         for attempt in range(space_config.retry_count + 1):
             # Check if we've exceeded the overall timeout
-            elapsed = time.time() - start_time
             remaining_time = timeout_deadline - time.time()
 
             if remaining_time <= 0:
                 elapsed = time.time() - start_time
+                timeout_error = classify_error(
+                    TimeoutError(f"Timeout after {elapsed:.2f}s"),
+                    context={"space_name": space_config.name, "space_id": space_config.space_id},
+                )
                 return GenieResult(
                     success=False,
-                    error=f"Timeout after {elapsed:.2f}s"
-                ), elapsed, retries_used
+                    error=f"Timeout after {elapsed:.2f}s",
+                    error_details=timeout_error,
+                ), elapsed, retries_used, timeout_error
 
             self._notify_progress(space_config.name, f"Querying (attempt {attempt + 1})")
 
@@ -307,24 +348,61 @@ class MultiGenieOrchestrator:
                 if result.success:
                     elapsed = time.time() - start_time
                     self._notify_progress(space_config.name, "Complete")
-                    return result, elapsed, retries_used
+                    return result, elapsed, retries_used, None
 
                 last_result = result
+                # Use error_details from the result if available
+                if result.error_details:
+                    last_classified_error = result.error_details
+                else:
+                    last_classified_error = classify_error(
+                        Exception(result.error or "Unknown error"),
+                        context={"space_name": space_config.name, "space_id": space_config.space_id},
+                    )
+
+                # Stop immediately for non-retryable errors
+                if last_classified_error and not last_classified_error.retryable:
+                    elapsed = time.time() - start_time
+                    self._notify_progress(space_config.name, "Failed (non-retryable)")
+                    return last_result, elapsed, retries_used, last_classified_error
 
             except Exception as e:
-                last_result = GenieResult(success=False, error=str(e))
+                last_classified_error = classify_error(
+                    e,
+                    context={"space_name": space_config.name, "space_id": space_config.space_id},
+                )
+                last_result = GenieResult(
+                    success=False,
+                    error=str(e),
+                    error_details=last_classified_error,
+                )
+
+                # Stop immediately for non-retryable errors
+                if not last_classified_error.retryable:
+                    elapsed = time.time() - start_time
+                    self._notify_progress(space_config.name, "Failed (non-retryable)")
+                    return last_result, elapsed, retries_used, last_classified_error
 
             # Retry logic (if not the last attempt)
             if attempt < space_config.retry_count:
                 retries_used += 1
-                # Add jitter to retry delay
-                delay = space_config.retry_delay * (1 + random.uniform(-0.1, 0.1))
-                self._notify_progress(space_config.name, f"Retrying in {delay:.1f}s")
-                time.sleep(delay)
+                # Exponential backoff with jitter: base * 2^attempt + jitter
+                base_delay = space_config.retry_delay * (2 ** attempt)
+                jitter = random.uniform(0, space_config.retry_delay * 0.5)
+                delay = min(base_delay + jitter, remaining_time)
+
+                if delay > 0:
+                    self._notify_progress(space_config.name, f"Retrying in {delay:.1f}s")
+                    time.sleep(delay)
 
         elapsed = time.time() - start_time
         self._notify_progress(space_config.name, "Failed")
-        return last_result or GenieResult(success=False, error="Unknown error"), elapsed, retries_used
+        return (
+            last_result or GenieResult(success=False, error="Unknown error"),
+            elapsed,
+            retries_used,
+            last_classified_error,
+        )
 
     def query_all(self, question: str) -> MultiGenieResult:
         """Query all configured spaces in parallel.
@@ -413,25 +491,61 @@ class MultiGenieOrchestrator:
         """
         result = MultiGenieResult()
 
+        # Check circuit breakers before submitting
+        configs_to_query = []
+        for config in configs:
+            if self._circuit_breaker_registry is not None:
+                cb = self._circuit_breaker_registry.get(config.space_id)
+                if not cb.can_execute():
+                    # Circuit is open - fail fast
+                    cb.record_rejection()
+                    remaining = cb.get_remaining_timeout()
+                    error_msg = f"Circuit open for '{config.name}'. Retry in {remaining:.1f}s"
+                    circuit_error = classify_error(
+                        CircuitOpenError(config.name, remaining),
+                        context={"space_name": config.name, "space_id": config.space_id},
+                    )
+                    result.errors.append(error_msg)
+                    result.results[config.name] = GenieResult(
+                        success=False,
+                        error=error_msg,
+                        error_details=circuit_error,
+                    )
+                    result.metadata[config.name] = ResultMetadata(
+                        space_id=config.space_id,
+                        space_name=config.name,
+                        domain=config.domain,
+                        query_time_seconds=0,
+                        success=False,
+                        retries_used=0,
+                        error_category=circuit_error.category,
+                        error_retryable=True,  # Circuit open is retryable after timeout
+                    )
+                    result.classified_errors[config.name] = circuit_error
+                    continue
+            configs_to_query.append(config)
+
+        if not configs_to_query:
+            return result
+
         with ThreadPoolExecutor(max_workers=self._max_concurrency) as executor:
-            # Submit all queries
+            # Submit queries for spaces that passed circuit breaker check
             future_to_config = {
                 executor.submit(
                     self._query_space_with_retry,
                     config,
                     question,
                 ): config
-                for config in configs
+                for config in configs_to_query
             }
 
             # Collect results as they complete
+            # Note: We don't use timeout here since _query_space_with_retry handles its own timeout
             for future in as_completed(future_to_config):
                 config = future_to_config[future]
 
                 try:
-                    query_result, elapsed, retries = future.result(
-                        timeout=config.timeout_seconds
-                    )
+                    query_result, elapsed, retries, classified_error = future.result()
 
                     result.results[config.name] = query_result
                     result.metadata[config.name] = ResultMetadata(
@@ -441,30 +555,32 @@ class MultiGenieOrchestrator:
                         query_time_seconds=elapsed,
                         success=query_result.success,
                         retries_used=retries,
+                        error_category=classified_error.category if classified_error else None,
+                        error_retryable=classified_error.retryable if classified_error else None,
                     )
 
-                except FuturesTimeoutError:
-                    error_msg = f"Space '{config.name}' timed out after {config.timeout_seconds}s"
-                    result.errors.append(error_msg)
-                    result.results[config.name] = GenieResult(
-                        success=False,
-                        error=error_msg,
-                    )
-                    result.metadata[config.name] = ResultMetadata(
-                        space_id=config.space_id,
-                        space_name=config.name,
-                        domain=config.domain,
-                        query_time_seconds=config.timeout_seconds,
-                        success=False,
-                        retries_used=0,
-                    )
+                    if classified_error:
+                        result.classified_errors[config.name] = classified_error
+
+                    # Update circuit breaker
+                    if self._circuit_breaker_registry is not None:
+                        cb = self._circuit_breaker_registry.get(config.space_id)
+                        if query_result.success:
+                            cb.record_success()
+                        else:
+                            cb.record_failure()
 
                 except Exception as e:
+                    classified_error = classify_error(
+                        e,
+                        context={"space_name": config.name, "space_id": config.space_id},
+                    )
                     error_msg = f"Space '{config.name}' failed: {e}"
                     result.errors.append(error_msg)
                     result.results[config.name] = GenieResult(
                         success=False,
                         error=str(e),
+                        error_details=classified_error,
                     )
                     result.metadata[config.name] = ResultMetadata(
                         space_id=config.space_id,
@@ -473,7 +589,15 @@ class MultiGenieOrchestrator:
                         query_time_seconds=0,
                         success=False,
                         retries_used=0,
+                        error_category=classified_error.category,
+                        error_retryable=classified_error.retryable,
                     )
+                    result.classified_errors[config.name] = classified_error
+
+                    # Update circuit breaker on failure
+                    if self._circuit_breaker_registry is not None:
+                        cb = self._circuit_breaker_registry.get(config.space_id)
+                        cb.record_failure()
 
         return result
 

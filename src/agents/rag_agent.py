@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from src.config import Config
+from src.utils.errors import AgentError, classify_error
 
 
 @dataclass
@@ -38,11 +39,34 @@ class RAGResult:
         answer: The generated answer
         documents: Retrieved documents used to generate the answer
         error: Error message if query failed
+        error_details: Structured error information for classification
     """
     success: bool
     answer: str = ""
     documents: list[Document] = field(default_factory=list)
     error: Optional[str] = None
+    error_details: Optional[AgentError] = None
+
+    @property
+    def is_retryable(self) -> bool:
+        """Check if the error is retryable.
+
+        Returns:
+            True if the error is retryable, False otherwise
+        """
+        if self.error_details is not None:
+            return self.error_details.retryable
+        return False
+
+    def get_user_message(self) -> str:
+        """Get a user-friendly error message.
+
+        Returns:
+            User-friendly message if error_details available, else raw error
+        """
+        if self.error_details is not None:
+            return self.error_details.to_user_message()
+        return self.error or "Unknown error"
 
     def format_sources(self) -> str:
         """Format the source documents as a citation list.
@@ -196,7 +220,16 @@ class RAGAgent:
             )
 
         except Exception as e:
-            return RAGResult(success=False, error=str(e))
+            # Classify the error while the exception is intact
+            classified_error = classify_error(
+                e,
+                context={"question": question, "num_results": num_results},
+            )
+            return RAGResult(
+                success=False,
+                error=str(e),
+                error_details=classified_error,
+            )
 
     def _parse_metadata(self, metadata_value: Any) -> dict[str, Any]:
         """Parse metadata from Vector Search result.
