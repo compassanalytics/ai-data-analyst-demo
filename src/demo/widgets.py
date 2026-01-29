@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 
@@ -45,6 +46,14 @@ class WidgetConfig:
 def is_databricks() -> bool:
     """Check if running in Databricks environment."""
     return "DATABRICKS_RUNTIME_VERSION" in os.environ
+
+
+def is_serverless() -> bool:
+    """Check if running on serverless Databricks compute.
+
+    Serverless compute does not have the DBFS FUSE mount available at /dbfs.
+    """
+    return is_databricks() and not Path("/dbfs").exists()
 
 
 def _get_dbutils():

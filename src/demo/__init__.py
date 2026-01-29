@@ -74,6 +74,7 @@ from src.demo.widgets import (
     create_widget_manager,
     get_question_for_report_type,
     is_databricks,
+    is_serverless,
 )
 
 from src.demo.checkpoints import (
@@ -143,6 +144,7 @@ __all__ = [
     "create_widget_manager",
     "get_question_for_report_type",
     "is_databricks",
+    "is_serverless",
     # Checkpoint system
     "Checkpoint",
     "CheckpointManager",

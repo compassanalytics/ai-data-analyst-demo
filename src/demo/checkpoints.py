@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from src.demo.widgets import is_databricks
+from src.demo.widgets import is_databricks, is_serverless
 
 
 # Standard checkpoint names for workshop milestones
@@ -93,6 +93,10 @@ class CheckpointManager:
     # DBFS storage directory
     DBFS_DIR = "/dbfs/workshop_checkpoints"
 
+    # Instance attributes for in-memory mode
+    _in_memory_only: bool
+    _memory_store: dict[str, "Checkpoint"]
+
     def __init__(self, base_path: Optional[str] = None) -> None:
         """Initialize checkpoint manager.
 
@@ -100,15 +104,23 @@ class CheckpointManager:
             base_path: Override default storage path. If None, auto-detects
                       based on environment.
         """
+        self._in_memory_only = False
+        self._memory_store: dict[str, Checkpoint] = {}
+
         if base_path:
             self._storage_path = Path(base_path)
+        elif is_serverless():
+            self._in_memory_only = True
+            self._storage_path = Path(self.LOCAL_DIR)  # Unused but keeps type consistent
+            print("Note: Running on serverless - checkpoints stored in memory only")
         elif is_databricks():
             self._storage_path = Path(self.DBFS_DIR)
         else:
             self._storage_path = Path(self.LOCAL_DIR)
 
-        # Ensure storage directory exists
-        self._ensure_storage_exists()
+        # Ensure storage directory exists (skip for in-memory mode)
+        if not self._in_memory_only:
+            self._ensure_storage_exists()
 
     def _ensure_storage_exists(self) -> None:
         """Create storage directory if it doesn't exist."""
@@ -139,11 +151,15 @@ class CheckpointManager:
             checkpoint: The checkpoint to save
 
         Returns:
-            Path where checkpoint was saved
+            Path where checkpoint was saved (or would be saved in memory mode)
 
         Raises:
-            OSError: If unable to write to storage
+            OSError: If unable to write to storage (file mode only)
         """
+        if self._in_memory_only:
+            self._memory_store[checkpoint.name] = checkpoint
+            return self._checkpoint_file(checkpoint.name)
+
         self._ensure_storage_exists()
         file_path = self._checkpoint_file(checkpoint.name)
 
@@ -163,6 +179,9 @@ class CheckpointManager:
         Returns:
             Checkpoint if found, None otherwise
         """
+        if self._in_memory_only:
+            return self._memory_store.get(name)
+
         file_path = self._checkpoint_file(name)
 
         if not file_path.exists():
@@ -185,6 +204,8 @@ class CheckpointManager:
         Returns:
             True if checkpoint exists
         """
+        if self._in_memory_only:
+            return name in self._memory_store
         return self._checkpoint_file(name).exists()
 
     def delete(self, name: str) -> bool:
@@ -196,6 +217,12 @@ class CheckpointManager:
         Returns:
             True if deleted, False if not found
         """
+        if self._in_memory_only:
+            if name in self._memory_store:
+                del self._memory_store[name]
+                return True
+            return False
+
         file_path = self._checkpoint_file(name)
 
         if file_path.exists():
@@ -210,6 +237,15 @@ class CheckpointManager:
             List of checkpoint info dicts with 'name', 'timestamp', and 'path'
         """
         checkpoints = []
+
+        if self._in_memory_only:
+            for name, checkpoint in sorted(self._memory_store.items()):
+                checkpoints.append({
+                    "name": checkpoint.name,
+                    "timestamp": checkpoint.timestamp,
+                    "path": "(in-memory)",
+                })
+            return checkpoints
 
         if not self._storage_path.exists():
             return checkpoints
