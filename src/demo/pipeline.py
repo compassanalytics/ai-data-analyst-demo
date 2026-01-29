@@ -73,10 +73,12 @@ class SpaceProgress:
         return end - self.start_time
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for display."""
+        """Convert to dictionary for display and serialization."""
         return {
             "space_name": self.space_name,
             "status": self.status.value,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
             "duration_seconds": self.duration_seconds,
             "current_attempt": self.current_attempt,
             "error_message": self.error_message,
@@ -100,6 +102,27 @@ class StageResult:
         if self.end_time is None:
             return None
         return self.end_time - self.start_time
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return {
+            "stage": self.stage.value,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "success": self.success,
+            "error": self.error,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "StageResult":
+        """Restore from dictionary."""
+        return cls(
+            stage=PipelineStage(data["stage"]),
+            start_time=data["start_time"],
+            end_time=data.get("end_time"),
+            success=data.get("success", False),
+            error=data.get("error"),
+        )
 
 
 class PipelineState:
@@ -393,13 +416,17 @@ class PipelineState:
             self.html_report = None
             self.errors.clear()
 
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize state for display/logging.
+    def to_dict(self, include_results: bool = False) -> dict[str, Any]:
+        """Serialize state for display/logging/checkpointing.
+
+        Args:
+            include_results: If True, include serializable stage_results and space_progress
+                           for checkpoint restoration. Defaults to False for backward compatibility.
 
         Returns:
             Dictionary representation of pipeline state
         """
-        return {
+        base_dict = {
             "current_stage": self.current_stage.value,
             "is_running": self.is_running,
             "timing": self.get_timing_summary(),
@@ -408,5 +435,85 @@ class PipelineState:
             "has_synthesis": self.synthesis_result is not None,
             "has_markdown": self.markdown_report is not None,
             "has_html": self.html_report is not None,
-            "errors": self.errors,
+            "errors": list(self.errors),  # Copy to avoid reference issues
         }
+
+        if include_results:
+            # Include serializable data for checkpoint restoration
+            with self._lock:
+                base_dict["stage_results"] = {
+                    stage.value: result.to_dict()
+                    for stage, result in self._stage_results.items()
+                }
+                base_dict["space_progress"] = {
+                    name: progress.to_dict()
+                    for name, progress in self._space_progress.items()
+                }
+                base_dict["pipeline_start"] = self._pipeline_start
+                base_dict["pipeline_end"] = self._pipeline_end
+
+        return base_dict
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PipelineState":
+        """Restore PipelineState from dictionary.
+
+        Creates a new PipelineState with a fresh threading.Lock, then restores
+        safe fields from the serialized data.
+
+        CRITICAL: If the restored current_stage indicates a running state
+        (PLANNING, QUERYING, SYNTHESIZING, REPORTING), it is forced to IDLE
+        to prevent zombie state bugs.
+
+        Args:
+            data: Dictionary from to_dict(include_results=True)
+
+        Returns:
+            New PipelineState instance with restored data
+        """
+        # Create fresh instance (initializes new lock)
+        state = cls()
+
+        # Restore current_stage with sanitization
+        current_stage_value = data.get("current_stage", "idle")
+        current_stage = PipelineStage(current_stage_value)
+
+        # Sanitize: if state indicates "running", force to IDLE
+        running_stages = {
+            PipelineStage.PLANNING,
+            PipelineStage.QUERYING,
+            PipelineStage.SYNTHESIZING,
+            PipelineStage.REPORTING,
+        }
+        if current_stage in running_stages:
+            current_stage = PipelineStage.IDLE
+
+        state._current_stage = current_stage
+
+        # Restore errors
+        state.errors = list(data.get("errors", []))
+
+        # Restore pipeline timing
+        state._pipeline_start = data.get("pipeline_start")
+        state._pipeline_end = data.get("pipeline_end")
+
+        # Restore stage_results if available
+        stage_results_data = data.get("stage_results", {})
+        for result_data in stage_results_data.values():
+            result = StageResult.from_dict(result_data)
+            state._stage_results[result.stage] = result
+
+        # Restore space_progress if available
+        space_progress_data = data.get("space_progress", {})
+        for name, progress_data in space_progress_data.items():
+            state._space_progress[name] = SpaceProgress(
+                space_name=progress_data["space_name"],
+                status=SpaceQueryStatus(progress_data["status"]),
+                start_time=progress_data.get("start_time"),
+                end_time=progress_data.get("end_time"),
+                current_attempt=progress_data.get("current_attempt", 0),
+                error_message=progress_data.get("error_message"),
+                cached=progress_data.get("cached", False),
+            )
+
+        return state

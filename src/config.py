@@ -272,6 +272,76 @@ class Config:
         """Check if the configuration is valid."""
         return len(self.validate()) == 0
 
+    def to_dict(self) -> dict:
+        """Convert to dictionary for serialization.
+
+        Note: databricks_token is intentionally excluded for security.
+        The token must be re-set from environment after restoration.
+
+        Returns:
+            Dictionary representation of config (excluding sensitive data)
+        """
+        return {
+            "databricks_host": self.databricks_host,
+            # databricks_token intentionally excluded for security
+            "genie_space_id": self.genie_space_id,
+            "warehouse_id": self.warehouse_id,
+            "model_endpoint": self.model_endpoint,
+            "mock_mode": self.mock_mode,
+            "vector_search_endpoint": self.vector_search_endpoint,
+            "vector_search_index": self.vector_search_index,
+            "embedding_endpoint": self.embedding_endpoint,
+            "genie_spaces_json": self.genie_spaces_json,
+            "default_max_retries": self.default_max_retries,
+            "default_retry_base_delay": self.default_retry_base_delay,
+            "default_retry_max_delay": self.default_retry_max_delay,
+            "default_timeout_seconds": self.default_timeout_seconds,
+            "circuit_breaker_enabled": self.circuit_breaker_enabled,
+            "circuit_breaker_failure_threshold": self.circuit_breaker_failure_threshold,
+            "circuit_breaker_timeout_seconds": self.circuit_breaker_timeout_seconds,
+            "cache_enabled": self.cache_enabled,
+            "cache_ttl_seconds": self.cache_ttl_seconds,
+            "demo_mode": self.demo_mode,
+            "cache_max_size": self.cache_max_size,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Config":
+        """Create Config from dictionary.
+
+        Note: databricks_token is set to None and must be re-set from
+        environment after restoration for security reasons.
+
+        Args:
+            data: Dictionary from to_dict()
+
+        Returns:
+            Config instance with restored values (token=None)
+        """
+        return cls(
+            databricks_host=data.get("databricks_host", ""),
+            databricks_token=None,  # Must be re-set from environment
+            genie_space_id=data.get("genie_space_id", ""),
+            warehouse_id=data.get("warehouse_id", ""),
+            model_endpoint=data.get("model_endpoint", "databricks-meta-llama-3-3-70b-instruct"),
+            mock_mode=data.get("mock_mode", False),
+            vector_search_endpoint=data.get("vector_search_endpoint"),
+            vector_search_index=data.get("vector_search_index"),
+            embedding_endpoint=data.get("embedding_endpoint", "databricks-bge-large-en"),
+            genie_spaces_json=data.get("genie_spaces_json"),
+            default_max_retries=data.get("default_max_retries", 3),
+            default_retry_base_delay=data.get("default_retry_base_delay", 1.0),
+            default_retry_max_delay=data.get("default_retry_max_delay", 30.0),
+            default_timeout_seconds=data.get("default_timeout_seconds", 120),
+            circuit_breaker_enabled=data.get("circuit_breaker_enabled", False),
+            circuit_breaker_failure_threshold=data.get("circuit_breaker_failure_threshold", 5),
+            circuit_breaker_timeout_seconds=data.get("circuit_breaker_timeout_seconds", 60.0),
+            cache_enabled=data.get("cache_enabled", True),
+            cache_ttl_seconds=data.get("cache_ttl_seconds", 300),
+            demo_mode=data.get("demo_mode", "normal"),
+            cache_max_size=data.get("cache_max_size", 1000),
+        )
+
 
 @lru_cache(maxsize=1)
 def get_config() -> Config:
