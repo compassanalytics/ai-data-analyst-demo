@@ -175,9 +175,9 @@ class DatabricksLLMClient:
         Returns:
             LLMResponse with the generated content
         """
-        from langchain_core.messages import HumanMessage, SystemMessage
+        from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
-        lc_messages = []
+        lc_messages: list[BaseMessage] = []
         for msg in messages:
             if msg["role"] == "system":
                 lc_messages.append(SystemMessage(content=msg["content"]))

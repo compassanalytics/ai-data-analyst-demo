@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Genie Benchmark — 50 Questions</title>
+<script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: #fafafa;
+    color: #2d3436;
+    padding: 32px 48px;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 28px;
+    color: #2d3436;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px 48px;
+    max-width: 1300px;
+    margin: 0 auto;
+  }
+  .panel {
+    background: white;
+    border-radius: 8px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .panel .vega-embed {
+    width: 100%;
+  }
+  .panel .vega-embed details {
+    display: none;  /* hide the ... actions menu */
+  }
+</style>
+</head>
+<body>
+<h1>Genie Space Benchmark &mdash; 50 Questions | Velocity Motors Dataset</h1>
+<div class="grid">
+  <div class="panel" id="chart1"></div>
+  <div class="panel" id="chart2"></div>
+  <div class="panel" id="chart3"></div>
+  <div class="panel" id="chart4"></div>
+</div>
+<script>
+const opts = {actions: false, renderer: "svg"};
+vegaEmbed("#chart1", {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300, "strokeWidth": 0}, "axis": {"domainColor": "#cccccc", "grid": true, "gridColor": "#eeeeee", "gridDash": [2, 4], "labelColor": "#636e72", "labelFontSize": 11, "tickColor": "#cccccc", "titleColor": "#2d3436", "titleFontSize": 11, "titleFontWeight": "normal"}, "font": "Helvetica Neue, Helvetica, Arial, sans-serif", "legend": {"labelFontSize": 11, "orient": "top", "symbolSize": 80, "titleFontSize": 0}, "title": {"anchor": "start", "color": "#2d3436", "fontSize": 14, "fontWeight": "bold", "offset": 10}}, "data": {"name": "data-d200b89b917e9c4c5088787095607b72"}, "mark": {"type": "bar", "cornerRadiusEnd": 4, "height": 40}, "encoding": {"color": {"field": "Score", "legend": {"direction": "horizontal", "orient": "top"}, "scale": {"domain": ["Correct (40)", "Partial (7)", "Wrong (3)"], "range": ["#59a14f", "#e89a3e", "#e15759"]}, "type": "nominal"}, "order": {"field": "order", "type": "quantitative"}, "tooltip": [{"field": "Score", "type": "nominal"}, {"field": "Count", "type": "quantitative"}], "x": {"axis": {"tickCount": 6}, "field": "Count", "scale": {"domain": [0, 52]}, "stack": "zero", "title": "Number of Questions", "type": "quantitative"}}, "height": 65, "title": "Score Distribution (n = 50)", "width": 450, "$schema": "https://vega.github.io/schema/vega-lite/v6.1.0.json", "datasets": {"data-d200b89b917e9c4c5088787095607b72": [{"Score": "Correct (40)", "Count": 40, "order": 1}, {"Score": "Partial (7)", "Count": 7, "order": 2}, {"Score": "Wrong (3)", "Count": 3, "order": 3}]}}, opts);
+vegaEmbed("#chart2", {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300, "strokeWidth": 0}, "axis": {"domainColor": "#cccccc", "grid": true, "gridColor": "#eeeeee", "gridDash": [2, 4], "labelColor": "#636e72", "labelFontSize": 11, "tickColor": "#cccccc", "titleColor": "#2d3436", "titleFontSize": 11, "titleFontWeight": "normal"}, "font": "Helvetica Neue, Helvetica, Arial, sans-serif", "legend": {"labelFontSize": 11, "orient": "top", "symbolSize": 80, "titleFontSize": 0}, "title": {"anchor": "start", "color": "#2d3436", "fontSize": 14, "fontWeight": "bold", "offset": 10}}, "layer": [{"mark": {"type": "bar", "cornerRadiusEnd": 4}, "encoding": {"color": {"field": "Metric", "legend": {"direction": "horizontal", "orient": "top"}, "scale": {"domain": ["Strict", "With Partial"], "range": ["#4c78a8", "#59a14f"]}, "type": "nominal"}, "tooltip": [{"field": "Complexity", "type": "nominal"}, {"field": "Metric", "type": "nominal"}, {"field": "Accuracy", "format": ".1f", "type": "quantitative"}], "x": {"axis": {"tickCount": 6}, "field": "Accuracy", "scale": {"domain": [0, 100]}, "title": "Accuracy %", "type": "quantitative"}, "y": {"field": "Complexity", "sort": ["Simple", "Moderate", "Complex", "Expert"], "title": null, "type": "nominal"}, "yOffset": {"field": "Metric", "type": "nominal"}}, "title": "Accuracy by Complexity Level"}, {"mark": {"type": "text", "color": "#636e72", "dx": 14, "fontSize": 11, "fontWeight": "bold"}, "encoding": {"text": {"field": "Accuracy", "format": ".0f", "type": "quantitative"}, "x": {"field": "Accuracy", "type": "quantitative"}, "y": {"field": "Complexity", "sort": ["Simple", "Moderate", "Complex", "Expert"], "type": "nominal"}, "yOffset": {"field": "Metric", "type": "nominal"}}}], "data": {"name": "data-e7c75c4af0f8f30593ade2554ebe1976"}, "height": 180, "width": 350, "$schema": "https://vega.github.io/schema/vega-lite/v6.1.0.json", "datasets": {"data-e7c75c4af0f8f30593ade2554ebe1976": [{"Complexity": "Simple", "Metric": "Strict", "Accuracy": 85.0}, {"Complexity": "Simple", "Metric": "With Partial", "Accuracy": 90.0}, {"Complexity": "Moderate", "Metric": "Strict", "Accuracy": 73.3}, {"Complexity": "Moderate", "Metric": "With Partial", "Accuracy": 83.3}, {"Complexity": "Complex", "Metric": "Strict", "Accuracy": 80.0}, {"Complexity": "Complex", "Metric": "With Partial", "Accuracy": 85.0}, {"Complexity": "Expert", "Metric": "Strict", "Accuracy": 80.0}, {"Complexity": "Expert", "Metric": "With Partial", "Accuracy": 90.0}]}}, opts);
+vegaEmbed("#chart3", {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300, "strokeWidth": 0}, "axis": {"domainColor": "#cccccc", "grid": true, "gridColor": "#eeeeee", "gridDash": [2, 4], "labelColor": "#636e72", "labelFontSize": 11, "tickColor": "#cccccc", "titleColor": "#2d3436", "titleFontSize": 11, "titleFontWeight": "normal"}, "font": "Helvetica Neue, Helvetica, Arial, sans-serif", "legend": {"labelFontSize": 11, "orient": "top", "symbolSize": 80, "titleFontSize": 0}, "title": {"anchor": "start", "color": "#2d3436", "fontSize": 14, "fontWeight": "bold", "offset": 10}}, "layer": [{"mark": {"type": "bar", "cornerRadiusEnd": 4}, "encoding": {"color": {"field": "Tier", "legend": {"direction": "horizontal", "orient": "top"}, "scale": {"domain": ["High (>= 90%)", "Mid (>= 70%)", "Low (< 70%)"], "range": ["#59a14f", "#e89a3e", "#e15759"]}, "type": "nominal"}, "tooltip": [{"field": "Category", "type": "nominal"}, {"field": "Accuracy", "format": ".1f", "type": "quantitative"}, {"field": "n", "type": "quantitative"}], "x": {"axis": {"tickCount": 6}, "field": "Accuracy", "scale": {"domain": [0, 110]}, "title": "Accuracy % (with partial credit)", "type": "quantitative"}, "y": {"field": "Category", "sort": ["Business Logic", "Temporal Confusion", "Aggregation Ambiguity", "Cryptic Codes", "Trick Questions", "Join Complexity", "Ambiguous Columns"], "title": null, "type": "nominal"}}, "title": "Accuracy by Failure Category"}, {"mark": {"type": "text", "color": "#636e72", "dx": 18, "fontSize": 12, "fontWeight": "bold"}, "encoding": {"text": {"field": "pct_label", "type": "nominal"}, "x": {"field": "Accuracy", "type": "quantitative"}, "y": {"field": "Category", "sort": ["Business Logic", "Temporal Confusion", "Aggregation Ambiguity", "Cryptic Codes", "Trick Questions", "Join Complexity", "Ambiguous Columns"], "type": "nominal"}}, "transform": [{"calculate": "datum.Accuracy == 100 ? '100%' : format(datum.Accuracy, '.1f') + '%'", "as": "pct_label"}]}, {"mark": {"type": "text", "color": "#95a5a6", "dx": 48, "fontSize": 10}, "encoding": {"text": {"field": "n_label", "type": "nominal"}, "x": {"field": "Accuracy", "type": "quantitative"}, "y": {"field": "Category", "sort": ["Business Logic", "Temporal Confusion", "Aggregation Ambiguity", "Cryptic Codes", "Trick Questions", "Join Complexity", "Ambiguous Columns"], "type": "nominal"}}, "transform": [{"calculate": "'n=' + datum.n", "as": "n_label"}]}], "data": {"name": "data-03e9cc4ff50ecf081375f5037a8c6ece"}, "height": 220, "width": 350, "$schema": "https://vega.github.io/schema/vega-lite/v6.1.0.json", "datasets": {"data-03e9cc4ff50ecf081375f5037a8c6ece": [{"Category": "Business Logic", "Accuracy": 100.0, "n": 8, "Tier": "High (>= 90%)"}, {"Category": "Temporal Confusion", "Accuracy": 100.0, "n": 5, "Tier": "High (>= 90%)"}, {"Category": "Aggregation Ambiguity", "Accuracy": 95.5, "n": 11, "Tier": "High (>= 90%)"}, {"Category": "Cryptic Codes", "Accuracy": 87.5, "n": 8, "Tier": "Mid (>= 70%)"}, {"Category": "Trick Questions", "Accuracy": 80.0, "n": 5, "Tier": "Mid (>= 70%)"}, {"Category": "Join Complexity", "Accuracy": 70.0, "n": 10, "Tier": "Mid (>= 70%)"}, {"Category": "Ambiguous Columns", "Accuracy": 66.7, "n": 3, "Tier": "Low (< 70%)"}]}}, opts);
+vegaEmbed("#chart4", {"config": {"view": {"continuousWidth": 300, "continuousHeight": 300, "stroke": "#dddddd", "strokeWidth": 0.5}, "font": "Helvetica Neue, Helvetica, Arial, sans-serif", "title": {"anchor": "start", "color": "#2d3436", "fontSize": 14, "fontWeight": "bold", "offset": 10}}, "layer": [{"mark": {"type": "text", "fontSize": 32, "fontWeight": "bold"}, "encoding": {"color": {"field": "clr", "scale": null, "type": "nominal"}, "text": {"field": "value", "type": "nominal"}, "y": {"axis": null, "field": "row", "scale": {"padding": 0.4}, "sort": "ascending", "type": "ordinal"}}}, {"mark": {"type": "text", "color": "#95a5a6", "dy": 26, "fontSize": 12}, "encoding": {"text": {"field": "label", "type": "nominal"}, "y": {"axis": null, "field": "row", "sort": "ascending", "type": "ordinal"}}}], "data": {"name": "data-f9c08ba62780cd6530e7d20929a93471"}, "height": 280, "title": "Key Metrics", "width": 280, "$schema": "https://vega.github.io/schema/vega-lite/v6.1.0.json", "datasets": {"data-f9c08ba62780cd6530e7d20929a93471": [{"row": 0, "value": "80%", "label": "Overall Accuracy", "clr": "#59a14f"}, {"row": 1, "value": "87%", "label": "With Partial Credit", "clr": "#76b7b2"}, {"row": 2, "value": "92%", "label": "SQL Generation Rate", "clr": "#4c78a8"}, {"row": 3, "value": "0", "label": "Failures", "clr": "#59a14f"}, {"row": 4, "value": "15.4s", "label": "Avg Response Time", "clr": "#636e72"}]}}, opts);
+</script>
+</body>
+</html>
