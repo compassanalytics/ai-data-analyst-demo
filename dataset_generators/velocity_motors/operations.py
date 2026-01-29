@@ -21,6 +21,9 @@ from .utils import (
     scale_count,
     get_weighted_state,
     fake,
+    inject_nulls,
+    get_null_rate,
+    SERVICE_TYPES_EXTENDED,
 )
 
 
@@ -262,6 +265,8 @@ def generate_service_orders(
     n: int = 30000,
     customer_ids: Optional[List[str]] = None,
     vehicle_ids: Optional[List[str]] = None,
+    cleanliness: int = 100,
+    use_extended_types: bool = False,
 ) -> pd.DataFrame:
     """
     Generate service orders correlated with vehicle age.
@@ -272,11 +277,13 @@ def generate_service_orders(
         n: Number of service orders to generate
         customer_ids: List of valid customer IDs
         vehicle_ids: List of valid vehicle IDs
+        cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
+        use_extended_types: If True, include extended service types
 
     Returns:
         DataFrame with service order data
     """
-    # Service types with average cost ranges
+    # Service types with average cost ranges (type, min_cost, max_cost, weight)
     service_types = [
         ('Oil Change', 30, 80, 0.30),
         ('Tire Rotation', 20, 50, 0.15),
@@ -289,6 +296,14 @@ def generate_service_orders(
         ('Inspection', 25, 100, 0.08),
         ('Recall Service', 0, 0, 0.02),
     ]
+
+    # Add extended service types at lower cleanliness levels
+    if use_extended_types:
+        for svc_name, min_labor, max_labor, parts_ratio in SERVICE_TYPES_EXTENDED:
+            # Calculate min/max cost from labor and parts ratio
+            min_cost = int(min_labor * (1 + parts_ratio))
+            max_cost = int(max_labor * (1 + parts_ratio))
+            service_types.append((svc_name, min_cost, max_cost, 0.03))  # Small weight for extended types
 
     type_names = [t[0] for t in service_types]
     type_weights = [t[3] for t in service_types]
@@ -358,6 +373,23 @@ def generate_service_orders(
         else:
             rating = None
 
+        # Generate notes based on cleanliness (more notes at lower cleanliness = messier data)
+        # At cleanliness=100, notes are always None
+        # At cleanliness=0, ~25% of service orders have notes
+        notes = None
+        notes_rate = (100 - cleanliness) / 100 * 0.25
+        if random.random() < notes_rate:
+            note_templates = [
+                f"Customer brought in for {service_type.lower()}",
+                f"Service completed by {technician}",
+                "Parts ordered - check inventory",
+                "Follow-up recommended in 3 months",
+                "Customer satisfied with service",
+                "Warranty claim filed",
+                "See attached documentation",
+            ]
+            notes = random.choice(note_templates)
+
         records.append({
             'service_order_id': f'SVC-{i:08d}',
             'customer_id': customer_id,
@@ -372,14 +404,22 @@ def generate_service_orders(
             'technician_name': technician,
             'mileage_at_service': base_mileage,
             'customer_rating': rating,
-            'notes': None,
+            'notes': notes,
         })
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+
+    # Apply NULL injection based on cleanliness
+    null_rate = get_null_rate(cleanliness, base_rate=0.10)
+    if null_rate > 0:
+        df = inject_nulls(df, 'customer_rating', null_rate)
+
+    return df
 
 
 def generate_operations_domain(
     scale: float = 1.0,
+    cleanliness: int = 100,
     customer_ids: Optional[List[str]] = None,
     vehicle_ids: Optional[List[str]] = None,
 ) -> Dict[str, pd.DataFrame]:
@@ -388,12 +428,16 @@ def generate_operations_domain(
 
     Args:
         scale: Scale factor for record counts (1.0 = full, 0.1 = 10%)
+        cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
         customer_ids: List of valid customer IDs from CRM domain
         vehicle_ids: List of valid vehicle IDs from sales domain
 
     Returns:
         Dictionary with table names as keys and DataFrames as values
     """
+    # Determine if we should use extended service types (at cleanliness < 90)
+    use_extended_types = cleanliness < 90
+
     print("  Generating warehouse_locations...")
     warehouses = generate_warehouse_locations(n=scale_count(10, scale))
 
@@ -412,6 +456,8 @@ def generate_operations_domain(
         n=scale_count(30000, scale),
         customer_ids=customer_ids,
         vehicle_ids=vehicle_ids,
+        cleanliness=cleanliness,
+        use_extended_types=use_extended_types,
     )
 
     return {

@@ -23,6 +23,8 @@ from .utils import (
     generate_dates_with_seasonality,
     scale_count,
     fake,
+    inject_nulls,
+    get_null_rate,
 )
 
 
@@ -63,12 +65,13 @@ def generate_customer_segments() -> pd.DataFrame:
     return pd.DataFrame(segments)
 
 
-def generate_customers(n: int = 50000) -> pd.DataFrame:
+def generate_customers(n: int = 50000, cleanliness: int = 100) -> pd.DataFrame:
     """
     Generate customer table with 70/20/10 segment distribution.
 
     Args:
         n: Number of customers to generate
+        cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
 
     Returns:
         DataFrame with customer data
@@ -151,10 +154,19 @@ def generate_customers(n: int = 50000) -> pd.DataFrame:
             'is_active': is_active,
         })
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+
+    # Apply NULL injection based on cleanliness
+    null_rate = get_null_rate(cleanliness, base_rate=0.15)
+    if null_rate > 0:
+        df = inject_nulls(df, 'email', null_rate)
+        df = inject_nulls(df, 'phone', null_rate)
+        df = inject_nulls(df, 'street_address', null_rate * 0.5)  # Less likely to be missing
+
+    return df
 
 
-def generate_interactions(customers_df: pd.DataFrame) -> pd.DataFrame:
+def generate_interactions(customers_df: pd.DataFrame, cleanliness: int = 100) -> pd.DataFrame:
     """
     Generate customer interaction history correlated with LTV.
 
@@ -162,6 +174,7 @@ def generate_interactions(customers_df: pd.DataFrame) -> pd.DataFrame:
 
     Args:
         customers_df: DataFrame with customer data including lifetime_value
+        cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
 
     Returns:
         DataFrame with interaction records
@@ -237,6 +250,22 @@ def generate_interactions(customers_df: pd.DataFrame) -> pd.DataFrame:
             else:
                 duration_minutes = random.randint(2, 20)
 
+            # Generate notes based on cleanliness (more notes at lower cleanliness = messier data)
+            # At cleanliness=100, notes are always None
+            # At cleanliness=0, ~30% of interactions have notes
+            notes = None
+            notes_rate = (100 - cleanliness) / 100 * 0.3
+            if random.random() < notes_rate:
+                note_templates = [
+                    f"Customer called about {interaction_type.lower()}",
+                    f"Follow-up needed for {outcome.lower()}",
+                    f"Sentiment was {sentiment.lower()} during interaction",
+                    "See attached documentation",
+                    "Transferred to manager",
+                    "Customer requested callback",
+                ]
+                notes = random.choice(note_templates)
+
             records.append({
                 'interaction_id': f'INT-{interaction_id:08d}',
                 'customer_id': customer_id,
@@ -245,17 +274,25 @@ def generate_interactions(customers_df: pd.DataFrame) -> pd.DataFrame:
                 'duration_minutes': duration_minutes,
                 'outcome': outcome,
                 'sentiment': sentiment,
-                'notes': None,  # Placeholder for notes
+                'notes': notes,
             })
             interaction_id += 1
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+
+    # Apply NULL injection to duration_minutes based on cleanliness
+    null_rate = get_null_rate(cleanliness, base_rate=0.10)
+    if null_rate > 0:
+        df = inject_nulls(df, 'duration_minutes', null_rate)
+
+    return df
 
 
 def generate_leads(
     customers_df: pd.DataFrame,
     salesperson_ids: Optional[List[str]] = None,
     conversion_rate: float = 0.20,
+    cleanliness: int = 100,
 ) -> pd.DataFrame:
     """
     Generate sales leads including unconverted leads.
@@ -267,6 +304,7 @@ def generate_leads(
         customers_df: DataFrame with customer data
         salesperson_ids: List of valid salesperson IDs
         conversion_rate: Proportion of leads that convert (~20%)
+        cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
 
     Returns:
         DataFrame with lead data
@@ -388,11 +426,20 @@ def generate_leads(
         })
         lead_id += 1
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+
+    # Apply NULL injection based on cleanliness
+    null_rate = get_null_rate(cleanliness, base_rate=0.15)
+    if null_rate > 0:
+        df = inject_nulls(df, 'phone', null_rate)
+        df = inject_nulls(df, 'last_contact_date', null_rate * 0.5)
+
+    return df
 
 
 def generate_crm_domain(
     scale: float = 1.0,
+    cleanliness: int = 100,
     salesperson_ids: Optional[List[str]] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
@@ -400,6 +447,7 @@ def generate_crm_domain(
 
     Args:
         scale: Scale factor for record counts (1.0 = full, 0.1 = 10%)
+        cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
         salesperson_ids: List of valid salesperson IDs from sales domain
 
     Returns:
@@ -409,16 +457,17 @@ def generate_crm_domain(
     customer_segments = generate_customer_segments()
 
     print("  Generating customers...")
-    customers = generate_customers(n=scale_count(50000, scale))
+    customers = generate_customers(n=scale_count(50000, scale), cleanliness=cleanliness)
 
     print("  Generating interactions...")
-    interactions = generate_interactions(customers)
+    interactions = generate_interactions(customers, cleanliness=cleanliness)
 
     print("  Generating leads...")
     leads = generate_leads(
         customers,
         salesperson_ids=salesperson_ids,
         conversion_rate=0.20,
+        cleanliness=cleanliness,
     )
 
     return {

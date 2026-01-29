@@ -32,6 +32,8 @@ from velocity_motors import (
     generate_crm_domain,
     generate_operations_domain,
 )
+from velocity_motors.sales import generate_salespersons, generate_vehicles, generate_orders, generate_order_items
+from velocity_motors.utils import scale_count
 
 
 def parse_args():
@@ -90,6 +92,13 @@ Examples:
         help='Generate only specific domain (default: all)',
     )
 
+    parser.add_argument(
+        '--cleanliness',
+        type=int,
+        default=100,
+        help='Data cleanliness level 0-100 (100=pristine, 0=messy). Default: 100',
+    )
+
     return parser.parse_args()
 
 
@@ -101,6 +110,10 @@ def validate_args(args):
 
     if args.scale > 10:
         print(f"Warning: --scale {args.scale} will generate a very large dataset")
+
+    if args.cleanliness < 0 or args.cleanliness > 100:
+        print(f"Error: --cleanliness must be between 0 and 100, got {args.cleanliness}")
+        sys.exit(1)
 
 
 def save_domain(domain_data: dict, output_dir: str, domain_name: str, dry_run: bool):
@@ -148,11 +161,12 @@ def main():
     print("VELOCITY MOTORS DATASET GENERATOR")
     print("=" * 70)
     print(f"\nConfiguration:")
-    print(f"    Output:  {args.output_dir}")
-    print(f"    Scale:   {args.scale}")
-    print(f"    Seed:    {args.seed}")
-    print(f"    Domain:  {args.domain}")
-    print(f"    Dry Run: {args.dry_run}")
+    print(f"    Output:     {args.output_dir}")
+    print(f"    Scale:      {args.scale}")
+    print(f"    Seed:       {args.seed}")
+    print(f"    Domain:     {args.domain}")
+    print(f"    Cleanliness: {args.cleanliness}")
+    print(f"    Dry Run:    {args.dry_run}")
 
     # Ensure we're in the right directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -169,50 +183,130 @@ def main():
     start_time = datetime.now()
     all_data = {}
 
-    # Generate Sales Domain
-    if args.domain in ('all', 'sales'):
-        print("\n[1/3] Generating Sales Domain...")
-        print("-" * 70)
-        sales_data = generate_sales_domain(scale=args.scale)
-        all_data['sales'] = sales_data
-        save_domain(sales_data, output_dir, 'sales', args.dry_run)
+    # Determine if we should use extended data (at cleanliness < 90)
+    use_extended = args.cleanliness < 90
 
-    # Get IDs for foreign key references
-    if 'sales' in all_data:
-        salesperson_ids = all_data['sales']['salespersons']['salesperson_id'].tolist()
-        vehicle_ids = all_data['sales']['vehicles']['vehicle_id'].tolist()
-    else:
-        salesperson_ids = None
-        vehicle_ids = None
+    if args.domain == 'all':
+        # =====================================================================
+        # MULTI-PHASE GENERATION - Fixes FK circular dependency
+        # =====================================================================
+        # The circular dependency problem:
+        # - Sales.orders needs CRM.customer_ids
+        # - CRM.leads needs Sales.salesperson_ids
+        #
+        # Solution: Generate independent dimension tables first, then generate
+        # dependent fact tables with proper FK references.
+        # =====================================================================
 
-    # Generate CRM Domain
-    if args.domain in ('all', 'crm'):
-        print("\n[2/3] Generating CRM Domain...")
+        print("\n[Phase A] Generating Independent Dimension Tables...")
         print("-" * 70)
+
+        # Step 1: Generate salespersons (independent)
+        print("  Generating salespersons...")
+        salespersons_df = generate_salespersons(
+            n=scale_count(50, args.scale),
+            cleanliness=args.cleanliness,
+        )
+        salesperson_ids = salespersons_df['salesperson_id'].tolist()
+
+        # Step 2: Generate vehicles (independent)
+        print("  Generating vehicles...")
+        vehicles_df = generate_vehicles(
+            n=scale_count(5000, args.scale),
+            cleanliness=args.cleanliness,
+            use_extended=use_extended,
+        )
+        vehicle_ids = vehicles_df['vehicle_id'].tolist()
+
+        print("\n[Phase B] Generating CRM Domain (with salesperson FK)...")
+        print("-" * 70)
+
+        # Step 3: Generate CRM domain with salesperson_ids
         crm_data = generate_crm_domain(
             scale=args.scale,
+            cleanliness=args.cleanliness,
             salesperson_ids=salesperson_ids,
         )
+        customer_ids = crm_data['customers']['customer_id'].tolist()
         all_data['crm'] = crm_data
         save_domain(crm_data, output_dir, 'crm', args.dry_run)
 
-    # Get customer IDs for operations domain
-    if 'crm' in all_data:
-        customer_ids = all_data['crm']['customers']['customer_id'].tolist()
-    else:
-        customer_ids = None
-
-    # Generate Operations Domain
-    if args.domain in ('all', 'operations'):
-        print("\n[3/3] Generating Operations Domain...")
+        print("\n[Phase C] Generating Sales Orders (with customer FK)...")
         print("-" * 70)
+
+        # Step 4: Generate orders with VALID customer_ids
+        print("  Generating orders...")
+        orders_df = generate_orders(
+            n=scale_count(100000, args.scale),
+            customer_ids=customer_ids,  # PASS VALID customer IDs
+            vehicle_ids=vehicle_ids,
+            salesperson_ids=salesperson_ids,
+            cleanliness=args.cleanliness,
+        )
+
+        # Step 5: Generate order_items
+        print("  Generating order_items...")
+        order_items_df = generate_order_items(orders_df, vehicles_df)
+
+        # Assemble sales data
+        sales_data = {
+            'salespersons': salespersons_df,
+            'vehicles': vehicles_df,
+            'orders': orders_df,
+            'order_items': order_items_df,
+        }
+        all_data['sales'] = sales_data
+        save_domain(sales_data, output_dir, 'sales', args.dry_run)
+
+        print("\n[Phase D] Generating Operations Domain...")
+        print("-" * 70)
+
+        # Step 6: Generate operations with proper FKs
         ops_data = generate_operations_domain(
             scale=args.scale,
+            cleanliness=args.cleanliness,
             customer_ids=customer_ids,
             vehicle_ids=vehicle_ids,
         )
         all_data['operations'] = ops_data
         save_domain(ops_data, output_dir, 'operations', args.dry_run)
+
+    else:
+        # Single domain generation (original behavior)
+        # Note: When generating single domains, FK integrity may not be guaranteed
+
+        # Generate Sales Domain
+        if args.domain == 'sales':
+            print("\n[1/3] Generating Sales Domain...")
+            print("-" * 70)
+            sales_data = generate_sales_domain(
+                scale=args.scale,
+                cleanliness=args.cleanliness,
+            )
+            all_data['sales'] = sales_data
+            save_domain(sales_data, output_dir, 'sales', args.dry_run)
+
+        # Generate CRM Domain
+        elif args.domain == 'crm':
+            print("\n[2/3] Generating CRM Domain...")
+            print("-" * 70)
+            crm_data = generate_crm_domain(
+                scale=args.scale,
+                cleanliness=args.cleanliness,
+            )
+            all_data['crm'] = crm_data
+            save_domain(crm_data, output_dir, 'crm', args.dry_run)
+
+        # Generate Operations Domain
+        elif args.domain == 'operations':
+            print("\n[3/3] Generating Operations Domain...")
+            print("-" * 70)
+            ops_data = generate_operations_domain(
+                scale=args.scale,
+                cleanliness=args.cleanliness,
+            )
+            all_data['operations'] = ops_data
+            save_domain(ops_data, output_dir, 'operations', args.dry_run)
 
     elapsed = (datetime.now() - start_time).total_seconds()
     print_summary(all_data, output_dir, elapsed)

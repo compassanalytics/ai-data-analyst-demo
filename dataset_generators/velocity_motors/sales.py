@@ -22,15 +22,18 @@ from .utils import (
     generate_email,
     generate_dates_with_seasonality,
     scale_count,
+    inject_nulls,
+    get_null_rate,
 )
 
 
-def generate_salespersons(n: int = 50) -> pd.DataFrame:
+def generate_salespersons(n: int = 50, cleanliness: int = 100) -> pd.DataFrame:
     """
     Generate salesperson dimension table.
 
     Args:
         n: Number of salespersons to generate
+        cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
 
     Returns:
         DataFrame with salesperson data
@@ -69,15 +72,24 @@ def generate_salespersons(n: int = 50) -> pd.DataFrame:
             'commission_rate': commission_rate,
         })
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+
+    # Apply NULL injection based on cleanliness
+    null_rate = get_null_rate(cleanliness, base_rate=0.10)
+    if null_rate > 0:
+        df = inject_nulls(df, 'email', null_rate)
+
+    return df
 
 
-def generate_vehicles(n: int = 5000) -> pd.DataFrame:
+def generate_vehicles(n: int = 5000, cleanliness: int = 100, use_extended: bool = False) -> pd.DataFrame:
     """
     Generate vehicle inventory table.
 
     Args:
         n: Number of vehicles to generate
+        cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
+        use_extended: If True, include extended vehicle makes (more variety)
 
     Returns:
         DataFrame with vehicle inventory data
@@ -97,7 +109,7 @@ def generate_vehicles(n: int = 5000) -> pd.DataFrame:
 
     records = []
     for i in range(1, n + 1):
-        vehicle_data = generate_vehicle_data()
+        vehicle_data = generate_vehicle_data(use_extended=use_extended)
 
         # Condition selection
         condition_names, condition_weights = zip(*conditions)
@@ -149,17 +161,19 @@ def generate_orders(
     salesperson_ids: Optional[List[str]] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
+    cleanliness: int = 100,
 ) -> pd.DataFrame:
     """
     Generate orders table with seasonal date distribution.
 
     Args:
         n: Number of orders to generate
-        customer_ids: List of valid customer IDs
+        customer_ids: List of valid customer IDs (REQUIRED for FK integrity)
         vehicle_ids: List of valid vehicle IDs
         salesperson_ids: List of valid salesperson IDs
         start_date: Start of date range (default: 2 years ago)
         end_date: End of date range (default: today)
+        cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
 
     Returns:
         DataFrame with order data
@@ -323,27 +337,42 @@ def generate_order_items(orders_df: pd.DataFrame, vehicles_df: pd.DataFrame) -> 
     return pd.DataFrame(records)
 
 
-def generate_sales_domain(scale: float = 1.0) -> Dict[str, pd.DataFrame]:
+def generate_sales_domain(
+    scale: float = 1.0,
+    cleanliness: int = 100,
+    customer_ids: Optional[List[str]] = None,
+) -> Dict[str, pd.DataFrame]:
     """
     Generate all sales domain tables.
 
     Args:
         scale: Scale factor for record counts (1.0 = full, 0.1 = 10%)
+        cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
+        customer_ids: List of valid customer IDs for FK references in orders
 
     Returns:
         Dictionary with table names as keys and DataFrames as values
     """
+    # Determine if we should use extended makes (at cleanliness < 90)
+    use_extended = cleanliness < 90
+
     print("  Generating salespersons...")
-    salespersons = generate_salespersons(n=scale_count(50, scale))
+    salespersons = generate_salespersons(n=scale_count(50, scale), cleanliness=cleanliness)
 
     print("  Generating vehicles...")
-    vehicles = generate_vehicles(n=scale_count(5000, scale))
+    vehicles = generate_vehicles(
+        n=scale_count(5000, scale),
+        cleanliness=cleanliness,
+        use_extended=use_extended,
+    )
 
     print("  Generating orders...")
     orders = generate_orders(
         n=scale_count(100000, scale),
+        customer_ids=customer_ids,
         vehicle_ids=vehicles['vehicle_id'].tolist(),
         salesperson_ids=salespersons['salesperson_id'].tolist(),
+        cleanliness=cleanliness,
     )
 
     print("  Generating order_items...")

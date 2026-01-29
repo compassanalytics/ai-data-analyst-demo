@@ -7,13 +7,24 @@ Provides shared utilities for generating consistent, realistic automotive data.
 
 import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import numpy as np
+import pandas as pd
 from faker import Faker
 
 # Initialize faker with US locale
 fake = Faker('en_US')
+
+
+# NULLABLE_FIELDS allowlist - fields that can safely be NULLed
+NULLABLE_FIELDS: Dict[str, Set[str]] = {
+    'customers': {'email', 'phone', 'street_address', 'company_name'},
+    'interactions': {'notes', 'duration_minutes'},
+    'service_orders': {'notes', 'customer_rating'},
+    'leads': {'phone', 'last_contact_date'},
+    'salespersons': {'email'},
+}
 
 
 def set_random_seed(seed: int) -> None:
@@ -122,6 +133,61 @@ VEHICLE_MAKES_MODELS: Dict[str, List[Tuple[str, List[str]]]] = {
 }
 
 
+# Extended vehicle makes with models and trims (for lower cleanliness levels)
+VEHICLE_MAKES_MODELS_EXTENDED: Dict[str, Dict[str, List[str]]] = {
+    'Nissan': {
+        'models': ['Altima', 'Sentra', 'Maxima', 'Rogue', 'Murano', 'Pathfinder', 'Armada', 'Frontier', 'Titan'],
+        'trims': ['S', 'SV', 'SL', 'Platinum']
+    },
+    'Hyundai': {
+        'models': ['Elantra', 'Sonata', 'Tucson', 'Santa Fe', 'Palisade', 'Kona', 'Venue'],
+        'trims': ['SE', 'SEL', 'Limited', 'Calligraphy']
+    },
+    'Kia': {
+        'models': ['Forte', 'K5', 'Sportage', 'Sorento', 'Telluride', 'Seltos', 'Soul'],
+        'trims': ['LX', 'S', 'EX', 'SX']
+    },
+    'Subaru': {
+        'models': ['Impreza', 'Legacy', 'Outback', 'Forester', 'Crosstrek', 'Ascent', 'WRX'],
+        'trims': ['Base', 'Premium', 'Limited', 'Touring']
+    },
+    'Mazda': {
+        'models': ['Mazda3', 'Mazda6', 'CX-30', 'CX-5', 'CX-50', 'CX-9', 'MX-5 Miata'],
+        'trims': ['Base', 'Select', 'Preferred', 'Premium', 'Turbo']
+    },
+    'Volkswagen': {
+        'models': ['Jetta', 'Passat', 'Tiguan', 'Atlas', 'Taos', 'ID.4', 'Golf GTI'],
+        'trims': ['S', 'SE', 'SEL', 'R-Line']
+    },
+    'Audi': {
+        'models': ['A3', 'A4', 'A6', 'Q3', 'Q5', 'Q7', 'e-tron'],
+        'trims': ['Premium', 'Premium Plus', 'Prestige', 'S Line']
+    },
+    'Lexus': {
+        'models': ['ES', 'IS', 'LS', 'NX', 'RX', 'GX', 'LX'],
+        'trims': ['Base', 'Premium', 'Luxury', 'F Sport']
+    },
+    'Acura': {
+        'models': ['ILX', 'TLX', 'RDX', 'MDX', 'Integra'],
+        'trims': ['Base', 'Technology', 'A-Spec', 'Advance']
+    },
+}
+
+
+# MSRP ranges for extended makes (min, max) in dollars
+MSRP_RANGES_EXTENDED: Dict[str, Tuple[int, int]] = {
+    'Nissan': (22000, 65000),
+    'Hyundai': (20000, 55000),
+    'Kia': (19000, 52000),
+    'Subaru': (23000, 48000),
+    'Mazda': (24000, 42000),
+    'Volkswagen': (22000, 55000),
+    'Audi': (35000, 95000),
+    'Lexus': (40000, 110000),
+    'Acura': (32000, 75000),
+}
+
+
 # MSRP ranges by make (min, max) in dollars
 MSRP_RANGES: Dict[str, Tuple[int, int]] = {
     'Ford': (28000, 85000),
@@ -147,23 +213,36 @@ VEHICLE_COLORS = [
 ]
 
 
-def generate_vehicle_data() -> Dict:
+def generate_vehicle_data(use_extended: bool = False) -> Dict:
     """
     Generate a complete vehicle data dictionary with realistic attributes.
+
+    Args:
+        use_extended: If True, include extended makes (9 additional makes).
+                      Used at lower cleanliness levels for more variety.
 
     Returns:
         Dictionary with make, model, year, trim, color, msrp, vin
     """
-    make = random.choice(list(VEHICLE_MAKES_MODELS.keys()))
-    model, trims = random.choice(VEHICLE_MAKES_MODELS[make])
-    trim = random.choice(trims)
+    # Decide whether to use base makes or extended makes
+    use_extended_make = use_extended and random.random() < 0.4  # 40% chance for extended
 
-    # Get MSRP based on make range
-    min_msrp, max_msrp = MSRP_RANGES[make]
+    if use_extended_make:
+        make = random.choice(list(VEHICLE_MAKES_MODELS_EXTENDED.keys()))
+        make_data = VEHICLE_MAKES_MODELS_EXTENDED[make]
+        model = random.choice(make_data['models'])
+        trim = random.choice(make_data['trims'])
+        min_msrp, max_msrp = MSRP_RANGES_EXTENDED[make]
+    else:
+        make = random.choice(list(VEHICLE_MAKES_MODELS.keys()))
+        model, trims = random.choice(VEHICLE_MAKES_MODELS[make])
+        trim = random.choice(trims)
+        min_msrp, max_msrp = MSRP_RANGES[make]
+
     # Luxury trims tend to be more expensive
-    if any(x in trim.lower() for x in ['platinum', 'limited', 'touring', 'high country', 'amg', 'shelby']):
+    if any(x in trim.lower() for x in ['platinum', 'limited', 'touring', 'high country', 'amg', 'shelby', 'prestige', 'calligraphy', 'f sport']):
         msrp = random.randint(int(max_msrp * 0.7), max_msrp)
-    elif any(x in trim.lower() for x in ['lx', 'l', 'base', 'wt', 'ls', 'xl']):
+    elif any(x in trim.lower() for x in ['lx', 'l', 'base', 'wt', 'ls', 'xl', 's', 'se']):
         msrp = random.randint(min_msrp, int(min_msrp * 1.3))
     else:
         msrp = random.randint(int(min_msrp * 1.1), int(max_msrp * 0.8))
@@ -401,3 +480,102 @@ def get_weighted_state() -> str:
     """
     states, weights = zip(*US_STATES_WEIGHTED)
     return random.choices(states, weights=weights)[0]
+
+
+# Extended service types: (type_name, min_labor, max_labor, parts_ratio)
+SERVICE_TYPES_EXTENDED: List[Tuple[str, int, int, float]] = [
+    ('Detailing', 100, 500, 0.05),
+    ('State Inspection', 25, 75, 0.02),
+    ('Windshield Repair', 50, 400, 0.60),
+    ('Key Programming', 75, 300, 0.40),
+    ('Suspension Work', 200, 1500, 0.45),
+]
+
+
+def inject_nulls(
+    df: pd.DataFrame,
+    column: str,
+    rate: float,
+    seed: Optional[int] = None
+) -> pd.DataFrame:
+    """
+    Inject NULL values into a column at specified rate.
+
+    Args:
+        df: DataFrame to modify (modified in place)
+        column: Column name to inject NULLs into
+        rate: Fraction of rows to set to NULL (0.0 to 1.0)
+        seed: Random seed for reproducibility
+
+    Returns:
+        Modified DataFrame
+    """
+    if column not in df.columns:
+        return df
+    if rate <= 0:
+        return df
+
+    rng = np.random.default_rng(seed)
+    mask = rng.random(len(df)) < rate
+    df.loc[mask, column] = None
+    return df
+
+
+def apply_case_inconsistency(value: str, intensity: float, rng: np.random.Generator) -> str:
+    """
+    Apply random case variations based on intensity.
+
+    Args:
+        value: String to potentially modify
+        intensity: 0.0-1.0, probability of applying variation
+        rng: Random number generator
+
+    Returns:
+        Possibly modified string
+    """
+    if not isinstance(value, str) or rng.random() > intensity:
+        return value
+
+    variation = rng.choice(['lower', 'upper', 'title', 'original'])
+    if variation == 'lower':
+        return value.lower()
+    elif variation == 'upper':
+        return value.upper()
+    elif variation == 'title':
+        return value.title()
+    return value
+
+
+def calculate_cleanliness_intensity(cleanliness: int, threshold: int) -> float:
+    """
+    Calculate pattern intensity from cleanliness level.
+
+    Args:
+        cleanliness: Current cleanliness level (0-100)
+        threshold: Threshold below which pattern activates
+
+    Returns:
+        Intensity value (0.0-1.0), 0 if cleanliness >= threshold
+    """
+    if cleanliness >= threshold:
+        return 0.0
+    return (threshold - cleanliness) / threshold
+
+
+def get_null_rate(cleanliness: int, base_rate: float = 0.15) -> float:
+    """
+    Calculate NULL injection rate based on cleanliness.
+
+    At cleanliness=100, rate=0
+    At cleanliness=0, rate=base_rate
+
+    Args:
+        cleanliness: Current cleanliness level (0-100)
+        base_rate: Maximum NULL rate at cleanliness=0
+
+    Returns:
+        NULL injection rate (0.0 to base_rate)
+    """
+    if cleanliness >= 100:
+        return 0.0
+    return base_rate * (100 - cleanliness) / 100
