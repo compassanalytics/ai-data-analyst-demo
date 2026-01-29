@@ -162,7 +162,7 @@ If you cannot create new catalogs, use an existing one:
 
 | Dataset | Catalog.Schema | Tables | Description |
 |---------|---------------|--------|-------------|
-| velocity_motors | workshop.sales, .crm, .operations | 12 | Automotive dealership data |
+| velocity_motors | workshop.sales, .crm, .operations | 16 | Automotive dealership data |
 | star_schema | workshop.analytics | 6 | Clean dimensional model |
 | super_table | workshop.demo | 1 | Messy data for anti-pattern demo |
 
