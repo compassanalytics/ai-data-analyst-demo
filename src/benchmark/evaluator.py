@@ -245,6 +245,12 @@ class BenchmarkEvaluator:
                 is_adversarial=result.test_query.is_adversarial,
             )
 
+            # Extract judge info from comparison (passed, score, reasoning)
+            judge_info = comparison.judge_info or {}
+            judge_passed = judge_info.get("passed")
+            judge_score = judge_info.get("score")
+            judge_reasoning = judge_info.get("reasoning")
+
             # Create new result with LLM judge scores
             # Preserve original execution time and raw response
             re_evaluated = EvaluationResult(
@@ -257,6 +263,9 @@ class BenchmarkEvaluator:
                 error_message=result.error_message,
                 error_category=result.error_category,
                 timestamp=result.timestamp,
+                judge_passed=judge_passed,
+                judge_score=judge_score,
+                judge_reasoning=judge_reasoning,
             )
             re_evaluated_results.append(re_evaluated)
 

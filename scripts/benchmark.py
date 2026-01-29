@@ -108,13 +108,12 @@ Examples:
     # =========================================================================
     gen_parser = subparsers.add_parser(
         "generate",
-        help="Generate benchmark queries from a schema",
-        description="Generate domain-specific test queries using LLM based on YAML schema config.",
+        help="Generate benchmark queries from schema or data",
+        description="Generate test queries using schema-based LLM or data-aware approach. Use --schema for schema-based, --data-dir for data-aware.",
     )
     gen_parser.add_argument(
         "--schema",
-        required=True,
-        help="Path to YAML schema config file",
+        help="Path to YAML schema config file (required for schema-based generation)",
     )
     gen_parser.add_argument(
         "--output",
@@ -368,13 +367,27 @@ Examples:
 
 def cmd_generate(args: argparse.Namespace) -> int:
     """Handle generate subcommand."""
+    # Validate: need either --schema or --data-dir
+    has_schema = hasattr(args, "schema") and args.schema
+    has_data_dir = hasattr(args, "data_dir") and args.data_dir
+
+    if not has_schema and not has_data_dir:
+        logger.error("Must specify either --schema or --data-dir")
+        print("\nUsage:")
+        print("  Schema-based:     --schema PATH --output PATH")
+        print("  Data-aware:       --data-dir PATH --output PATH")
+        return 1
+
+    if has_schema and has_data_dir:
+        logger.warning("Both --schema and --data-dir provided, using --data-dir (data-aware)")
+
     # Create config
     config = Config.from_env()
     if args.mock:
         config.mock_mode = True
 
     # Check if using data-aware generation
-    if hasattr(args, "data_dir") and args.data_dir:
+    if has_data_dir:
         return _cmd_generate_data_aware(args, config)
     else:
         return _cmd_generate_schema_based(args, config)
