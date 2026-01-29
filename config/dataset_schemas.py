@@ -311,7 +311,7 @@ DATASET_CONFIGS = {
     "velocity_motors": {
         "schemas": VELOCITY_MOTORS_SCHEMAS,
         "description": "Automotive dealership with 12 tables across Sales, CRM, and Operations domains. Realistic relationships and seasonal patterns.",
-        "base_url": "https://workshopdata.blob.core.windows.net/datasets/velocity_motors",
+        "base_url": "https://compassagentemofiles.blob.core.windows.net/datasets/velocity_motors",
         "tables": {
             "sales": ["salespersons", "vehicles", "orders", "order_items"],
             "crm": ["customer_segments", "customers", "interactions", "leads"],
@@ -321,7 +321,7 @@ DATASET_CONFIGS = {
     "star_schema": {
         "schemas": STAR_SCHEMA_DESCRIPTIONS,
         "description": "Clean dimensional model for CPG/Beverage company. 6 tables demonstrating proper star schema design.",
-        "base_url": "https://workshopdata.blob.core.windows.net/datasets/star_schema",
+        "base_url": "https://compassagentemofiles.blob.core.windows.net/datasets/star_schema",
         "tables": {
             "default": ["dim_date", "dim_product", "dim_customer", "dim_store", "dim_promotion", "fact_sales"],
         },
@@ -329,7 +329,7 @@ DATASET_CONFIGS = {
     "super_table": {
         "schemas": SUPER_TABLE_DESCRIPTIONS,
         "description": "Messy denormalized table demonstrating anti-patterns. 139 columns with cryptic names, duplicate data, and inconsistent formats.",
-        "base_url": "https://workshopdata.blob.core.windows.net/datasets/super_table",
+        "base_url": "https://compassagentemofiles.blob.core.windows.net/datasets/super_table",
         "tables": {
             "default": ["super_table"],
         },
