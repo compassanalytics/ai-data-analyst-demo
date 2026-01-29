@@ -128,7 +128,53 @@ Creates 1 messy table with 139 columns demonstrating anti-patterns:
 
 ---
 
-## Upload Data to Databricks
+## Data Setup (Recommended)
+
+Use the automated setup notebook to load workshop data with column descriptions for Genie AI.
+
+### Quick Start
+
+1. Open `notebooks/00_setup_workshop_data.ipynb` in Databricks
+2. Configure widgets:
+   - **Dataset**: Choose `velocity_motors`, `star_schema`, `super_table`, or `all`
+   - **Catalog**: Name of the Unity Catalog to create/use (default: `workshop`)
+3. Run all cells
+4. Verify data loaded (row counts shown in verification cell)
+5. Create your Genie Space using the loaded tables
+
+### Requirements
+
+- **Databricks with Unity Catalog** (not Community Edition)
+- Permission to create catalogs OR use an existing catalog
+
+> **Note:** Databricks Community Edition does not support Unity Catalog.
+> Use the [Free Trial](https://www.databricks.com/try-databricks) for full Unity Catalog features.
+
+### Finding Your Catalog
+
+If you cannot create new catalogs, use an existing one:
+
+1. Run in a notebook cell: `SHOW CATALOGS`
+2. Pick a catalog you have access to (e.g., `main`, `hive_metastore`)
+3. Enter that name in the Catalog widget
+
+### What Gets Loaded
+
+| Dataset | Catalog.Schema | Tables | Description |
+|---------|---------------|--------|-------------|
+| velocity_motors | workshop.sales, .crm, .operations | 12 | Automotive dealership data |
+| star_schema | workshop.analytics | 6 | Clean dimensional model |
+| super_table | workshop.demo | 1 | Messy data for anti-pattern demo |
+
+### Column Descriptions
+
+The setup notebook automatically adds column comments to all tables, which helps Genie AI understand your data better. These descriptions are sourced from `config/dataset_schemas.py`.
+
+---
+
+## Manual Data Upload (Alternative)
+
+If the automated setup does not work, you can manually upload data.
 
 ### Using the Databricks UI
 
