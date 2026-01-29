@@ -22,7 +22,12 @@ NULLABLE_FIELDS: dict[str, set[str]] = {
     "interactions": {"notes", "duration_minutes"},
     "service_orders": {"notes", "customer_rating"},
     "leads": {"phone", "last_contact_date"},
-    "salespersons": {"email"},
+    "salespersons": {"email", "manager_id"},  # manager_id NULL for top-level
+    "territories": set(),  # No nullable fields
+    "features": set(),
+    "vehicle_features": set(),
+    "price_history": {"end_date"},  # end_date is NULL for current
+    "orders": {"discount_amount"},  # Some orders have no discount
 }
 
 
@@ -571,6 +576,73 @@ SERVICE_TYPES_EXTENDED: list[tuple[str, int, int, float]] = [
     ("Windshield Repair", 50, 400, 0.60),
     ("Key Programming", 75, 300, 0.40),
     ("Suspension Work", 200, 1500, 0.45),
+]
+
+
+# Territory hierarchy
+TERRITORY_DIVISIONS = ["East", "West", "Central"]
+TERRITORY_REGIONS: dict[str, list[str]] = {
+    "East": ["Northeast", "Southeast", "Mid-Atlantic"],
+    "West": ["Pacific", "Mountain", "Southwest"],
+    "Central": ["Midwest", "Great Plains", "Gulf Coast"],
+}
+
+# Vehicle features by category
+FEATURE_CATEGORIES: dict[str, list[str]] = {
+    "Safety": [
+        "Blind Spot Monitor",
+        "Lane Departure Warning",
+        "Forward Collision Warning",
+        "Automatic Emergency Braking",
+        "Adaptive Cruise Control",
+        "360 Camera",
+        "Rear Cross Traffic Alert",
+        "Parking Sensors",
+    ],
+    "Comfort": [
+        "Heated Seats",
+        "Ventilated Seats",
+        "Heated Steering Wheel",
+        "Dual Zone Climate",
+        "Tri Zone Climate",
+        "Panoramic Sunroof",
+        "Memory Seats",
+        "Power Adjustable Pedals",
+    ],
+    "Technology": [
+        "Navigation System",
+        "Premium Audio",
+        "Wireless Charging",
+        "Apple CarPlay",
+        "Android Auto",
+        "Head-Up Display",
+        "Digital Instrument Cluster",
+        "Wi-Fi Hotspot",
+    ],
+    "Exterior": [
+        "LED Headlights",
+        "Power Liftgate",
+        "Running Boards",
+        "Roof Rack",
+        "Tow Package",
+        "Chrome Package",
+    ],
+    "Interior": [
+        "Leather Seats",
+        "Premium Interior",
+        "Ambient Lighting",
+        "Second Row Captain Chairs",
+        "Third Row Seating",
+    ],
+}
+
+PRICE_CHANGE_REASONS = [
+    "Initial Pricing",
+    "Market Adjustment",
+    "Seasonal Promotion",
+    "Inventory Clearance",
+    "Model Year Update",
+    "Demand Increase",
 ]
 
 

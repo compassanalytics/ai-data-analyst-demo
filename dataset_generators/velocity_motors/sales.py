@@ -16,6 +16,10 @@ import numpy as np
 import pandas as pd
 
 from .utils import (
+    FEATURE_CATEGORIES,
+    PRICE_CHANGE_REASONS,
+    TERRITORY_DIVISIONS,
+    TERRITORY_REGIONS,
     generate_dates_with_seasonality,
     generate_email,
     generate_person_name,
@@ -26,13 +30,47 @@ from .utils import (
 )
 
 
-def generate_salespersons(n: int = 50, cleanliness: int = 100) -> pd.DataFrame:
+def generate_territories() -> pd.DataFrame:
+    """
+    Generate territories table with flat hierarchy (division > region > territory).
+
+    Returns:
+        DataFrame with ~18 territories (2 per region, 3 regions per division)
+    """
+    records = []
+    territory_id = 1
+
+    for division in TERRITORY_DIVISIONS:
+        for region in TERRITORY_REGIONS[division]:
+            # 2 territories per region
+            for i in range(2):
+                suffix = "North" if i == 0 else "South"
+                records.append(
+                    {
+                        "territory_id": f"TER-{territory_id:03d}",
+                        "territory_name": f"{region} {suffix}",
+                        "region_name": region,
+                        "division_name": division,
+                        "is_active": random.random() > 0.05,  # 95% active
+                    }
+                )
+                territory_id += 1
+
+    return pd.DataFrame(records)
+
+
+def generate_salespersons(
+    n: int = 50,
+    cleanliness: int = 100,
+    territory_ids: list[str] | None = None,
+) -> pd.DataFrame:
     """
     Generate salesperson dimension table.
 
     Args:
         n: Number of salespersons to generate
         cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
+        territory_ids: List of valid territory IDs for FK references
 
     Returns:
         DataFrame with salesperson data
@@ -59,6 +97,12 @@ def generate_salespersons(n: int = 50, cleanliness: int = 100) -> pd.DataFrame:
 
         region = random.choices(regions, weights=region_weights)[0]
 
+        # Territory assignment - distribute evenly if provided
+        if territory_ids:
+            territory_id = territory_ids[i % len(territory_ids)]
+        else:
+            territory_id = f"TER-{(i % 18) + 1:03d}"
+
         records.append(
             {
                 "salesperson_id": f"SP-{i:04d}",
@@ -68,12 +112,29 @@ def generate_salespersons(n: int = 50, cleanliness: int = 100) -> pd.DataFrame:
                 "email": generate_email(first_name, last_name),
                 "hire_date": hire_date.date(),
                 "region": region,
+                "territory_id": territory_id,
                 "quota": quota,
                 "commission_rate": commission_rate,
+                "manager_id": None,  # Placeholder, will be filled below
             }
         )
 
     df = pd.DataFrame(records)
+
+    # Build org hierarchy - top 10% are managers with NULL manager_id
+    # Remaining 90% point to one of the managers
+    n_managers = max(1, int(n * 0.10))
+    manager_ids = df.iloc[:n_managers]["salesperson_id"].tolist()
+
+    # Managers have NULL manager_id (they are top-level)
+    # Non-managers point to a random manager
+    manager_id_values: list[str | None] = []
+    for i in range(n):
+        if i < n_managers:
+            manager_id_values.append(None)
+        else:
+            manager_id_values.append(random.choice(manager_ids))
+    df["manager_id"] = manager_id_values
 
     # Apply NULL injection based on cleanliness
     null_rate = get_null_rate(cleanliness, base_rate=0.10)
@@ -348,10 +409,207 @@ def generate_order_items(orders_df: pd.DataFrame, vehicles_df: pd.DataFrame) -> 
     return pd.DataFrame(records)
 
 
+def generate_features() -> pd.DataFrame:
+    """
+    Generate features dimension table (catalog of all available features).
+
+    Returns:
+        DataFrame with ~35 features across 5 categories
+    """
+    records = []
+    feature_id = 1
+
+    for category, feature_names in FEATURE_CATEGORIES.items():
+        for feature_name in feature_names:
+            records.append(
+                {
+                    "feature_id": f"FEAT-{feature_id:03d}",
+                    "feature_name": feature_name,
+                    "feature_category": category,
+                    "description": f"{feature_name} - {category} feature",
+                }
+            )
+            feature_id += 1
+
+    return pd.DataFrame(records)
+
+
+def generate_vehicle_features(
+    vehicles_df: pd.DataFrame,
+    features_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Generate vehicle_features junction table (many-to-many).
+
+    Each vehicle gets 3-10 features (weighted toward 5-7).
+    Premium trims get more optional features.
+
+    Args:
+        vehicles_df: Vehicles DataFrame
+        features_df: Features DataFrame
+
+    Returns:
+        DataFrame with vehicle-feature mappings
+    """
+    feature_ids = features_df["feature_id"].tolist()
+    records = []
+    vf_id = 1
+
+    for _, vehicle in vehicles_df.iterrows():
+        vehicle_id = vehicle["vehicle_id"]
+        trim = vehicle.get("trim", "Base")
+
+        # Determine number of features (3-10, weighted)
+        if trim in ["Limited", "Platinum", "Premium", "High Country", "Elite", "Touring"]:
+            num_features = random.choices([6, 7, 8, 9, 10], weights=[0.1, 0.2, 0.3, 0.25, 0.15])[0]
+        else:
+            num_features = random.choices([3, 4, 5, 6, 7], weights=[0.1, 0.2, 0.35, 0.25, 0.1])[0]
+
+        # Select unique features for this vehicle
+        selected_features = random.sample(feature_ids, min(num_features, len(feature_ids)))
+
+        for feature_id in selected_features:
+            # ~60% standard, ~40% optional
+            is_standard = random.random() < 0.6
+
+            records.append(
+                {
+                    "vehicle_feature_id": f"VF-{vf_id:08d}",
+                    "vehicle_id": vehicle_id,
+                    "feature_id": feature_id,
+                    "is_standard": is_standard,
+                }
+            )
+            vf_id += 1
+
+    return pd.DataFrame(records)
+
+
+def generate_price_history(
+    vehicles_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Generate price_history table (SCD Type 2).
+
+    Each vehicle has 1-5 price records.
+    - is_current=True only for latest record
+    - end_date=None for current record
+
+    Args:
+        vehicles_df: Vehicles DataFrame with vehicle_id and msrp
+
+    Returns:
+        DataFrame with price history records
+    """
+    records = []
+    ph_id = 1
+
+    for _, vehicle in vehicles_df.iterrows():
+        vehicle_id = vehicle["vehicle_id"]
+        base_msrp = vehicle["msrp"]
+
+        # Number of price changes (1-5, weighted toward 1-2)
+        num_prices = random.choices([1, 2, 3, 4, 5], weights=[0.40, 0.30, 0.15, 0.10, 0.05])[0]
+
+        # Generate dates going back from today
+        today = datetime.now().date()
+        dates = sorted(
+            [today - timedelta(days=random.randint(0, 365)) for _ in range(num_prices)]
+        )
+
+        current_price = base_msrp
+        for i, effective_date in enumerate(dates):
+            is_current = i == len(dates) - 1
+            end_date = None if is_current else dates[i + 1] - timedelta(days=1)
+
+            # Price varies by -15% to +5% from previous
+            if i > 0:
+                change_pct = random.uniform(-0.15, 0.05)
+                current_price = current_price * (1 + change_pct)
+
+            records.append(
+                {
+                    "price_history_id": f"PH-{ph_id:08d}",
+                    "vehicle_id": vehicle_id,
+                    "price": round(current_price, 2),
+                    "effective_date": effective_date,
+                    "end_date": end_date,
+                    "is_current": is_current,
+                    "change_reason": random.choice(PRICE_CHANGE_REASONS),
+                }
+            )
+            ph_id += 1
+
+    return pd.DataFrame(records)
+
+
+def add_order_totals(
+    orders_df: pd.DataFrame,
+    order_items_df: pd.DataFrame,
+    cleanliness: int = 100,
+) -> pd.DataFrame:
+    """
+    Add order_total and discount_amount to orders DataFrame.
+
+    Called after order_items are generated to calculate totals.
+
+    Args:
+        orders_df: Orders DataFrame
+        order_items_df: Order items DataFrame
+        cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
+
+    Returns:
+        Orders DataFrame with order_total and discount_amount columns added
+    """
+    # Calculate actual totals from order_items
+    actual_totals = order_items_df.groupby("order_id")["total_price"].sum().to_dict()
+
+    order_totals = []
+    discount_amounts = []
+
+    for _, order in orders_df.iterrows():
+        order_id = order["order_id"]
+        actual_total = actual_totals.get(order_id, 0)
+
+        # Add ~2% intentional variance (for testing data quality scenarios)
+        if cleanliness < 100 and random.random() < 0.02:
+            variance = random.uniform(-0.03, 0.03)
+            order_total = round(actual_total * (1 + variance), 2)
+        else:
+            order_total = round(actual_total, 2)
+
+        order_totals.append(order_total)
+
+        # Discount: 0-15% of order_total (weighted toward 0, NULL for some)
+        # ~30% no discount (0), ~50% small discount (1-5%), ~15% medium (5-10%), ~5% large (10-15%)
+        discount_choice = random.choices(
+            ["none", "small", "medium", "large"],
+            weights=[0.30, 0.50, 0.15, 0.05],
+        )[0]
+
+        if discount_choice == "none":
+            discount_amount = None if random.random() < 0.5 else 0.0
+        elif discount_choice == "small":
+            discount_amount = round(order_total * random.uniform(0.01, 0.05), 2)
+        elif discount_choice == "medium":
+            discount_amount = round(order_total * random.uniform(0.05, 0.10), 2)
+        else:
+            discount_amount = round(order_total * random.uniform(0.10, 0.15), 2)
+
+        discount_amounts.append(discount_amount)
+
+    orders_df = orders_df.copy()
+    orders_df["order_total"] = order_totals
+    orders_df["discount_amount"] = discount_amounts
+
+    return orders_df
+
+
 def generate_sales_domain(
     scale: float = 1.0,
     cleanliness: int = 100,
     customer_ids: list[str] | None = None,
+    territory_ids: list[str] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """
     Generate all sales domain tables.
@@ -360,6 +618,7 @@ def generate_sales_domain(
         scale: Scale factor for record counts (1.0 = full, 0.1 = 10%)
         cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
         customer_ids: List of valid customer IDs for FK references in orders
+        territory_ids: List of valid territory IDs for FK references in salespersons
 
     Returns:
         Dictionary with table names as keys and DataFrames as values
@@ -367,8 +626,18 @@ def generate_sales_domain(
     # Determine if we should use extended makes (at cleanliness < 90)
     use_extended = cleanliness < 90
 
+    # Generate territories first (if not provided)
+    print("  Generating territories...")
+    territories = generate_territories()
+    if territory_ids is None:
+        territory_ids = territories["territory_id"].tolist()
+
     print("  Generating salespersons...")
-    salespersons = generate_salespersons(n=scale_count(50, scale), cleanliness=cleanliness)
+    salespersons = generate_salespersons(
+        n=scale_count(50, scale),
+        cleanliness=cleanliness,
+        territory_ids=territory_ids,
+    )
 
     print("  Generating vehicles...")
     vehicles = generate_vehicles(
@@ -376,6 +645,18 @@ def generate_sales_domain(
         cleanliness=cleanliness,
         use_extended=use_extended,
     )
+
+    # Generate features dimension table
+    print("  Generating features...")
+    features = generate_features()
+
+    # Generate vehicle_features junction table
+    print("  Generating vehicle_features...")
+    vehicle_features = generate_vehicle_features(vehicles, features)
+
+    # Generate price_history (SCD Type 2)
+    print("  Generating price_history...")
+    price_history = generate_price_history(vehicles)
 
     print("  Generating orders...")
     orders = generate_orders(
@@ -389,9 +670,17 @@ def generate_sales_domain(
     print("  Generating order_items...")
     order_items = generate_order_items(orders, vehicles)
 
+    # Add order totals after order_items are generated
+    print("  Adding order totals...")
+    orders = add_order_totals(orders, order_items, cleanliness=cleanliness)
+
     return {
+        "territories": territories,
         "salespersons": salespersons,
         "vehicles": vehicles,
+        "features": features,
+        "vehicle_features": vehicle_features,
+        "price_history": price_history,
         "orders": orders,
         "order_items": order_items,
     }

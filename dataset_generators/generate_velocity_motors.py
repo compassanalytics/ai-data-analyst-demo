@@ -32,7 +32,17 @@ from velocity_motors import (
     generate_sales_domain,
     set_random_seed,
 )
-from velocity_motors.sales import generate_order_items, generate_orders, generate_salespersons, generate_vehicles
+from velocity_motors.sales import (
+    add_order_totals,
+    generate_features,
+    generate_order_items,
+    generate_orders,
+    generate_price_history,
+    generate_salespersons,
+    generate_territories,
+    generate_vehicle_features,
+    generate_vehicles,
+)
 from velocity_motors.utils import scale_count
 
 
@@ -193,6 +203,7 @@ def main():
         # The circular dependency problem:
         # - Sales.orders needs CRM.customer_ids
         # - CRM.leads needs Sales.salesperson_ids
+        # - Salespersons needs territory_ids
         #
         # Solution: Generate independent dimension tables first, then generate
         # dependent fact tables with proper FK references.
@@ -201,15 +212,21 @@ def main():
         print("\n[Phase A] Generating Independent Dimension Tables...")
         print("-" * 70)
 
-        # Step 1: Generate salespersons (independent)
+        # Step 1: Generate territories (independent, must be first)
+        print("  Generating territories...")
+        territories_df = generate_territories()
+        territory_ids = territories_df["territory_id"].tolist()
+
+        # Step 2: Generate salespersons (depends on territories)
         print("  Generating salespersons...")
         salespersons_df = generate_salespersons(
             n=scale_count(50, args.scale),
             cleanliness=args.cleanliness,
+            territory_ids=territory_ids,
         )
         salesperson_ids = salespersons_df["salesperson_id"].tolist()
 
-        # Step 2: Generate vehicles (independent)
+        # Step 3: Generate vehicles (independent)
         print("  Generating vehicles...")
         vehicles_df = generate_vehicles(
             n=scale_count(5000, args.scale),
@@ -218,10 +235,22 @@ def main():
         )
         vehicle_ids = vehicles_df["vehicle_id"].tolist()
 
+        # Step 4: Generate features dimension table (independent)
+        print("  Generating features...")
+        features_df = generate_features()
+
+        # Step 5: Generate vehicle_features junction table
+        print("  Generating vehicle_features...")
+        vehicle_features_df = generate_vehicle_features(vehicles_df, features_df)
+
+        # Step 6: Generate price_history (SCD Type 2)
+        print("  Generating price_history...")
+        price_history_df = generate_price_history(vehicles_df)
+
         print("\n[Phase B] Generating CRM Domain (with salesperson FK)...")
         print("-" * 70)
 
-        # Step 3: Generate CRM domain with salesperson_ids
+        # Step 7: Generate CRM domain with salesperson_ids
         crm_data = generate_crm_domain(
             scale=args.scale,
             cleanliness=args.cleanliness,
@@ -234,7 +263,7 @@ def main():
         print("\n[Phase C] Generating Sales Orders (with customer FK)...")
         print("-" * 70)
 
-        # Step 4: Generate orders with VALID customer_ids
+        # Step 8: Generate orders with VALID customer_ids
         print("  Generating orders...")
         orders_df = generate_orders(
             n=scale_count(100000, args.scale),
@@ -244,14 +273,22 @@ def main():
             cleanliness=args.cleanliness,
         )
 
-        # Step 5: Generate order_items
+        # Step 9: Generate order_items
         print("  Generating order_items...")
         order_items_df = generate_order_items(orders_df, vehicles_df)
 
-        # Assemble sales data
+        # Step 10: Add order totals after order_items are generated
+        print("  Adding order totals...")
+        orders_df = add_order_totals(orders_df, order_items_df, cleanliness=args.cleanliness)
+
+        # Assemble sales data (now includes 8 tables)
         sales_data = {
+            "territories": territories_df,
             "salespersons": salespersons_df,
             "vehicles": vehicles_df,
+            "features": features_df,
+            "vehicle_features": vehicle_features_df,
+            "price_history": price_history_df,
             "orders": orders_df,
             "order_items": order_items_df,
         }
@@ -261,7 +298,7 @@ def main():
         print("\n[Phase D] Generating Operations Domain...")
         print("-" * 70)
 
-        # Step 6: Generate operations with proper FKs
+        # Step 11: Generate operations with proper FKs
         ops_data = generate_operations_domain(
             scale=args.scale,
             cleanliness=args.cleanliness,
@@ -327,7 +364,7 @@ def main():
    - See data/velocity_motors/README.md for schema documentation
 
 3. Create Genie Space:
-   - Add all 12 tables
+   - Add all 16 tables
    - Configure with sample questions and business context
 """)
 

@@ -2,12 +2,16 @@
 Velocity Motors Dataset Generator
 =================================
 
-A fictional automotive company dataset with 12 tables across 3 domains:
+A fictional automotive company dataset with 16 tables across 3 domains:
 
 **Sales Domain:**
-- salespersons: Sales team members
+- territories: Sales territory hierarchy (division > region > territory)
+- salespersons: Sales team members with territory and manager hierarchy
 - vehicles: Vehicle inventory
-- orders: Customer orders
+- features: Vehicle feature catalog (Safety, Comfort, Technology, etc.)
+- vehicle_features: Junction table (many-to-many vehicle-feature mappings)
+- price_history: SCD Type 2 price tracking per vehicle
+- orders: Customer orders with totals and discounts
 - order_items: Line items for each order
 
 **CRM Domain:**
@@ -45,15 +49,26 @@ Usage:
 
     # Generate with cleanliness parameter
     # IMPORTANT: To fix FK circular dependency, generate in this order:
-    # 1. Salespersons first (independent)
-    # 2. CRM with salesperson_ids
-    # 3. Sales with customer_ids from CRM
-    # 4. Operations with customer_ids and vehicle_ids
+    # 1. Territories first (independent)
+    # 2. Salespersons with territory_ids
+    # 3. CRM with salesperson_ids
+    # 4. Sales with customer_ids from CRM
+    # 5. Operations with customer_ids and vehicle_ids
 
-    from velocity_motors.sales import generate_salespersons, generate_vehicles
+    from velocity_motors.sales import (
+        generate_territories,
+        generate_salespersons,
+        generate_vehicles,
+        generate_features,
+        generate_vehicle_features,
+        generate_price_history,
+    )
     from velocity_motors.utils import scale_count
 
-    salespersons = generate_salespersons(n=50, cleanliness=80)
+    territories = generate_territories(cleanliness=80)
+    territory_ids = territories['territory_id'].tolist()
+
+    salespersons = generate_salespersons(n=50, cleanliness=80, territory_ids=territory_ids)
     salesperson_ids = salespersons['salesperson_id'].tolist()
 
     crm_data = generate_crm_domain(
@@ -66,7 +81,8 @@ Usage:
     sales_data = generate_sales_domain(
         scale=1.0,
         cleanliness=80,
-        customer_ids=customer_ids  # Pass valid customer IDs
+        customer_ids=customer_ids,  # Pass valid customer IDs
+        territory_ids=territory_ids  # Pass valid territory IDs
     )
 
     ops_data = generate_operations_domain(
@@ -79,7 +95,14 @@ Usage:
 
 from .customers import generate_crm_domain
 from .operations import generate_operations_domain
-from .sales import generate_sales_domain
+from .sales import (
+    add_order_totals,
+    generate_features,
+    generate_price_history,
+    generate_sales_domain,
+    generate_territories,
+    generate_vehicle_features,
+)
 from .utils import (
     apply_case_inconsistency,
     calculate_cleanliness_intensity,
@@ -99,4 +122,9 @@ __all__ = [
     "generate_sales_domain",
     "generate_crm_domain",
     "generate_operations_domain",
+    "generate_territories",
+    "generate_features",
+    "generate_vehicle_features",
+    "generate_price_history",
+    "add_order_totals",
 ]
