@@ -314,104 +314,165 @@ ANSWER:"""
         question_lower = question.lower()
 
         # Mock responses based on question patterns
-        if "refund" in question_lower or "return" in question_lower:
+        if any(kw in question_lower for kw in ["warranty", "coverage", "bumper", "powertrain"]):
             return RAGResult(
                 success=True,
-                answer="""Our refund policy allows customers to request a full refund within 30 days of purchase for any reason.
+                answer="""**Vehicle Warranty Coverage**
 
-Key points:
-- **30-day window**: Full refunds available within 30 days
-- **Partial refunds**: 50% refund available between 30-60 days
-- **Process**: Submit refund request through customer portal or contact support
-- **Processing time**: Refunds are processed within 5-7 business days
+Velocity Motors provides comprehensive warranty protection on all new and certified pre-owned vehicles:
 
-For enterprise customers, custom refund terms may apply based on your contract.""",
+- **Bumper-to-Bumper**: 3 years / 36,000 miles covering all components except wear items
+- **Powertrain Warranty**: 5 years / 60,000 miles covering engine, transmission, and drivetrain
+- **CPO Extended Coverage**: Certified Pre-Owned vehicles receive an additional 1 year / 12,000 miles beyond the original warranty
+- **Warranty Transfer**: All remaining warranty coverage transfers automatically to subsequent owners upon resale
+
+Contact the service department for warranty claims or to verify coverage status on a specific vehicle.""",
                 documents=[
                     Document(
-                        content="Refund Policy v2.3: Customers may request a full refund within 30 days of purchase...",
-                        source="policies/refund-policy.md",
+                        content="Vehicle Warranty Policy: All new Velocity Motors vehicles include 3-year/36,000-mile bumper-to-bumper and 5-year/60,000-mile powertrain coverage...",
+                        source="policies/vehicle-warranty.md",
                         score=0.95,
                     ),
                     Document(
-                        content="Enterprise Terms: Custom refund terms may be negotiated as part of enterprise agreements...",
-                        source="policies/enterprise-terms.md",
+                        content="CPO Program: Certified Pre-Owned vehicles undergo a 150-point inspection and receive an additional 1-year/12,000-mile extended warranty...",
+                        source="policies/cpo-program.md",
+                        score=0.88,
+                    ),
+                ][:num_results],
+            )
+
+        elif any(kw in question_lower for kw in ["service", "maintenance", "inspection", "fleet service"]):
+            return RAGResult(
+                success=True,
+                answer="""**Service & Maintenance Policy**
+
+Velocity Motors follows a structured maintenance schedule for all vehicles:
+
+- **First Service**: Required at 5,000 miles — oil change, tire rotation, and multi-point inspection
+- **Major Service Intervals**: Every 30,000 miles — comprehensive inspection including brakes, fluids, belts, and suspension
+- **Fleet Vehicles**: Quarterly inspections required regardless of mileage, per fleet service agreement terms
+- **Service Records**: All work is logged in the vehicle's digital service history accessible via the customer portal
+
+Fleet customers should contact their dedicated service advisor for scheduling priority appointments.""",
+                documents=[
+                    Document(
+                        content="Service & Maintenance Schedule: First service at 5,000 miles includes oil change, tire rotation, and multi-point inspection. Major services every 30,000 miles...",
+                        source="policies/service-maintenance.md",
+                        score=0.93,
+                    ),
+                    Document(
+                        content="Fleet Service Agreement: Fleet vehicles require quarterly inspections regardless of mileage. Dedicated service bays and priority scheduling available...",
+                        source="policies/fleet-service-agreement.md",
+                        score=0.86,
+                    ),
+                ][:num_results],
+            )
+
+        elif any(kw in question_lower for kw in ["return", "exchange", "lemon"]):
+            return RAGResult(
+                success=True,
+                answer="""**Return & Exchange Policy**
+
+Velocity Motors offers a customer-friendly exchange policy with the following terms:
+
+- **7-Day Exchange Window**: Vehicles may be exchanged within 7 days or 500 miles (whichever comes first) for a vehicle of equal or greater value
+- **No Returns Post-Title**: Once the title has been transferred, the sale is final and returns are not accepted
+- **Lemon Law Compliance**: All transactions comply with applicable state lemon law protections — vehicles with qualifying defects are eligible for manufacturer buyback or replacement
+- **Condition Requirement**: Exchange vehicles must be returned in the same condition, free of damage beyond normal use
+
+Speak with a sales manager for exchange eligibility questions.""",
+                documents=[
+                    Document(
+                        content="Return & Exchange Policy: Customers may exchange a vehicle within 7 days or 500 miles. No returns accepted after title transfer...",
+                        source="policies/return-exchange-policy.md",
+                        score=0.94,
+                    ),
+                    Document(
+                        content="Lemon Law Compliance: Velocity Motors complies with all applicable state lemon law statutes. Vehicles with qualifying defects are eligible for buyback...",
+                        source="policies/lemon-law-compliance.md",
                         score=0.82,
                     ),
                 ][:num_results],
             )
 
-        elif "security" in question_lower or "compliance" in question_lower:
+        elif any(kw in question_lower for kw in ["financing", "rate", "apr", "loan", "lease"]):
             return RAGResult(
                 success=True,
-                answer="""Our platform maintains SOC 2 Type II compliance and implements industry-standard security practices:
+                answer="""**Financing & Lease Terms**
 
-- **Data encryption**: AES-256 encryption at rest, TLS 1.3 in transit
-- **Access control**: Role-based access control (RBAC) with SSO integration
-- **Audit logging**: Comprehensive audit logs retained for 7 years
-- **Certifications**: SOC 2 Type II, ISO 27001, GDPR compliant
+Velocity Motors partners with multiple lenders to offer competitive financing options:
 
-Security assessments and penetration testing are conducted quarterly.""",
+- **Standard APR**: Starting from 3.9% APR for up to 72 months on approved credit
+- **Fleet Discount**: Fleet purchases qualify for an additional 0.5% rate reduction
+- **Trade-In Credit**: Trade-in value is applied at the time of deal, reducing the financed amount
+- **CPO Special Rates**: Certified Pre-Owned vehicles are eligible for promotional financing rates as low as 4.9% APR
+- **Lease Options**: 24, 36, and 48-month lease terms available with competitive money factors
+
+Visit the finance office or apply online to get pre-approved.""",
                 documents=[
                     Document(
-                        content="Security Overview: Our platform implements defense-in-depth security architecture...",
-                        source="docs/security-overview.md",
-                        score=0.93,
+                        content="Financing Terms: Standard rates from 3.9% APR for up to 72 months. Fleet customers receive a 0.5% rate discount. Trade-in applied at deal time...",
+                        source="policies/financing-terms.md",
+                        score=0.92,
                     ),
                     Document(
-                        content="Compliance Certifications: SOC 2 Type II audit completed annually...",
-                        source="docs/compliance.md",
-                        score=0.88,
-                    ),
-                    Document(
-                        content="Data Protection: All customer data is encrypted using AES-256...",
-                        source="docs/data-protection.md",
+                        content="Fleet Financing: Fleet purchases of 5+ vehicles qualify for volume financing discounts and dedicated account management...",
+                        source="policies/fleet-financing.md",
                         score=0.85,
                     ),
                 ][:num_results],
             )
 
-        elif "pricing" in question_lower or "cost" in question_lower:
+        elif any(kw in question_lower for kw in ["commission", "bonus", "compensation", "pay"]):
             return RAGResult(
                 success=True,
-                answer="""Our pricing tiers are designed to scale with your needs:
+                answer="""**Employee Compensation Structure**
 
-| Plan | Price | Features |
-|------|-------|----------|
-| Starter | $29/mo | 5 users, basic features |
-| Professional | $99/mo | 25 users, advanced analytics |
-| Enterprise | Custom | Unlimited users, dedicated support |
+Velocity Motors compensation plans are designed to reward performance across departments:
 
-Annual billing provides a 20% discount. Contact sales for enterprise pricing.""",
+- **Sales Commission**: 2% of gross vehicle margin per unit sold, paid bi-weekly
+- **Quarterly Bonus**: 5% of total margin generated above quarterly quota targets
+- **Service Technicians**: Hourly base rate plus certification bonuses for ASE and manufacturer credentials
+- **F&I Managers**: Per-deal flat fee plus penetration bonuses on warranty and protection products
+- **Management**: Base salary plus department profitability bonuses paid quarterly
+
+Compensation details are outlined in your offer letter and the employee handbook.""",
                 documents=[
                     Document(
-                        content="Pricing Guide 2024: Our tiered pricing model offers flexibility...",
-                        source="sales/pricing-guide.md",
+                        content="Sales Compensation Plan: Sales associates earn 2% of gross vehicle margin per unit. Quarterly bonus of 5% on margin exceeding quota...",
+                        source="policies/sales-compensation.md",
                         score=0.91,
+                    ),
+                    Document(
+                        content="Service Technician Pay: Hourly base rate determined by experience level. Additional certification bonuses for ASE and OEM credentials...",
+                        source="policies/service-tech-pay.md",
+                        score=0.84,
                     ),
                 ][:num_results],
             )
 
-        elif "onboard" in question_lower or "start" in question_lower or "setup" in question_lower:
+        elif any(kw in question_lower for kw in ["recall", "safety", "compliance", "nhtsa"]):
             return RAGResult(
                 success=True,
-                answer="""Getting started with our platform is straightforward:
+                answer="""**Safety & Compliance Procedures**
 
-1. **Account Setup**: Create your organization account via the signup page
-2. **Team Invitation**: Invite team members via email or SSO directory sync
-3. **Integration**: Connect your data sources using our pre-built connectors
-4. **Training**: Complete the interactive onboarding tutorial (30 mins)
-5. **Go Live**: Start using the platform with your team
+Velocity Motors maintains rigorous safety standards across all operations:
 
-Our customer success team is available to assist with enterprise onboarding.""",
+- **NHTSA Inspection**: All vehicles undergo NHTSA-aligned safety inspection before listing for sale
+- **Open Recall Resolution**: Any open manufacturer recalls must be resolved prior to customer delivery — no exceptions
+- **Annual Compliance Audit**: Dealership operations are audited annually for compliance with federal, state, and manufacturer safety standards
+- **Incident Reporting**: All safety incidents are documented and reported per OSHA and manufacturer requirements within 24 hours
+
+Contact the compliance officer for questions about specific recall campaigns or safety procedures.""",
                 documents=[
                     Document(
-                        content="Onboarding Guide: Welcome to the platform! This guide will walk you through...",
-                        source="docs/onboarding-guide.md",
-                        score=0.94,
+                        content="Safety & Compliance Policy: All inventory vehicles must pass NHTSA-aligned inspection. Open recalls resolved before delivery to customers...",
+                        source="policies/safety-compliance.md",
+                        score=0.93,
                     ),
                     Document(
-                        content="Quick Start Tutorial: Get up and running in under 30 minutes...",
-                        source="docs/quick-start.md",
+                        content="Recall Procedures: Open recalls are identified during intake inspection. Parts are ordered immediately and repairs completed before vehicle is listed...",
+                        source="policies/recall-procedures.md",
                         score=0.87,
                     ),
                 ][:num_results],
@@ -423,16 +484,16 @@ Our customer success team is available to assist with enterprise onboarding.""",
                 success=True,
                 answer=f"""I found some relevant information regarding your question about "{question}".
 
-Based on our documentation, this topic is covered in our knowledge base. For more specific information, please refer to the source documents or contact our support team.
+Based on Velocity Motors documentation, this topic is covered in our internal knowledge base. For more specific information, please refer to the source documents below or contact the appropriate department.
 
-Key resources:
-- Product documentation portal
-- Support knowledge base
-- Community forums""",
+**Key resources:**
+- Velocity Motors policy documentation
+- Employee handbook and procedures
+- Department-specific operating guidelines""",
                 documents=[
                     Document(
-                        content=f"Documentation related to: {question}",
-                        source="docs/general-faq.md",
+                        content=f"Velocity Motors FAQ: General documentation related to: {question}",
+                        source="docs/velocity-motors-faq.md",
                         score=0.75,
                     ),
                 ][:num_results],
