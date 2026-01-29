@@ -58,6 +58,34 @@ VELOCITY_MOTORS_SCHEMAS: ColumnDescriptions = {
             "unit_price": "Price per unit",
             "total_price": "Line item total",
         },
+        "territories": {
+            "territory_id": "Primary key (TER-###)",
+            "territory_name": "Territory name (e.g., Northeast North, Southeast South)",
+            "region_name": "Region name (Northeast, Southeast, Midwest, Southwest, West, Pacific Northwest)",
+            "division_name": "Division name (East, Central, West)",
+            "is_active": "Active status (95% active)",
+        },
+        "features": {
+            "feature_id": "Primary key (FEAT-###)",
+            "feature_name": "Feature name (e.g., Heated Seats, Navigation System)",
+            "feature_category": "Category (Safety, Comfort, Technology, Performance, Appearance)",
+            "description": "Feature description",
+        },
+        "vehicle_features": {
+            "vehicle_feature_id": "Primary key (VF-########)",
+            "vehicle_id": "FK to vehicles",
+            "feature_id": "FK to features",
+            "is_standard": "Whether feature comes standard on this vehicle (60% standard, 40% optional)",
+        },
+        "price_history": {
+            "price_history_id": "Primary key (PH-########)",
+            "vehicle_id": "FK to vehicles",
+            "price": "Price at this time",
+            "effective_date": "Date this price became effective",
+            "end_date": "Date this price was superseded (null if current)",
+            "is_current": "Whether this is the current price record",
+            "change_reason": "Reason for price change (Market Adjustment, Promotion, Model Year Change, etc.)",
+        },
     },
     "crm": {
         "customer_segments": {
@@ -308,10 +336,10 @@ SUPER_TABLE_DESCRIPTIONS: ColumnDescriptions = {
 DATASET_CONFIGS = {
     "velocity_motors": {
         "schemas": VELOCITY_MOTORS_SCHEMAS,
-        "description": "Automotive dealership with 12 tables across Sales, CRM, and Operations domains. Realistic relationships and seasonal patterns.",
+        "description": "Automotive dealership with 16 tables across Sales, CRM, and Operations domains. Realistic relationships and seasonal patterns.",
         "base_url": "https://compassagentemofiles.blob.core.windows.net/datasets/velocity_motors",
         "tables": {
-            "sales": ["salespersons", "vehicles", "orders", "order_items"],
+            "sales": ["territories", "salespersons", "vehicles", "features", "vehicle_features", "price_history", "orders", "order_items"],
             "crm": ["customer_segments", "customers", "interactions", "leads"],
             "operations": ["warehouse_locations", "suppliers", "parts_inventory", "service_orders"],
         },

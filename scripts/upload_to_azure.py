@@ -46,8 +46,12 @@ DATASETS = {
     "velocity_motors": {
         "path": DATA_DIR / "velocity_motors",
         "files": [
+            "territories.parquet",
             "salespersons.parquet",
             "vehicles.parquet",
+            "features.parquet",
+            "vehicle_features.parquet",
+            "price_history.parquet",
             "orders.parquet",
             "order_items.parquet",
             "customer_segments.parquet",

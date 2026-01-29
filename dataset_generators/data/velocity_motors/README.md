@@ -1,13 +1,13 @@
 # Velocity Motors Dataset
 
-A fictional automotive company dataset designed for AI/BI demonstrations, featuring 12 tables across 3 domains with realistic data distributions and relationships.
+A fictional automotive company dataset designed for AI/BI demonstrations, featuring 16 tables across 3 domains with realistic data distributions and relationships.
 
 ## Overview
 
 **Company Context:** Velocity Motors is a multi-brand automotive dealership network with nationwide operations. They sell new and used vehicles from major manufacturers, provide maintenance services, and manage complex B2B relationships with fleet customers and dealers.
 
 **Dataset Characteristics:**
-- 12 tables across 3 domains (Sales, CRM, Operations)
+- 16 tables across 3 domains (Sales, CRM, Operations)
 - Realistic foreign key relationships
 - Seasonal sales patterns (Q4 spike of 1.2x baseline)
 - Customer segment distribution (70% Individual, 20% Fleet, 10% Dealer)
@@ -19,8 +19,12 @@ A fictional automotive company dataset designed for AI/BI demonstrations, featur
 ```
 velocity_motors/
 ├── Sales Domain
+│   ├── territories       # Sales territory hierarchy
 │   ├── salespersons      # Sales team members
 │   ├── vehicles          # Vehicle inventory
+│   ├── features          # Vehicle feature catalog
+│   ├── vehicle_features  # Vehicle-feature mappings
+│   ├── price_history     # SCD Type 2 price tracking
 │   ├── orders            # Customer orders
 │   └── order_items       # Line items per order
 ├── CRM Domain
@@ -125,6 +129,84 @@ Line items for each order (vehicle + accessories + services).
 - Each order has 1 vehicle (required)
 - 0-3 accessories (extended warranty, floor mats, roof rack, etc.)
 - 0-2 services (registration, documentation fee, delivery, etc.)
+
+---
+
+### territories
+
+Sales territory hierarchy (division > region > territory).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| territory_id | string | Primary key (TER-###) |
+| territory_name | string | Territory name (e.g., Northeast North, Southeast South) |
+| region_name | string | Region name (Northeast, Southeast, Midwest, Southwest, West, Pacific Northwest) |
+| division_name | string | Division name (East, Central, West) |
+| is_active | boolean | Active status |
+
+**Notes:**
+- 3 divisions, 3 regions per division, 2 territories per region = ~18 territories
+- 95% of territories are active
+- Used for salesperson assignment and regional reporting
+
+---
+
+### features
+
+Vehicle feature catalog (dimension table).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| feature_id | string | Primary key (FEAT-###) |
+| feature_name | string | Feature name (e.g., Heated Seats, Navigation System) |
+| feature_category | string | Category (Safety, Comfort, Technology, Performance, Appearance) |
+| description | string | Feature description |
+
+**Notes:**
+- ~35 features across 5 categories
+- Used with vehicle_features junction table for many-to-many relationship
+- Examples: Heated Seats (Comfort), Lane Departure Warning (Safety), Turbocharger (Performance)
+
+---
+
+### vehicle_features
+
+Junction table linking vehicles to features (many-to-many).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| vehicle_feature_id | string | Primary key (VF-########) |
+| vehicle_id | string | FK to vehicles |
+| feature_id | string | FK to features |
+| is_standard | boolean | Whether feature comes standard (60%) or optional (40%) |
+
+**Notes:**
+- Each vehicle has 3-10 features
+- Premium trims (Limited, Platinum, etc.) get more features (6-10)
+- Base trims get fewer features (3-7)
+- Enables queries like "vehicles with heated seats and navigation"
+
+---
+
+### price_history
+
+SCD Type 2 price tracking for vehicles (temporal data).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| price_history_id | string | Primary key (PH-########) |
+| vehicle_id | string | FK to vehicles |
+| price | decimal | Price at this time |
+| effective_date | date | Date this price became effective |
+| end_date | date | Date this price was superseded (null if current) |
+| is_current | boolean | Whether this is the current price record |
+| change_reason | string | Reason for price change (Market Adjustment, Promotion, Model Year Change, Inventory Reduction, Demand Increase) |
+
+**Notes:**
+- Each vehicle has 1-5 price records (weighted toward 1-2)
+- Only the latest record has is_current=True and end_date=null
+- Price changes range from -15% to +5% from previous
+- Enables point-in-time queries and price trend analysis
 
 ---
 
