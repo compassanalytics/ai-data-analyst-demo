@@ -1,0 +1,54 @@
+name: Release Workshop Materials
+
+on:
+  push:
+    tags:
+      - 'workshop-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0)'
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/workshop-}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create workshop bundle
+        run: |
+          mkdir -p workshop-bundle
+          # Copy core directories
+          cp -r src workshop-bundle/
+          cp -r notebooks workshop-bundle/
+          cp -r scripts workshop-bundle/
+          cp -r config workshop-bundle/
+          # Copy docs (exclude research subdirectory)
+          mkdir -p workshop-bundle/docs
+          find docs -maxdepth 1 -type f -exec cp {} workshop-bundle/docs/ \;
+          # Copy root files
+          cp pyproject.toml workshop-bundle/
+          cp README.md workshop-bundle/
+          cp databricks.yml workshop-bundle/
+          cp .env.example workshop-bundle/
+          # Create tarball
+          tar -czvf workshop-materials-${{ steps.version.outputs.VERSION }}.tar.gz workshop-bundle
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: workshop-materials-${{ steps.version.outputs.VERSION }}.tar.gz
+          generate_release_notes: true
+          tag_name: workshop-${{ steps.version.outputs.VERSION }}
