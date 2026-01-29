@@ -8,6 +8,7 @@ Note: The Genie Space Create/Update APIs are in Beta as of early 2025.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -243,22 +244,55 @@ class GenieSpaceManager:
         # Sample questions go in config block
         # IDs must be lowercase 32-hex UUIDs without hyphens
         if config.sample_questions:
-            import hashlib
-
+            sample_questions = [
+                {
+                    # Generate deterministic UUID from question ID for reproducibility
+                    "id": hashlib.md5(q.id.encode()).hexdigest(),
+                    "question": q.question,
+                }
+                for q in config.sample_questions
+            ]
+            # API requires lists to be sorted by id
             serialized["config"] = {
-                "sample_questions": [
-                    {
-                        # Generate deterministic UUID from question ID for reproducibility
-                        "id": hashlib.md5(q.id.encode()).hexdigest(),
-                        "question": q.question,
-                    }
-                    for q in config.sample_questions
-                ]
+                "sample_questions": sorted(sample_questions, key=lambda x: x["id"])
             }
 
-        # Note: instructions, example_sqls, and join_specs may need to be
-        # configured through the Genie UI after space creation, as the API
-        # schema for these fields is not fully documented in public docs.
+        # Build instructions object (text_instructions, join_specs, example_question_sqls must be nested here)
+        instructions: dict[str, Any] = {}
+
+        # Add text_instructions if configured
+        if config.instructions:
+            instruction_id = hashlib.md5("instruction_main".encode()).hexdigest()
+            instructions["text_instructions"] = [
+                {
+                    "id": instruction_id,
+                    "content": [config.instructions],
+                }
+            ]
+
+        # NOTE: join_specs are NOT deployed via API due to Beta API limitations.
+        # The API rejects all sql field formats with "Failed to parse export proto" errors.
+        # Join specs must still be configured manually in the UI.
+        # TODO: Re-enable when Databricks fixes the join_specs API format.
+        # if config.join_specs:
+        #     ... (join_specs code disabled)
+
+        # Add example_question_sqls if configured
+        if config.example_sqls:
+            example_sqls = [
+                {
+                    "id": hashlib.md5(f"example_{ex.question}".encode()).hexdigest(),
+                    "question": [ex.question],
+                    "sql": [ex.sql],
+                }
+                for ex in config.example_sqls
+            ]
+            # API requires lists to be sorted by id
+            instructions["example_question_sqls"] = sorted(example_sqls, key=lambda x: x["id"])
+
+        # Only add instructions if there's content
+        if instructions:
+            serialized["instructions"] = instructions
 
         return serialized
 
@@ -328,7 +362,7 @@ class GenieSpaceManager:
             return
 
         self.client.api_client.do(
-            method="PUT",
+            method="PATCH",
             path=f"{self._BASE_PATH}/{space_id}",
             body=request_body,
         )

@@ -114,13 +114,13 @@ def generate_manual_setup_guide() -> None:
     them for easy copy-paste into the Databricks Genie UI.
     """
     lines = [
-        "# Velocity Motors Genie Spaces - Manual Setup Guide",
+        "# Velocity Motors Genie Spaces - Configuration Reference",
         "",
-        "This guide contains instructions, join specifications, and example SQL queries",
-        "that need to be manually configured in the Databricks Genie UI after space creation.",
+        "This guide documents the instructions, join specifications, and example SQL queries",
+        "configured for each Genie Space. These are now deployed automatically via the API.",
         "",
-        "> **Note**: The Genie API currently does not support setting these fields programmatically.",
-        "> Copy-paste these into the Genie Space settings in the Databricks UI.",
+        "> **Note**: These fields are deployed programmatically via the Genie API.",
+        "> This document serves as a reference for the configured values.",
         "",
         "---",
         "",
@@ -402,13 +402,14 @@ def main():
     print("\n" + "-" * 60)
     print("NEXT STEPS")
     print("-" * 60)
-    print("1. Open each Genie Space in Databricks UI")
-    print(f"2. Review the manual setup guide: {MANUAL_SETUP_FILE}")
-    print("3. Configure the following in the UI (not supported by API):")
-    print("   - Instructions (business context for the AI)")
-    print("   - Join specifications (how tables relate)")
-    print("   - Example SQL queries (for AI learning)")
-    print("4. Test sample questions to verify configuration")
+    print("1. Open each Genie Space in Databricks UI to verify deployment")
+    print("2. The following are deployed automatically via the API:")
+    print("   ✓ Instructions (business context for the AI)")
+    print("   ✓ Example SQL queries (for AI learning)")
+    print("3. Manual configuration still required (API Beta limitation):")
+    print("   ✗ Join specifications (how tables relate)")
+    print(f"4. Reference documentation: {MANUAL_SETUP_FILE}")
+    print("5. Test sample questions to verify configuration")
 
     if failures:
         sys.exit(1)

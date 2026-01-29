@@ -1,10 +1,10 @@
-# Velocity Motors Genie Spaces - Manual Setup Guide
+# Velocity Motors Genie Spaces - Configuration Reference
 
-This guide contains instructions, join specifications, and example SQL queries
-that need to be manually configured in the Databricks Genie UI after space creation.
+This guide documents the instructions, join specifications, and example SQL queries
+configured for each Genie Space. These are now deployed automatically via the API.
 
-> **Note**: The Genie API currently does not support setting these fields programmatically.
-> Copy-paste these into the Genie Space settings in the Databricks UI.
+> **Note**: These fields are deployed programmatically via the Genie API.
+> This document serves as a reference for the configured values.
 
 ---
 
