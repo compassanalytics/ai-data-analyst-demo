@@ -1,0 +1,310 @@
+# PROPOSED DESIGN - NOT A LIVE CONFIG
+# =====================================
+# This file documents the target schema for Velocity Motors Sales Analytics
+# with Advanced Relationship Patterns. It is NOT a deployed Genie Space config.
+#
+# Patterns Included:
+# 1. Hierarchy (territories)
+# 2. Many-to-Many (features/vehicle_features)
+# 3. Self-Referential (salespersons.manager_id)
+# 4. SCD Type 2 (price_history)
+# 5. Denormalized Aggregate (orders.order_total)
+#
+# See: docs/velocity_motors_erd.md for ERD
+# See: docs/velocity_motors_advanced_queries.md for query examples
+
+title: "Velocity Motors - Sales Analytics v2"
+description: "AI-powered analytics for vehicle sales with advanced relationship patterns including hierarchies, M2M features, and historical pricing"
+warehouse_id: "${WAREHOUSE_ID}"
+parent_path: "${PARENT_PATH}"
+
+tables:
+  # Existing tables
+  - identifier: "velocity_motors.sales.salespersons"
+  - identifier: "velocity_motors.sales.vehicles"
+  - identifier: "velocity_motors.sales.orders"
+  - identifier: "velocity_motors.sales.order_items"
+  # NEW: Proposed tables for advanced patterns
+  - identifier: "velocity_motors.sales.territories"
+  - identifier: "velocity_motors.sales.features"
+  - identifier: "velocity_motors.sales.vehicle_features"
+  - identifier: "velocity_motors.sales.price_history"
+
+sample_questions:
+  # Existing questions (sales_q1 - sales_q8)
+  - id: "sales_q1"
+    question: ["What is the total revenue by vehicle make?"]
+  - id: "sales_q2"
+    question: ["Who are the top 10 salespeople by total sales?"]
+  - id: "sales_q3"
+    question: ["What is the breakdown of orders by payment method?"]
+  - id: "sales_q4"
+    question: ["Show me monthly sales trends for the past 12 months"]
+  - id: "sales_q5"
+    question: ["What is the revenue split between new and used vehicles?"]
+  - id: "sales_q6"
+    question: ["Which region has the highest average order value?"]
+  - id: "sales_q7"
+    question: ["What are the most popular accessories sold with vehicles?"]
+  - id: "sales_q8"
+    question: ["Show quota attainment by salesperson for this year"]
+
+  # NEW: Hierarchy Pattern Questions (territories)
+  - id: "sales_q9"
+    question: ["Show sales performance by division, region, and territory"]
+  - id: "sales_q10"
+    question: ["Compare quota attainment across all regions in the East division"]
+
+  # NEW: Many-to-Many Pattern Questions (features)
+  - id: "sales_q11"
+    question: ["Find available vehicles with both leather seats and sunroof"]
+  - id: "sales_q12"
+    question: ["What are the most popular vehicle features by make?"]
+
+  # NEW: Self-Referential Pattern Questions (manager hierarchy)
+  - id: "sales_q13"
+    question: ["Show the organization chart for the sales team"]
+  - id: "sales_q14"
+    question: ["Which manager's team has the highest total revenue?"]
+
+  # NEW: SCD Type 2 Pattern Questions (price history)
+  - id: "sales_q15"
+    question: ["What was the average selling price for Ford F-150s in Q2 2024?"]
+  - id: "sales_q16"
+    question: ["Show vehicles with the largest price reductions this year"]
+
+  # NEW: Denormalized Aggregate Pattern Questions (order totals)
+  - id: "sales_q17"
+    question: ["Find orders where the total doesn't match the sum of line items"]
+  - id: "sales_q18"
+    question: ["What is the average discount amount by payment method?"]
+
+instructions: |
+  This space analyzes sales data for Velocity Motors, a multi-brand automotive dealership network.
+
+  Business Context:
+  - Velocity Motors sells new and used vehicles from major manufacturers (Ford, Toyota, Honda, Chevrolet, BMW, Mercedes-Benz)
+  - Dealership network operates across 3 divisions, 6 regions, and 18 territories
+  - Sales patterns show Q4 spike (Nov-Dec have 1.2x baseline volume)
+  - Vehicle conditions: New (60%), Certified Pre-Owned (25%), Used (15%)
+
+  Table Descriptions:
+  - salespersons: Sales team members with quotas, commission rates, territory assignment, and manager hierarchy. ~50 salespersons.
+  - vehicles: Vehicle inventory with VIN, make, model, year, condition, and status.
+  - orders: Customer vehicle orders with order date, status, payment method, and cached order_total.
+  - order_items: Line items per order including Vehicle (required), Accessories, and Services.
+  - territories: Geographic hierarchy (Division > Region > Territory) for sales organization. NEW
+  - features: Master list of vehicle features/options (Safety, Comfort, Technology, Performance). NEW
+  - vehicle_features: Junction table linking vehicles to their features with is_standard flag. NEW
+  - price_history: Historical vehicle pricing with effective dates (SCD Type 2). NEW
+
+  Key Relationships:
+  - orders.salesperson_id = salespersons.salesperson_id
+  - orders.vehicle_id = vehicles.vehicle_id
+  - order_items.order_id = orders.order_id
+  - salespersons.territory_id = territories.territory_id (NEW)
+  - salespersons.manager_id = salespersons.salesperson_id (self-referential, NEW)
+  - vehicle_features.vehicle_id = vehicles.vehicle_id (NEW)
+  - vehicle_features.feature_id = features.feature_id (NEW)
+  - price_history.vehicle_id = vehicles.vehicle_id (NEW)
+
+  Key Metrics:
+  - Revenue: SUM of order_items.total_price for item_type = 'Vehicle'
+  - Units Sold: COUNT of completed orders
+  - Average Order Value: Total revenue / COUNT of orders
+  - Quota Attainment: (Salesperson revenue / quota) * 100
+
+  Business Rules:
+  - Each order has exactly 1 vehicle item plus optional accessories and services
+  - Order status values: Completed (85%), Pending (5%), Processing (5%), Cancelled (5%)
+  - Payment methods: Financing (55%), Cash (20%), Lease (15%), Trade-In + Financing (10%)
+  - Commission rates range from 1.5% to 4%, correlated with salesperson seniority
+
+  Advanced Relationship Patterns:
+
+  1. HIERARCHY (territories):
+     - Use territories table for geographic grouping, NOT salespersons.region (deprecated)
+     - Supports ROLLUP aggregation: territory -> region -> division
+     - Example: GROUP BY ROLLUP(division_name, region_name, territory_name)
+
+  2. MANY-TO-MANY (vehicle features):
+     - Use vehicle_features junction table to find vehicles with specific features
+     - AND logic: COUNT matching features = total requested features
+     - OR logic: DISTINCT vehicles with any matching feature
+     - is_standard flag indicates if feature is included by default
+
+  3. SELF-REFERENTIAL (manager hierarchy):
+     - salespersons.manager_id references salespersons.salesperson_id
+     - Use WITH RECURSIVE for org chart traversal
+     - NULL manager_id indicates top-level manager
+
+  4. SCD TYPE 2 (price history):
+     - price_history tracks vehicle prices over time
+     - is_current = true for current price (optimized lookup)
+     - Point-in-time: date >= effective_date AND (end_date IS NULL OR date < end_date)
+     - vehicles.msrp is LIST PRICE; price_history has SELLING PRICE
+
+  5. DENORMALIZED AGGREGATE (order totals):
+     - orders.order_total is cached for performance
+     - Source of truth: SUM(order_items.total_price)
+     - orders.discount_amount explains some variances
+     - ~2% of orders may have intentional discrepancies for data quality demos
+
+join_specs:
+  # Existing join specs
+  - left_table: "velocity_motors.sales.orders"
+    right_table: "velocity_motors.sales.salespersons"
+    join_keys: ["salesperson_id=salesperson_id"]
+  - left_table: "velocity_motors.sales.orders"
+    right_table: "velocity_motors.sales.vehicles"
+    join_keys: ["vehicle_id=vehicle_id"]
+  - left_table: "velocity_motors.sales.order_items"
+    right_table: "velocity_motors.sales.orders"
+    join_keys: ["order_id=order_id"]
+
+  # NEW: Join specs for advanced patterns
+  - left_table: "velocity_motors.sales.salespersons"
+    right_table: "velocity_motors.sales.territories"
+    join_keys: ["territory_id=territory_id"]
+  - left_table: "velocity_motors.sales.vehicle_features"
+    right_table: "velocity_motors.sales.vehicles"
+    join_keys: ["vehicle_id=vehicle_id"]
+  - left_table: "velocity_motors.sales.vehicle_features"
+    right_table: "velocity_motors.sales.features"
+    join_keys: ["feature_id=feature_id"]
+  - left_table: "velocity_motors.sales.price_history"
+    right_table: "velocity_motors.sales.vehicles"
+    join_keys: ["vehicle_id=vehicle_id"]
+
+example_sqls:
+  # Existing example SQLs
+  - question: "Total revenue by vehicle make"
+    sql: |
+      SELECT
+        v.make,
+        COUNT(DISTINCT o.order_id) AS orders,
+        SUM(oi.total_price) AS revenue
+      FROM velocity_motors.sales.orders o
+      JOIN velocity_motors.sales.vehicles v ON o.vehicle_id = v.vehicle_id
+      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      WHERE o.status = 'Completed' AND oi.item_type = 'Vehicle'
+      GROUP BY v.make
+      ORDER BY revenue DESC
+
+  - question: "Top salespeople by revenue with quota attainment"
+    sql: |
+      SELECT
+        s.name AS salesperson,
+        s.region,
+        s.quota,
+        SUM(oi.total_price) AS revenue,
+        ROUND(100.0 * SUM(oi.total_price) / s.quota, 1) AS quota_attainment_pct
+      FROM velocity_motors.sales.orders o
+      JOIN velocity_motors.sales.salespersons s ON o.salesperson_id = s.salesperson_id
+      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      WHERE o.status = 'Completed' AND oi.item_type = 'Vehicle'
+        AND YEAR(o.order_date) = YEAR(CURRENT_DATE())
+      GROUP BY s.salesperson_id, s.name, s.region, s.quota
+      ORDER BY revenue DESC
+      LIMIT 10
+
+  - question: "Monthly sales trends"
+    sql: |
+      SELECT
+        DATE_TRUNC('month', o.order_date) AS month,
+        COUNT(DISTINCT o.order_id) AS orders,
+        SUM(oi.total_price) AS revenue,
+        SUM(CASE WHEN v.condition = 'New' THEN oi.total_price ELSE 0 END) AS new_vehicle_revenue,
+        SUM(CASE WHEN v.condition != 'New' THEN oi.total_price ELSE 0 END) AS used_vehicle_revenue
+      FROM velocity_motors.sales.orders o
+      JOIN velocity_motors.sales.vehicles v ON o.vehicle_id = v.vehicle_id
+      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      WHERE o.status = 'Completed' AND oi.item_type = 'Vehicle'
+      GROUP BY DATE_TRUNC('month', o.order_date)
+      ORDER BY month DESC
+      LIMIT 12
+
+  # NEW: Hierarchy pattern - ROLLUP aggregation
+  - question: "Sales by division, region, and territory with ROLLUP"
+    sql: |
+      SELECT
+        t.division_name,
+        t.region_name,
+        t.territory_name,
+        COUNT(DISTINCT o.order_id) AS orders,
+        SUM(oi.total_price) AS revenue
+      FROM velocity_motors.sales.orders o
+      JOIN velocity_motors.sales.salespersons s ON o.salesperson_id = s.salesperson_id
+      JOIN velocity_motors.sales.territories t ON s.territory_id = t.territory_id
+      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      WHERE o.status = 'Completed' AND oi.item_type = 'Vehicle'
+      GROUP BY ROLLUP(t.division_name, t.region_name, t.territory_name)
+      ORDER BY t.division_name, t.region_name, t.territory_name
+
+  # NEW: Many-to-Many pattern - Vehicle feature filtering
+  - question: "Find vehicles with leather seats AND sunroof"
+    sql: |
+      WITH required_features AS (
+        SELECT feature_id FROM velocity_motors.sales.features
+        WHERE feature_name IN ('Leather Seats', 'Sunroof')
+      ),
+      matching_vehicles AS (
+        SELECT vf.vehicle_id
+        FROM velocity_motors.sales.vehicle_features vf
+        JOIN required_features rf ON vf.feature_id = rf.feature_id
+        GROUP BY vf.vehicle_id
+        HAVING COUNT(DISTINCT vf.feature_id) = (SELECT COUNT(*) FROM required_features)
+      )
+      SELECT v.vehicle_id, v.make, v.model, v.year, v.msrp
+      FROM velocity_motors.sales.vehicles v
+      JOIN matching_vehicles mv ON v.vehicle_id = mv.vehicle_id
+      WHERE v.status = 'Available'
+      ORDER BY v.msrp
+
+  # NEW: Self-referential pattern - Org chart
+  - question: "Sales team organization chart"
+    sql: |
+      WITH RECURSIVE org_chart AS (
+        SELECT s.salesperson_id, s.name, s.manager_id, 1 AS level,
+               s.name AS path
+        FROM velocity_motors.sales.salespersons s
+        WHERE s.manager_id IS NULL
+        UNION ALL
+        SELECT e.salesperson_id, e.name, e.manager_id, o.level + 1,
+               CONCAT(o.path, ' > ', e.name)
+        FROM velocity_motors.sales.salespersons e
+        JOIN org_chart o ON e.manager_id = o.salesperson_id
+      )
+      SELECT level, REPEAT('  ', level - 1) || name AS org_position, path
+      FROM org_chart
+      ORDER BY path
+
+  # NEW: SCD Type 2 pattern - Historical pricing
+  - question: "Current vehicle prices from price history"
+    sql: |
+      SELECT
+        v.vehicle_id, v.make, v.model, v.year,
+        v.msrp AS list_price,
+        ph.price AS current_price,
+        ROUND(100.0 * (v.msrp - ph.price) / v.msrp, 1) AS discount_pct
+      FROM velocity_motors.sales.vehicles v
+      JOIN velocity_motors.sales.price_history ph ON v.vehicle_id = ph.vehicle_id
+      WHERE ph.is_current = true AND v.status = 'Available'
+      ORDER BY discount_pct DESC
+      LIMIT 20
+
+  # NEW: Denormalized aggregate pattern - Variance detection
+  - question: "Orders with total discrepancies"
+    sql: |
+      SELECT
+        o.order_id,
+        o.order_total AS cached_total,
+        SUM(oi.total_price) AS computed_total,
+        o.discount_amount,
+        o.order_total - SUM(oi.total_price) AS variance
+      FROM velocity_motors.sales.orders o
+      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      GROUP BY o.order_id, o.order_total, o.discount_amount
+      HAVING ABS(o.order_total - SUM(oi.total_price)) > 0.01
+      ORDER BY ABS(variance) DESC
+      LIMIT 50

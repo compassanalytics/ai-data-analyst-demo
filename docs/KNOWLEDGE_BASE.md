@@ -34,6 +34,20 @@ Common errors: auth, rate limits, Vector Search, imports. Debug tips and solutio
 Three domains: velocity_motors (automotive), healthcare, finance_banking. Plus star_schema/super_table demos.
 `dataset_generators/README.md`
 
+## Velocity Motors Schema Documentation
+
+### Entity Relationship Diagram
+Complete ERD with all 16 tables (12 existing + 4 proposed) and relationship cardinality.
+`docs/velocity_motors_erd.md`
+
+### Advanced Query Patterns
+SQL examples for hierarchy, M2M, self-referential, SCD Type 2, and denormalized aggregate patterns.
+`docs/velocity_motors_advanced_queries.md`
+
+### Proposed Schema Design (v2)
+Draft Genie Space config with advanced relationship patterns (not a live config).
+`docs/design/proposed_sales_analytics_v2.yaml`
+
 ## Workshop Parts
 
 | Part | Focus | Notebook |
