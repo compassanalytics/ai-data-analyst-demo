@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Deploy Velocity Motors Genie Spaces to Databricks.
 
-This script deploys three Genie Spaces for the Velocity Motors demo dataset:
+This script deploys Genie Spaces for the Velocity Motors demo dataset:
 - Sales Analytics: Vehicle sales, orders, and salesperson performance
 - Customer Intelligence: Customer segments, interactions, and lead pipeline
 - Operations & Inventory: Parts inventory, suppliers, and service operations
+- Unified Analytics: Cross-domain analytics combining all 16 tables
 
 Usage:
     # Dry run (preview what would be created)
@@ -43,6 +44,10 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from dotenv import load_dotenv
+
+# Load .env file if present
+load_dotenv()
 
 # Add project root to path for imports
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -66,6 +71,11 @@ SPACES = {
         "config_file": "infra/configs/velocity_motors/operations_inventory.yaml",
         "name": "Operations & Inventory",
         "domain": "operations",
+    },
+    "unified": {
+        "config_file": "infra/configs/velocity_motors/unified_analytics.yaml",
+        "name": "Unified Analytics",
+        "domain": "unified",
     },
 }
 
@@ -283,7 +293,7 @@ def main():
     )
     parser.add_argument(
         "--domain",
-        choices=["sales", "crm", "operations"],
+        choices=["sales", "crm", "operations", "unified"],
         help="Deploy only a specific domain",
     )
     parser.add_argument(

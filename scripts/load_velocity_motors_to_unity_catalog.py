@@ -30,6 +30,11 @@ import sys
 import time
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Load .env file if present
+load_dotenv()
+
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -44,7 +49,16 @@ CATALOG = "velocity_motors"
 DOMAINS = {
     "sales": {
         "schema": "sales",
-        "tables": ["salespersons", "vehicles", "orders", "order_items"],
+        "tables": [
+            "territories",
+            "salespersons",
+            "vehicles",
+            "features",
+            "vehicle_features",
+            "price_history",
+            "orders",
+            "order_items",
+        ],
     },
     "crm": {
         "schema": "crm",

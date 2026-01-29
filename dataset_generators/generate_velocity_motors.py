@@ -128,12 +128,19 @@ def validate_args(args):
 
 def save_domain(domain_data: dict, output_dir: str, domain_name: str, dry_run: bool):
     """Save domain DataFrames to parquet files."""
+    import pandas as pd
+
     for table_name, df in domain_data.items():
         path = os.path.join(output_dir, f"{table_name}.parquet")
         if dry_run:
             print(f"    [DRY RUN] Would write {path} ({len(df):,} rows)")
         else:
-            df.to_parquet(path, index=False)
+            # Convert datetime columns to microsecond precision for Databricks compatibility
+            df_copy = df.copy()
+            for col in df_copy.columns:
+                if pd.api.types.is_datetime64_any_dtype(df_copy[col]):
+                    df_copy[col] = df_copy[col].astype("datetime64[us]")
+            df_copy.to_parquet(path, index=False)
             print(f"    Saved {table_name}.parquet ({len(df):,} rows)")
 
 
