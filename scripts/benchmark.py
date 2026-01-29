@@ -27,7 +27,7 @@ from src.benchmark import (
     SchemaParser,
 )
 from src.config import Config
-from src.evaluation.models import FailureCategory
+from src.evaluation.models import ComplexityLevel, FailureCategory
 
 logging.basicConfig(
     level=logging.INFO,
@@ -108,6 +108,10 @@ Examples:
         help="Comma-separated list of failure categories (default: all)",
     )
     gen_parser.add_argument(
+        "--complexity-tier",
+        help="Comma-separated list of complexity tiers (default: all). Valid: simple,moderate,complex,expert",
+    )
+    gen_parser.add_argument(
         "--mock",
         action="store_true",
         help="Use mock LLM for testing (no API calls)",
@@ -167,6 +171,10 @@ Examples:
     run_parser.add_argument(
         "--judge-model",
         help="Model endpoint for LLM judge (default: config.model_endpoint)",
+    )
+    run_parser.add_argument(
+        "--complexity-tier",
+        help="Filter queries by complexity tier (comma-separated). Valid: simple,moderate,complex,expert",
     )
 
     # =========================================================================
@@ -235,6 +243,17 @@ def cmd_generate(args: argparse.Namespace) -> int:
             logger.info(f"Valid categories: {[c.value for c in FailureCategory]}")
             return 1
 
+    # Parse complexity tiers
+    complexity_tiers: list[ComplexityLevel] | None = None
+    if args.complexity_tier:
+        tier_names = [t.strip().lower() for t in args.complexity_tier.split(",")]
+        try:
+            complexity_tiers = [ComplexityLevel(name) for name in tier_names]
+        except ValueError as e:
+            logger.error(f"Invalid complexity tier: {e}")
+            logger.info(f"Valid tiers: {[c.value for c in ComplexityLevel]}")
+            return 1
+
     # Create config
     config = Config.from_env()
     if args.mock:
@@ -246,6 +265,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
         queries = generator.generate(
             domain_context=domain_context,
             failure_categories=failure_categories,
+            complexity_tiers=complexity_tiers,
             queries_per_category=args.queries_per_category,
             schema_version=schema_version,
             seed=args.seed,
@@ -295,6 +315,18 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.limit:
         queries = queries[: args.limit]
         logger.info(f"Limited to {len(queries)} queries")
+
+    # Filter by complexity tier if specified
+    if args.complexity_tier:
+        tier_names = [t.strip().lower() for t in args.complexity_tier.split(",")]
+        try:
+            complexity_tiers = [ComplexityLevel(name) for name in tier_names]
+            queries = [q for q in queries if q.complexity in complexity_tiers]
+            logger.info(f"Filtered to {len(queries)} queries matching complexity tiers: {tier_names}")
+        except ValueError as e:
+            logger.error(f"Invalid complexity tier: {e}")
+            logger.info(f"Valid tiers: {[c.value for c in ComplexityLevel]}")
+            return 1
 
     logger.info(f"Loaded {len(queries)} benchmark queries")
 

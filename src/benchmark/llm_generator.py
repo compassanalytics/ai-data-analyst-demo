@@ -49,7 +49,7 @@ Output Format:
         {
             "question": "Natural language question",
             "query_type": "aggregation|filter|join|temporal|ranking|comparison",
-            "complexity": "simple|moderate|complex",
+            "complexity": "simple|moderate|complex|expert",
             "expected_columns": ["col1", "col2"],
             "expected_tables": ["table1"],
             "description": "What this query tests",
@@ -138,6 +138,53 @@ Generate questions that require specific join patterns to answer correctly.""",
 
 
 # =============================================================================
+# COMPLEXITY TIER PROMPTS
+# =============================================================================
+
+COMPLEXITY_TIER_PROMPTS: dict[ComplexityLevel, str] = {
+    ComplexityLevel.SIMPLE: """Generate queries at SIMPLE complexity level.
+Characteristics:
+- Single table queries only
+- Basic filters using WHERE clause
+- Simple aggregations: COUNT, SUM, AVG
+- No joins or subqueries
+- Direct column references
+
+Examples: "How many orders do we have?", "What is the total revenue?", "Show all products".""",
+    ComplexityLevel.MODERATE: """Generate queries at MODERATE complexity level.
+Characteristics:
+- 2 tables with JOIN (INNER, LEFT, RIGHT)
+- GROUP BY with HAVING clauses
+- Multiple filter conditions (AND/OR)
+- Date comparisons and ranges
+- Basic sorting with ORDER BY and LIMIT
+
+Examples: "Show sales by region last month", "Top 10 customers by revenue", "Products with sales above average".""",
+    ComplexityLevel.COMPLEX: """Generate queries at COMPLEX complexity level.
+Characteristics:
+- 3+ tables with multiple joins
+- Subqueries (scalar, correlated, EXISTS)
+- Date functions: DATE_TRUNC, DATEDIFF, DATE_ADD
+- CASE expressions for conditional logic
+- Multiple aggregation levels
+- UNION/INTERSECT/EXCEPT set operations
+
+Examples: "Year-over-year growth by category", "Customers who bought in Q1 but not Q2", "Revenue contribution % by segment".""",
+    ComplexityLevel.EXPERT: """Generate queries at EXPERT complexity level.
+Characteristics:
+- Common Table Expressions (CTEs) - WITH clauses
+- Window functions: ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD
+- PARTITION BY for advanced analytics
+- Running totals and moving averages
+- Complex business logic with nested aggregations
+- Self-joins for hierarchical or sequential data
+- Pivoting/unpivoting patterns
+
+Examples: "Rank customers by monthly spend with running totals", "Month-over-month change with LAG", "Top 3 products per category using ROW_NUMBER".""",
+}
+
+
+# =============================================================================
 # MOCK QUERY TEMPLATES
 # =============================================================================
 
@@ -163,6 +210,16 @@ MOCK_QUERY_TEMPLATES: dict[FailureCategory, list[dict[str, Any]]] = {
             "expected_failure": "May use inconsistent amount columns",
             "severity": Severity.MEDIUM,
         },
+        {
+            "question": "Rank products by revenue contribution with running total percentage",
+            "query_type": QueryType.RANKING,
+            "complexity": ComplexityLevel.EXPERT,
+            "expected_columns": ["product", "revenue", "rank", "running_total_pct"],
+            "expected_tables": ["sales", "products"],
+            "description": "Tests window functions with ambiguous revenue columns",
+            "expected_failure": "May use wrong revenue column in SUM OVER",
+            "severity": Severity.HIGH,
+        },
     ],
     FailureCategory.CRYPTIC_CODES: [
         {
@@ -185,6 +242,16 @@ MOCK_QUERY_TEMPLATES: dict[FailureCategory, list[dict[str, Any]]] = {
             "expected_failure": "May not know pending = status code 1",
             "severity": Severity.HIGH,
         },
+        {
+            "question": "Show top 3 products per segment with dense ranking",
+            "query_type": QueryType.RANKING,
+            "complexity": ComplexityLevel.EXPERT,
+            "expected_columns": ["segment", "product", "sales", "rank"],
+            "expected_tables": ["customers", "sales", "products"],
+            "description": "Tests DENSE_RANK with segment code partitioning",
+            "expected_failure": "May not map segment names to codes in PARTITION BY",
+            "severity": Severity.CRITICAL,
+        },
     ],
     FailureCategory.BUSINESS_LOGIC: [
         {
@@ -205,6 +272,16 @@ MOCK_QUERY_TEMPLATES: dict[FailureCategory, list[dict[str, Any]]] = {
             "expected_tables": ["sales"],
             "description": "Tests (Revenue-COGS)/Revenue formula",
             "expected_failure": "May use incorrect margin formula",
+            "severity": Severity.CRITICAL,
+        },
+        {
+            "question": "Calculate rolling 3-month average gross margin with LAG comparison",
+            "query_type": QueryType.AGGREGATION,
+            "complexity": ComplexityLevel.EXPERT,
+            "expected_columns": ["month", "margin", "rolling_avg", "prev_margin"],
+            "expected_tables": ["sales"],
+            "description": "Tests moving average with LAG and business logic formula",
+            "expected_failure": "May use wrong margin formula in window function",
             "severity": Severity.CRITICAL,
         },
     ],
@@ -229,6 +306,16 @@ MOCK_QUERY_TEMPLATES: dict[FailureCategory, list[dict[str, Any]]] = {
             "expected_failure": "May not align comparison periods",
             "severity": Severity.HIGH,
         },
+        {
+            "question": "Show month-over-month revenue change using LAG for each fiscal quarter",
+            "query_type": QueryType.TEMPORAL,
+            "complexity": ComplexityLevel.EXPERT,
+            "expected_columns": ["month", "quarter", "revenue", "prev_revenue", "change_pct"],
+            "expected_tables": ["sales"],
+            "description": "Tests LAG window function with fiscal quarter partitioning",
+            "expected_failure": "May use calendar quarters or wrong LAG offset",
+            "severity": Severity.CRITICAL,
+        },
     ],
     FailureCategory.AGGREGATION_AMBIGUITY: [
         {
@@ -251,6 +338,16 @@ MOCK_QUERY_TEMPLATES: dict[FailureCategory, list[dict[str, Any]]] = {
             "expected_failure": "May use COUNT instead of COUNT DISTINCT",
             "severity": Severity.MEDIUM,
         },
+        {
+            "question": "Show customer running total orders and cumulative spend percentile",
+            "query_type": QueryType.AGGREGATION,
+            "complexity": ComplexityLevel.EXPERT,
+            "expected_columns": ["customer", "orders", "running_total", "percentile"],
+            "expected_tables": ["orders", "customers"],
+            "description": "Tests window functions with proper order-level aggregation",
+            "expected_failure": "May aggregate at wrong level before window function",
+            "severity": Severity.CRITICAL,
+        },
     ],
     FailureCategory.JOIN_COMPLEXITY: [
         {
@@ -271,6 +368,16 @@ MOCK_QUERY_TEMPLATES: dict[FailureCategory, list[dict[str, Any]]] = {
             "expected_tables": ["customers", "sales"],
             "description": "Tests set difference pattern",
             "expected_failure": "May not correctly exclude Q2 customers",
+            "severity": Severity.CRITICAL,
+        },
+        {
+            "question": "Rank customers by category spend using CTE and show top 3 per category",
+            "query_type": QueryType.JOIN,
+            "complexity": ComplexityLevel.EXPERT,
+            "expected_columns": ["category", "customer", "spend", "rank"],
+            "expected_tables": ["customers", "sales", "products"],
+            "description": "Tests CTE with ROW_NUMBER across multiple joins",
+            "expected_failure": "May create Cartesian product or use wrong ranking",
             "severity": Severity.CRITICAL,
         },
     ],
@@ -336,6 +443,7 @@ class LLMQueryGenerator:
         self,
         domain_context: DomainContext,
         failure_categories: list[FailureCategory] | None = None,
+        complexity_tiers: list[ComplexityLevel] | None = None,
         queries_per_category: int = 5,
         seed: int | None = None,
         schema_version: str = "",
@@ -345,6 +453,7 @@ class LLMQueryGenerator:
         Args:
             domain_context: Schema context with table/column information
             failure_categories: Categories to generate for (None = all)
+            complexity_tiers: Complexity tiers to generate for (None = all)
             queries_per_category: Number of queries per category
             seed: Random seed for reproducibility (used in mock mode)
             schema_version: Version of the schema (optional, for provenance)
@@ -354,16 +463,17 @@ class LLMQueryGenerator:
         """
         if self.config.mock_mode:
             return self._mock_generate(
-                domain_context, failure_categories, queries_per_category, seed, schema_version=schema_version
+                domain_context, failure_categories, complexity_tiers, queries_per_category, seed, schema_version=schema_version
             )
         return self._llm_generate(
-            domain_context, failure_categories, queries_per_category, schema_version=schema_version
+            domain_context, failure_categories, complexity_tiers, queries_per_category, schema_version=schema_version
         )
 
     def _llm_generate(
         self,
         domain_context: DomainContext,
         failure_categories: list[FailureCategory] | None,
+        complexity_tiers: list[ComplexityLevel] | None,
         queries_per_category: int,
         schema_version: str = "",
     ) -> list[BenchmarkQuery]:
@@ -372,6 +482,7 @@ class LLMQueryGenerator:
         Args:
             domain_context: Schema context with table/column information
             failure_categories: Categories to generate for (None = all)
+            complexity_tiers: Complexity tiers to generate for (None = all)
             queries_per_category: Number of queries per category
             schema_version: Version of the schema (optional)
 
@@ -387,6 +498,7 @@ class LLMQueryGenerator:
                 queries = self._generate_for_category(
                     domain_context=domain_context,
                     category=category,
+                    complexity_tiers=complexity_tiers,
                     count=queries_per_category,
                     timestamp=timestamp,
                     schema_version=schema_version,
@@ -403,6 +515,7 @@ class LLMQueryGenerator:
         self,
         domain_context: DomainContext,
         category: FailureCategory,
+        complexity_tiers: list[ComplexityLevel] | None,
         count: int,
         timestamp: str,
         schema_version: str = "",
@@ -412,6 +525,7 @@ class LLMQueryGenerator:
         Args:
             domain_context: Schema context
             category: The failure category to target
+            complexity_tiers: Complexity tiers to generate for (None = all)
             count: Number of queries to generate
             timestamp: Generation timestamp for provenance
             schema_version: Version of the schema (optional)
@@ -426,7 +540,7 @@ class LLMQueryGenerator:
 
         # Build prompts
         system_prompt = self._build_system_prompt()
-        user_prompt = self._build_user_prompt(domain_context, category, count)
+        user_prompt = self._build_user_prompt(domain_context, category, count, complexity_tiers)
 
         # Calculate prompt hash for provenance
         prompt_content = system_prompt + user_prompt
@@ -475,6 +589,7 @@ class LLMQueryGenerator:
         domain_context: DomainContext,
         category: FailureCategory,
         count: int,
+        complexity_tiers: list[ComplexityLevel] | None = None,
     ) -> str:
         """Build user prompt with schema context.
 
@@ -482,6 +597,7 @@ class LLMQueryGenerator:
             domain_context: Schema context with table/column information
             category: The failure category to target
             count: Number of queries to generate
+            complexity_tiers: Complexity tiers to generate for (None = all)
 
         Returns:
             User prompt string
@@ -494,6 +610,19 @@ class LLMQueryGenerator:
         # Get schema context from domain
         schema_context = domain_context.to_prompt_context()
 
+        # Build complexity instructions
+        if complexity_tiers:
+            tier_instructions_parts = []
+            for tier in complexity_tiers:
+                tier_prompt = COMPLEXITY_TIER_PROMPTS.get(tier)
+                if tier_prompt:
+                    tier_instructions_parts.append(tier_prompt)
+            complexity_instruction = "\n\n".join(tier_instructions_parts)
+            complexity_requirement = f"5. Generate queries ONLY at these complexity levels: {', '.join(t.value for t in complexity_tiers)}"
+        else:
+            complexity_instruction = ""
+            complexity_requirement = "4. Have varying complexity (mix of simple, moderate, complex, expert)"
+
         prompt = f"""## Domain: {domain_context.domain_name}
 
 ## Schema Context
@@ -502,7 +631,16 @@ class LLMQueryGenerator:
 ## Target Failure Category: {category.value}
 
 {category_instructions}
+"""
 
+        if complexity_instruction:
+            prompt += f"""
+## Complexity Tier Requirements
+
+{complexity_instruction}
+"""
+
+        prompt += f"""
 ## Task
 Generate exactly {count} test queries for the {category.value} failure category.
 
@@ -510,7 +648,7 @@ Each query must:
 1. Be appropriate for the {domain_context.domain_name} domain
 2. Use tables and columns from the schema above
 3. Test the specific failure scenario described
-4. Have varying complexity (mix of simple, moderate, complex)
+{complexity_requirement}
 
 Return ONLY valid JSON in the format specified in the system prompt."""
 
@@ -677,6 +815,7 @@ Return ONLY valid JSON in the format specified in the system prompt."""
         self,
         domain_context: DomainContext,
         failure_categories: list[FailureCategory] | None,
+        complexity_tiers: list[ComplexityLevel] | None,
         queries_per_category: int,
         seed: int | None = None,
         schema_version: str = "",
@@ -689,6 +828,7 @@ Return ONLY valid JSON in the format specified in the system prompt."""
         Args:
             domain_context: Schema context with table/column information
             failure_categories: Categories to generate for (None = all)
+            complexity_tiers: Complexity tiers to filter templates by (None = all)
             queries_per_category: Number of queries per category
             seed: Random seed for reproducibility
             schema_version: Version of the schema (optional)
@@ -706,6 +846,10 @@ Return ONLY valid JSON in the format specified in the system prompt."""
 
         for category in categories:
             templates = MOCK_QUERY_TEMPLATES.get(category, [])
+
+            # Filter templates by complexity tier if specified
+            if complexity_tiers:
+                templates = [t for t in templates if t.get("complexity") in complexity_tiers]
 
             # Take up to queries_per_category templates
             for idx, template in enumerate(templates[:queries_per_category]):

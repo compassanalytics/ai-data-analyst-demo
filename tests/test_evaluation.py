@@ -68,7 +68,7 @@ class TestComplexityLevelEnum:
 
     def test_all_values(self) -> None:
         """Test all complexity levels are defined."""
-        expected = ["simple", "moderate", "complex"]
+        expected = ["simple", "moderate", "complex", "expert"]
         actual = [cl.value for cl in ComplexityLevel]
         assert set(actual) == set(expected)
 

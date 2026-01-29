@@ -29,6 +29,7 @@ class ComplexityLevel(Enum):
     SIMPLE = "simple"
     MODERATE = "moderate"
     COMPLEX = "complex"
+    EXPERT = "expert"
 
 
 class FailureCategory(Enum):
