@@ -97,6 +97,6 @@ Go to Actions -> "Release Workshop Materials" -> Run workflow -> Enter version.
 ## Next Steps
 
 After downloading:
-1. Open `notebooks/00_setup_workshop_data.ipynb` to set up data
-2. Run `notebooks/demo.ipynb` for the main demonstration
+1. Open `notebooks/00b_setup_data.ipynb` to set up data
+2. Run `notebooks/01_agent_basics.ipynb` for the main demonstration
 3. Try `notebooks/03_build_your_agent.ipynb` for hands-on challenges

@@ -250,7 +250,8 @@ class DomainContext:
             sections.append("## Valid Column Values (IMPORTANT)\n")
             sections.append("These are the ONLY valid values for these columns. Do NOT invent other values:\n")
             for col_name, values in sorted(self.column_values.items()):
-                sections.append(f"- **{col_name}**: {', '.join(f'\"{v}\"' for v in values)}")
+                formatted_values = ", ".join(f'"{v}"' for v in values)
+                sections.append(f"- **{col_name}**: {formatted_values}")
             sections.append("")
 
         return "\n".join(sections)

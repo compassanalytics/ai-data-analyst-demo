@@ -253,16 +253,14 @@ class GenieSpaceManager:
                 for q in config.sample_questions
             ]
             # API requires lists to be sorted by id
-            serialized["config"] = {
-                "sample_questions": sorted(sample_questions, key=lambda x: x["id"])
-            }
+            serialized["config"] = {"sample_questions": sorted(sample_questions, key=lambda x: x["id"])}
 
         # Build instructions object (text_instructions, join_specs, example_question_sqls must be nested here)
         instructions: dict[str, Any] = {}
 
         # Add text_instructions if configured
         if config.instructions:
-            instruction_id = hashlib.md5("instruction_main".encode()).hexdigest()
+            instruction_id = hashlib.md5(b"instruction_main").hexdigest()
             instructions["text_instructions"] = [
                 {
                     "id": instruction_id,

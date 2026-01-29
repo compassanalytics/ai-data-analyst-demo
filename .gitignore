@@ -33,10 +33,12 @@ build/
 # Project-specific
 .serena/
 .tdd/
+.workshop_checkpoints/
 
 # Generated data files (not tracked - participants generate locally)
 dataset_generators/data/
 data/
+!data/demo_fallbacks/
 
 # Benchmark outputs (generated locally)
 benchmarks/

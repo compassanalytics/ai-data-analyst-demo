@@ -35,17 +35,6 @@ dependencies = [
     { name = "tenacity" },
 ]
 
-[package.optional-dependencies]
-dev = [
-    { name = "ipykernel" },
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-    { name = "types-pyyaml" },
-]
-
 [package.dev-dependencies]
 dev = [
     { name = "ipykernel" },
@@ -64,29 +53,21 @@ requires-dist = [
     { name = "databricks-sdk", specifier = ">=0.40.0" },
     { name = "databricks-vectorsearch", specifier = ">=0.64" },
     { name = "faker", specifier = ">=28.0.0" },
-    { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.29.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "langchain-core", specifier = ">=0.3.0" },
     { name = "langchain-text-splitters", specifier = ">=0.3.0" },
     { name = "langgraph", specifier = ">=0.2.0" },
     { name = "litellm", specifier = ">=1.30.0" },
     { name = "matplotlib", specifier = ">=3.8.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.13.0" },
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
     { name = "seaborn", specifier = ">=0.13.0" },
     { name = "tenacity", specifier = ">=9.1.2" },
-    { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.0" },
 ]
-provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -14,10 +14,11 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from src.config import Config
 from src.evaluation.models import ComplexityLevel, EvaluationResult, FailureCategory
@@ -756,7 +757,7 @@ class SuiteRunner:
             # Create progress wrapper
             def tier_progress(current: int, total: int, message: str) -> None:
                 if progress_callback:
-                    progress_callback(tier, current, total, message)
+                    progress_callback(tier, current, total, message)  # noqa: B023
 
             # Run benchmark for this tier
             tier_run = self.evaluator.run_benchmark(

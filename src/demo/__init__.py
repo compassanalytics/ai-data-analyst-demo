@@ -36,8 +36,8 @@ Challenge Framework:
 - Difficulty: Enum of challenge difficulty levels (EASY, MEDIUM, HARD)
 - Challenge: Dataclass for defining workshop challenges
 - ChallengeRunner: Class for managing challenge execution and hints
-- DEMO_CHALLENGES: Pre-defined challenges for demo.ipynb
-- ADVANCED_CHALLENGES: Pre-defined challenges for advanced_demo.ipynb
+- DEMO_CHALLENGES: Pre-defined challenges for 01_agent_basics.ipynb
+- ADVANCED_CHALLENGES: Pre-defined challenges for 02_multi_genie_orchestration.ipynb
 - run_challenge: Convenience function for one-liner validation
 
 Presenter Mode:

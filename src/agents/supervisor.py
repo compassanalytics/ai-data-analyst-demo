@@ -152,7 +152,7 @@ def create_supervisor_agent(
         llm_with_tools = llm.bind_tools(tools)
 
     # Keywords for routing in mock mode
-    DATA_KEYWORDS = [
+    _DATA_KEYWORDS = [
         "revenue",
         "sales",
         "product",

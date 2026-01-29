@@ -26,6 +26,8 @@ VELOCITY_MOTORS_SCHEMAS: ColumnDescriptions = {
             "region": "Sales region (Northeast, Southeast, Midwest, Southwest, West, Pacific Northwest)",
             "quota": "Annual sales quota in USD",
             "commission_rate": "Commission rate (0.015 - 0.04)",
+            "territory_id": "FK to territories",
+            "manager_id": "FK to salespersons (self-referential, NULL for top-level)",
         },
         "vehicles": {
             "vehicle_id": "Primary key (VH-######)",
@@ -48,6 +50,8 @@ VELOCITY_MOTORS_SCHEMAS: ColumnDescriptions = {
             "order_date": "Order timestamp",
             "status": "Completed (85%), Pending (5%), Processing (5%), Cancelled (5%)",
             "payment_method": "Financing (55%), Cash (20%), Lease (15%), Trade-In + Financing (10%)",
+            "order_total": "Calculated total from order items",
+            "discount_amount": "Discount applied to order",
         },
         "order_items": {
             "order_item_id": "Primary key (OI-##########)",
@@ -68,7 +72,7 @@ VELOCITY_MOTORS_SCHEMAS: ColumnDescriptions = {
         "features": {
             "feature_id": "Primary key (FEAT-###)",
             "feature_name": "Feature name (e.g., Heated Seats, Navigation System)",
-            "feature_category": "Category (Safety, Comfort, Technology, Performance, Appearance)",
+            "feature_category": "Category (Safety, Comfort, Technology, Exterior, Interior)",
             "description": "Feature description",
         },
         "vehicle_features": {
@@ -339,7 +343,16 @@ DATASET_CONFIGS = {
         "description": "Automotive dealership with 16 tables across Sales, CRM, and Operations domains. Realistic relationships and seasonal patterns.",
         "base_url": "https://compassagentemofiles.blob.core.windows.net/datasets/velocity_motors",
         "tables": {
-            "sales": ["territories", "salespersons", "vehicles", "features", "vehicle_features", "price_history", "orders", "order_items"],
+            "sales": [
+                "territories",
+                "salespersons",
+                "vehicles",
+                "features",
+                "vehicle_features",
+                "price_history",
+                "orders",
+                "order_items",
+            ],
             "crm": ["customer_segments", "customers", "interactions", "leads"],
             "operations": ["warehouse_locations", "suppliers", "parts_inventory", "service_orders"],
         },

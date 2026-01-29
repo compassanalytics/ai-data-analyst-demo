@@ -176,10 +176,10 @@ class LocalWidgets:
         self._ipywidgets_available = False
 
         try:
-            import ipywidgets
+            import importlib.util
 
-            self._ipywidgets_available = True
-        except ImportError:
+            self._ipywidgets_available = importlib.util.find_spec("ipywidgets") is not None
+        except (ImportError, ModuleNotFoundError):
             pass
 
     def setup(self) -> None:

@@ -513,9 +513,7 @@ def generate_price_history(
 
         # Generate dates going back from today
         today = datetime.now().date()
-        dates = sorted(
-            [today - timedelta(days=random.randint(0, 365)) for _ in range(num_prices)]
-        )
+        dates = sorted([today - timedelta(days=random.randint(0, 365)) for _ in range(num_prices)])
 
         current_price = base_msrp
         for i, effective_date in enumerate(dates):

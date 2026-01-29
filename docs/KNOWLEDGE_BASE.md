@@ -37,7 +37,7 @@ Three domains: velocity_motors (automotive), healthcare, finance_banking. Plus s
 ## Velocity Motors Schema Documentation
 
 ### Entity Relationship Diagram
-Complete ERD with all 16 tables (12 existing + 4 proposed) and relationship cardinality.
+Complete ERD with all 16 tables and relationship cardinality.
 `docs/velocity_motors_erd.md`
 
 ### Advanced Query Patterns
@@ -52,8 +52,8 @@ Draft Genie Space config with advanced relationship patterns (not a live config)
 
 | Part | Focus | Notebook |
 |------|-------|----------|
-| 1 | Genie UI - dirty vs clean data | `notebooks/demo.ipynb` |
-| 2 | Multi-agent with RAG | `notebooks/advanced_demo.ipynb` |
+| 1 | Genie UI - dirty vs clean data | `notebooks/01_agent_basics.ipynb` |
+| 2 | Multi-agent with RAG | `notebooks/02_multi_genie_orchestration.ipynb` |
 | 3 | Build your own agent | `notebooks/03_build_your_agent.ipynb` |
 
 ## Research Documents

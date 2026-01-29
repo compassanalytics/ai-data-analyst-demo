@@ -366,7 +366,10 @@ class DataAwareGenerator:
                     timestamp=timestamp,
                 )
                 all_queries.extend(queries)
-                logger.info(f"Generated {len(queries)} {complexity.value} queries")
+                if len(queries) < count:
+                    logger.warning(f"Requested {count} {complexity.value} queries, LLM returned {len(queries)}")
+                else:
+                    logger.info(f"Generated {len(queries)} {complexity.value} queries")
             except Exception as e:
                 logger.error(f"Failed to generate {complexity.value} queries: {e}")
 
@@ -414,15 +417,31 @@ class DataAwareGenerator:
         prompt_content = DATA_AWARE_SYSTEM_PROMPT + user_prompt
         prompt_hash = hashlib.sha256(prompt_content.encode()).hexdigest()[:16]
 
-        # Invoke LLM
+        # Invoke LLM with retry for insufficient queries
         messages = [
             {"role": "system", "content": DATA_AWARE_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ]
-        response = llm.invoke(messages)
 
-        # Parse response
-        query_dicts = self._parse_llm_response(response.content)
+        max_retries = 2
+        query_dicts: list[dict] = []
+
+        for attempt in range(max_retries + 1):
+            response = llm.invoke(messages)
+            query_dicts = self._parse_llm_response(response.content)
+
+            if len(query_dicts) >= count:
+                break
+            elif attempt < max_retries:
+                logger.warning(
+                    f"LLM returned {len(query_dicts)} queries, expected {count}. Retrying... ({attempt + 1}/{max_retries})"
+                )
+
+        # If still short after retries, log it
+        if len(query_dicts) < count:
+            logger.warning(
+                f"After {max_retries} retries, only got {len(query_dicts)}/{count} {complexity.value} queries"
+            )
 
         # Convert to BenchmarkQuery objects
         queries: list[BenchmarkQuery] = []
@@ -561,17 +580,18 @@ Generate EXPERT-level queries:
         }
 
         prompt = f"""## Available Tables
-{', '.join(table_names)}
+{", ".join(table_names)}
 
 ## Data Profile Context
 {profile_context}
 
 ## Complexity Level: {complexity.value.upper()}
 
-{complexity_guidance.get(complexity, '')}
+{complexity_guidance.get(complexity, "")}
 
 ## Task
-Generate exactly {count} benchmark queries at {complexity.value} complexity level.
+Generate EXACTLY {count} benchmark queries at {complexity.value} complexity level.
+You MUST return exactly {count} queries in the response - no more, no fewer.
 
 CRITICAL REQUIREMENTS:
 1. Use ACTUAL column names from the profiles above

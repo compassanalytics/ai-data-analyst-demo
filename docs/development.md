@@ -26,7 +26,7 @@ Complete guide for developing and testing the AI Data Analyst Workshop codebase.
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/ai-data-analyst-workshop.git
+git clone https://github.com/YOUR_ORG/ai-data-analyst-workshop.git
 cd ai-data-analyst-workshop
 
 # Install dependencies with uv
@@ -102,9 +102,9 @@ ai-data-analyst-workshop/
 │   ├── star_schema_generator.py  # Clean data generator
 │   └── super_table_generator.py  # Dirty data generator
 ├── notebooks/                    # Databricks notebooks
-│   ├── 00_setup_workshop_data.ipynb  # Data setup
-│   ├── demo.ipynb                # Basic demo
-│   ├── advanced_demo.ipynb       # Multi-Genie demo
+│   ├── 00b_setup_data.ipynb  # Data setup
+│   ├── 01_agent_basics.ipynb                # Basic demo
+│   ├── advanced_01_agent_basics.ipynb       # Multi-Genie demo
 │   └── 03_build_your_agent.ipynb # Agent Builder workshop
 ├── scripts/                      # Utility scripts
 │   ├── setup_vector_search.py    # Vector Search setup
@@ -273,7 +273,7 @@ uv run python dataset_generators/generate_velocity_motors.py \
 ### Upload to Databricks
 
 Use the setup notebook:
-1. Open `notebooks/00_setup_workshop_data.ipynb`
+1. Open `notebooks/00b_setup_data.ipynb`
 2. Configure widgets (dataset, catalog)
 3. Run all cells
 

@@ -27,7 +27,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from src.config import Config
 from src.evaluation.models import ComplexityLevel, FailureCategory, QueryType
 
-from .llm_client import LLMConfig, UnifiedLLMClient, create_llm_client
+from .llm_client import create_llm_client
 from .models import BenchmarkQuery, Severity
 from .schema_parser import DomainContext
 
@@ -680,7 +680,12 @@ class LLMQueryGenerator:
         """
         if self.config.mock_mode:
             return self._mock_generate(
-                domain_context, failure_categories, complexity_tiers, queries_per_category, seed, schema_version=schema_version
+                domain_context,
+                failure_categories,
+                complexity_tiers,
+                queries_per_category,
+                seed,
+                schema_version=schema_version,
             )
         return self._llm_generate(
             domain_context, failure_categories, complexity_tiers, queries_per_category, schema_version=schema_version
@@ -835,7 +840,9 @@ class LLMQueryGenerator:
                 if tier_prompt:
                     tier_instructions_parts.append(tier_prompt)
             complexity_instruction = "\n\n".join(tier_instructions_parts)
-            complexity_requirement = f"5. Generate queries ONLY at these complexity levels: {', '.join(t.value for t in complexity_tiers)}"
+            complexity_requirement = (
+                f"5. Generate queries ONLY at these complexity levels: {', '.join(t.value for t in complexity_tiers)}"
+            )
         else:
             complexity_instruction = ""
             complexity_requirement = "4. Have varying complexity (mix of simple, moderate, complex, expert)"
@@ -963,7 +970,7 @@ Return ONLY valid JSON in the format specified in the system prompt."""
             "window": "ranking",
             "window_function": "ranking",
             "trick_questions": "filter",  # Adversarial queries default to filter
-            "trick_question": "filter",   # Singular variant
+            "trick_question": "filter",  # Singular variant
             "trick": "filter",
             "adversarial": "filter",
             "unanswerable": "filter",
@@ -1007,8 +1014,15 @@ Return ONLY valid JSON in the format specified in the system prompt."""
             # Known fictional columns that indicate hallucination
             # These are columns that cryptic_codes tests incorrectly assume exist
             fictional_columns = {
-                "channel", "segment", "category", "type", "type_indicator",
-                "segment_code", "channel_code", "category_code", "status_code",
+                "channel",
+                "segment",
+                "category",
+                "type",
+                "type_indicator",
+                "segment_code",
+                "channel_code",
+                "category_code",
+                "status_code",
             }
 
             # Check for fictional columns
@@ -1019,9 +1033,7 @@ Return ONLY valid JSON in the format specified in the system prompt."""
                     fictional_found.append(col)
 
             if fictional_found:
-                logger.warning(
-                    f"Query expects fictional columns: {fictional_found}. Rejecting."
-                )
+                logger.warning(f"Query expects fictional columns: {fictional_found}. Rejecting.")
                 return False
 
         return True

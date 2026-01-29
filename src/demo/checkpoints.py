@@ -238,7 +238,7 @@ class CheckpointManager:
         checkpoints = []
 
         if self._in_memory_only:
-            for name, checkpoint in sorted(self._memory_store.items()):
+            for _name, checkpoint in sorted(self._memory_store.items()):
                 checkpoints.append(
                     {
                         "name": checkpoint.name,

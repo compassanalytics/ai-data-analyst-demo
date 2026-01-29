@@ -1017,14 +1017,14 @@ class TestLLMJudgeEvaluator:
     def test_mock_evaluate_partial_match(self) -> None:
         """Test mock evaluation with partial column match."""
         accuracy, failure_type, comparison = self.judge.evaluate(
-            question="What are sales by product and region?",
-            expected_columns=["product", "region", "sales"],
+            question="What are sales by product, region, and quarter?",
+            expected_columns=["product", "region", "quarter", "sales"],
             expected_tables=["sales"],
             sql="SELECT product, SUM(sales) FROM sales GROUP BY product",
             actual_columns=["product", "sales"],
         )
 
-        # 2/3 columns match = ~67% < 80% but >= 50% = PARTIAL
+        # 2/4 columns match = 50%, >= 0.4 and < 0.6 = PARTIAL
         assert accuracy == AccuracyScore.PARTIAL
         assert "region" in comparison.missing_columns
 
@@ -1057,7 +1057,7 @@ class TestLLMJudgeEvaluator:
 
     def test_model_endpoint_property(self) -> None:
         """Test model endpoint property returns correct value."""
-        assert self.judge.model_endpoint == self.config.model_endpoint
+        assert self.judge.model_endpoint == self.config.llm_model
 
         # Test with override
         judge_with_override = LLMJudgeEvaluator(self.config, model_override="custom-model")

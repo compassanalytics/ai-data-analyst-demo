@@ -17,7 +17,16 @@ DATASET_CONFIGS = {
     "velocity_motors": {
         "base_url": "https://compassagentemofiles.blob.core.windows.net/datasets/velocity_motors",
         "schemas": {
-            "sales": ["salespersons", "vehicles", "orders", "order_items"],
+            "sales": [
+                "territories",
+                "salespersons",
+                "vehicles",
+                "features",
+                "vehicle_features",
+                "price_history",
+                "orders",
+                "order_items",
+            ],
             "crm": ["customer_segments", "customers", "interactions", "leads"],
             "operations": ["warehouse_locations", "suppliers", "parts_inventory", "service_orders"],
         },
@@ -68,7 +77,9 @@ def add_column_comments(catalog: str, schema: str, table: str, descriptions: dic
     """Add column comments to a table for Genie AI context."""
     for column, description in descriptions.items():
         try:
-            spark.sql(f"ALTER TABLE {catalog}.{schema}.{table} ALTER COLUMN `{column}` COMMENT '{description.replace(chr(39), chr(39)*2)}'")  # noqa: F821
+            spark.sql(
+                f"ALTER TABLE {catalog}.{schema}.{table} ALTER COLUMN `{column}` COMMENT '{description.replace(chr(39), chr(39) * 2)}'"
+            )  # noqa: F821
         except Exception:
             pass
 
@@ -81,11 +92,12 @@ def setup_dataset(dataset_name: str, catalog: str) -> dict[str, bool]:
         return {}
 
     results = {}
-    print(f"\n{'='*60}\nSetting up: {dataset_name} -> {catalog}\n{'='*60}")
+    print(f"\n{'=' * 60}\nSetting up: {dataset_name} -> {catalog}\n{'=' * 60}")
 
     # Try to load column descriptions
     try:
         from config.dataset_schemas import get_column_descriptions
+
         has_descriptions = True
     except ImportError:
         has_descriptions = False
@@ -110,7 +122,9 @@ def setup_dataset(dataset_name: str, catalog: str) -> dict[str, bool]:
                     continue
 
                 spark.sql(f"DROP TABLE IF EXISTS {full_table}")  # noqa: F821
-                spark.sql(f"CREATE TABLE {full_table} AS SELECT * FROM read_files('{volume_path}', format => 'parquet')")  # noqa: F821
+                spark.sql(
+                    f"CREATE TABLE {full_table} AS SELECT * FROM read_files('{volume_path}', format => 'parquet')"
+                )  # noqa: F821
 
                 if has_descriptions:
                     try:
@@ -151,7 +165,7 @@ if __name__ == "__main__":
         all_results = {ds: setup_dataset(ds, CATALOG) for ds in datasets}
 
         # Summary
-        print(f"\n{'='*60}\nSUMMARY\n{'='*60}")
+        print(f"\n{'=' * 60}\nSUMMARY\n{'=' * 60}")
         total_ok, total_fail = 0, 0
         for ds, results in all_results.items():
             ok = sum(results.values())
@@ -163,7 +177,7 @@ if __name__ == "__main__":
         print(f"\nTotal: {total_ok} tables loaded, {total_fail} failed")
 
         # Verify row counts
-        print(f"\n{'='*60}\nVERIFICATION\n{'='*60}")
+        print(f"\n{'=' * 60}\nVERIFICATION\n{'=' * 60}")
         for ds in datasets:
             for schema_name, tables in DATASET_CONFIGS[ds]["schemas"].items():
                 for table in tables:

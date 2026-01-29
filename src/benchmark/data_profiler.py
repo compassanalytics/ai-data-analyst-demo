@@ -273,9 +273,7 @@ class DataProfiler:
         dtype_lower = dtype.lower()
         return any(pattern in dtype_lower for pattern in datetime_patterns)
 
-    def _is_id_like_column(
-        self, col: pd.Series, unique_count: int, row_count: int
-    ) -> bool:
+    def _is_id_like_column(self, col: pd.Series, unique_count: int, row_count: int) -> bool:
         """Determine if a column appears to be an ID column.
 
         A column is considered ID-like if:
@@ -369,9 +367,7 @@ class DataProfiler:
 
         return stats
 
-    def _profile_categorical_column(
-        self, col: pd.Series, top_k: int = TOP_K_VALUES
-    ) -> list[tuple[str, int]]:
+    def _profile_categorical_column(self, col: pd.Series, top_k: int = TOP_K_VALUES) -> list[tuple[str, int]]:
         """Extract top K value counts from a categorical column.
 
         Args:
@@ -531,7 +527,11 @@ class DataProfiler:
                 lines.append("**Numeric Columns:**")
                 for col in numeric_cols:
                     range_str = f"[{col.min_value:,.2f} - {col.max_value:,.2f}]" if col.min_value is not None else "N/A"
-                    lines.append(f"- `{col.name}` ({col.dtype}): range {range_str}, mean={col.mean_value:,.2f}" if col.mean_value else f"- `{col.name}` ({col.dtype})")
+                    lines.append(
+                        f"- `{col.name}` ({col.dtype}): range {range_str}, mean={col.mean_value:,.2f}"
+                        if col.mean_value
+                        else f"- `{col.name}` ({col.dtype})"
+                    )
                 lines.append("")
 
             if date_cols:
@@ -549,7 +549,7 @@ class DataProfiler:
                 for col in categorical_cols:
                     if col.top_values:
                         top_str = ", ".join(
-                            f"'{val}' ({count}, {count/profile.row_count*100:.1f}%)"
+                            f"'{val}' ({count}, {count / profile.row_count * 100:.1f}%)"
                             for val, count in col.top_values[:5]
                         )
                         lines.append(f"- `{col.name}` ({col.unique_count} unique): {top_str}")
@@ -594,8 +594,8 @@ class DataProfiler:
             with open(output_path, "w") as f:
                 json.dump(data, f, indent=2)
             logger.info(f"Saved profiles to {output_path}")
-        except IOError as e:
-            raise IOError(f"Failed to save profiles to {output_path}: {e}") from e
+        except OSError as e:
+            raise OSError(f"Failed to save profiles to {output_path}: {e}") from e
 
     def load_profiles(self, input_path: Path) -> dict[str, DataProfile]:
         """Load profiles from a JSON file.
@@ -624,10 +624,7 @@ class DataProfiler:
         if "tables" not in data:
             raise ValueError("Invalid profile file format: missing 'tables' key")
 
-        profiles = {
-            name: DataProfile.from_dict(table_data)
-            for name, table_data in data["tables"].items()
-        }
+        profiles = {name: DataProfile.from_dict(table_data) for name, table_data in data["tables"].items()}
 
         logger.info(f"Loaded {len(profiles)} profiles from {input_path}")
         return profiles

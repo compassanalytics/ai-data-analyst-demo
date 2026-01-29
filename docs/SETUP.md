@@ -43,7 +43,7 @@ For Parts 2 and 3, you'll need the full codebase.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/ai-data-analyst-workshop.git
+git clone https://github.com/YOUR_ORG/ai-data-analyst-workshop.git
 cd ai-data-analyst-workshop
 ```
 
@@ -54,7 +54,7 @@ cd ai-data-analyst-workshop
 uv sync
 
 # Or using pip
-pip install -e .
+pip install -e .  # Or with uv: uv pip install -e .
 ```
 
 ### 3. Configure Environment
@@ -134,7 +134,7 @@ Use the automated setup notebook to load workshop data with column descriptions 
 
 ### Quick Start
 
-1. Open `notebooks/00_setup_workshop_data.ipynb` in Databricks
+1. Open `notebooks/00b_setup_data.ipynb` in Databricks
 2. Configure widgets:
    - **Dataset**: Choose `velocity_motors`, `star_schema`, `super_table`, or `all`
    - **Catalog**: Name of the Unity Catalog to create/use (default: `workshop`)
@@ -276,7 +276,7 @@ print(f'Genie spaces: {len(list(w.genie.list_spaces()))}')
 Once setup is complete:
 
 1. **Part 1:** Open Genie in Databricks and try the demo queries
-2. **Part 2:** Open `notebooks/01_genie_rag_supervisor.ipynb`
-3. **Part 3:** Open `notebooks/02_multi_genie_report_generator.ipynb`
+2. **Part 2:** Open `notebooks/01_agent_basics.ipynb`
+3. **Part 3:** Open `notebooks/02_multi_genie_orchestration.ipynb`
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) to understand how the agents work.

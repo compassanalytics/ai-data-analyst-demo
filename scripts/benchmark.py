@@ -24,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.benchmark import (
+    TIER_NAMES,
     BenchmarkEvaluator,
     BenchmarkReporter,
     LLMQueryGenerator,
@@ -31,7 +32,6 @@ from src.benchmark import (
     SchemaParser,
     SuiteGenerator,
     SuiteRunner,
-    TIER_NAMES,
 )
 from src.benchmark.data_aware_generator import DataAwareGenerator
 from src.config import Config

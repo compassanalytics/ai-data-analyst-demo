@@ -406,10 +406,10 @@ class AgentBuilder:
                     llm_with_tools = llm.bind_tools(tools)
                 else:
                     llm_with_tools = llm
-            except ImportError:
+            except ImportError as e:
                 raise ImportError(
                     "databricks-langchain is required for real mode. Install with: pip install databricks-langchain"
-                )
+                ) from e
 
         def mock_route_query(question: str) -> tuple[str | None, dict[str, Any]]:
             """Route query to a tool based on keywords (mock mode).

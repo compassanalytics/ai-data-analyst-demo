@@ -17,32 +17,25 @@ from pathlib import Path
 import pytest
 
 from src.benchmark import (
+    TIER_COMPLEXITY_MAP,
+    TIER_FAILURE_CATEGORIES,
+    TIER_NAMES,
     BenchmarkQuery,
     ProgressiveReporter,
     SuiteGenerator,
     SuiteRunner,
-    TIER_COMPLEXITY_MAP,
-    TIER_FAILURE_CATEGORIES,
-    TIER_NAMES,
-    TierResult,
     TieredBenchmarkResult,
     TieredBenchmarkSuite,
+    TierResult,
     get_tier,
     group_by_tier,
 )
-from src.benchmark.models import EvaluationMode, Severity
 from src.config import Config
 from src.evaluation.models import (
-    AccuracyScore,
     ComplexityLevel,
-    ComparisonDetails,
-    EvaluationFailureType,
-    EvaluationResult,
     FailureCategory,
     QueryType,
-    TestQuery,
 )
-
 
 # =============================================================================
 # FIXTURES
@@ -317,9 +310,7 @@ class TestTieredBenchmarkSuite:
         assert len(tier_1_queries) == 1
         assert tier_1_queries[0].complexity == ComplexityLevel.SIMPLE
 
-    def test_suite_serialization_roundtrip(
-        self, sample_suite: TieredBenchmarkSuite
-    ) -> None:
+    def test_suite_serialization_roundtrip(self, sample_suite: TieredBenchmarkSuite) -> None:
         """Test suite serialization and deserialization."""
         data = sample_suite.to_dict()
         restored = TieredBenchmarkSuite.from_dict(data)
@@ -393,9 +384,7 @@ class TestTierResult:
 class TestTieredBenchmarkResult:
     """Test TieredBenchmarkResult model."""
 
-    def test_result_score_calculation(
-        self, sample_tiered_result: TieredBenchmarkResult
-    ) -> None:
+    def test_result_score_calculation(self, sample_tiered_result: TieredBenchmarkResult) -> None:
         """Test score calculations."""
         # Overall: (9+7+5+3+8)/50 = 32/50 = 64%
         assert sample_tiered_result.overall_accuracy == 64.0
@@ -406,9 +395,7 @@ class TestTieredBenchmarkResult:
         # Safety: tier 5 = 80%
         assert sample_tiered_result.safety_score == 80.0
 
-    def test_result_serialization_roundtrip(
-        self, sample_tiered_result: TieredBenchmarkResult
-    ) -> None:
+    def test_result_serialization_roundtrip(self, sample_tiered_result: TieredBenchmarkResult) -> None:
         """Test result serialization and deserialization."""
         data = sample_tiered_result.to_dict()
         restored = TieredBenchmarkResult.from_dict(data)
@@ -461,15 +448,11 @@ tables:
         type_text: STRING
         comment: "Customer name"
 """
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(schema_content)
             return Path(f.name)
 
-    def test_generator_creation(
-        self, mock_config: Config, temp_schema: Path
-    ) -> None:
+    def test_generator_creation(self, mock_config: Config, temp_schema: Path) -> None:
         """Test generator creation."""
         generator = SuiteGenerator(mock_config, temp_schema)
         assert generator.config == mock_config
@@ -477,9 +460,7 @@ tables:
         # Cleanup
         temp_schema.unlink()
 
-    def test_generate_suite_mock(
-        self, mock_config: Config, temp_schema: Path
-    ) -> None:
+    def test_generate_suite_mock(self, mock_config: Config, temp_schema: Path) -> None:
         """Test suite generation in mock mode."""
         generator = SuiteGenerator(mock_config, temp_schema)
         suite = generator.generate(queries_per_tier=3, tiers=[1, 5])
@@ -491,9 +472,7 @@ tables:
         # Cleanup
         temp_schema.unlink()
 
-    def test_save_and_load_suite(
-        self, mock_config: Config, temp_schema: Path
-    ) -> None:
+    def test_save_and_load_suite(self, mock_config: Config, temp_schema: Path) -> None:
         """Test saving and loading suite."""
         generator = SuiteGenerator(mock_config, temp_schema)
         suite = generator.generate(queries_per_tier=2, tiers=[1])
@@ -526,9 +505,7 @@ class TestSuiteRunner:
         runner = SuiteRunner(mock_config)
         assert runner.config == mock_config
 
-    def test_run_suite_mock(
-        self, mock_config: Config, sample_suite: TieredBenchmarkSuite
-    ) -> None:
+    def test_run_suite_mock(self, mock_config: Config, sample_suite: TieredBenchmarkSuite) -> None:
         """Test running suite in mock mode."""
         runner = SuiteRunner(mock_config)
         result = runner.run(sample_suite, run_type="baseline")
@@ -538,9 +515,7 @@ class TestSuiteRunner:
         assert result.run_type == "baseline"
         assert result.total_queries == sample_suite.total_queries
 
-    def test_run_specific_tiers(
-        self, mock_config: Config, sample_suite: TieredBenchmarkSuite
-    ) -> None:
+    def test_run_specific_tiers(self, mock_config: Config, sample_suite: TieredBenchmarkSuite) -> None:
         """Test running specific tiers."""
         runner = SuiteRunner(mock_config)
         result = runner.run(sample_suite, run_type="baseline", tiers=[1, 2])
@@ -553,13 +528,9 @@ class TestSuiteRunner:
         assert result.tier_results[4].queries_count == 0
         assert result.tier_results[5].queries_count == 0
 
-    def test_save_and_load_result(
-        self, mock_config: Config, sample_tiered_result: TieredBenchmarkResult
-    ) -> None:
+    def test_save_and_load_result(self, mock_config: Config, sample_tiered_result: TieredBenchmarkResult) -> None:
         """Test saving and loading results."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_path = Path(f.name)
 
         try:
@@ -588,14 +559,10 @@ class TestProgressiveReporter:
         assert reporter._md_env is None  # Lazy loaded
         assert reporter._html_env is None
 
-    def test_generate_markdown(
-        self, sample_tiered_result: TieredBenchmarkResult
-    ) -> None:
+    def test_generate_markdown(self, sample_tiered_result: TieredBenchmarkResult) -> None:
         """Test Markdown report generation."""
         reporter = ProgressiveReporter()
-        markdown = reporter.generate_markdown(
-            sample_tiered_result, title="Test Report"
-        )
+        markdown = reporter.generate_markdown(sample_tiered_result, title="Test Report")
 
         assert "Test Report" in markdown
         assert "64.0%" in markdown  # Overall accuracy
@@ -605,9 +572,7 @@ class TestProgressiveReporter:
         assert "Expert" in markdown
         assert "Adversarial" in markdown
 
-    def test_generate_html(
-        self, sample_tiered_result: TieredBenchmarkResult
-    ) -> None:
+    def test_generate_html(self, sample_tiered_result: TieredBenchmarkResult) -> None:
         """Test HTML report generation."""
         reporter = ProgressiveReporter()
         html = reporter.generate_html(sample_tiered_result, title="Test Dashboard")
@@ -619,9 +584,7 @@ class TestProgressiveReporter:
         # Check for Chart.js data encoding with tojson
         assert "tierData" in html
 
-    def test_generate_json(
-        self, sample_tiered_result: TieredBenchmarkResult
-    ) -> None:
+    def test_generate_json(self, sample_tiered_result: TieredBenchmarkResult) -> None:
         """Test JSON report generation."""
         reporter = ProgressiveReporter()
         json_str = reporter.generate_json(sample_tiered_result)
@@ -632,9 +595,7 @@ class TestProgressiveReporter:
         assert data["summary"]["capability_score"] == 60.0
         assert data["summary"]["safety_score"] == 80.0
 
-    def test_save_reports(
-        self, sample_tiered_result: TieredBenchmarkResult
-    ) -> None:
+    def test_save_reports(self, sample_tiered_result: TieredBenchmarkResult) -> None:
         """Test saving reports to files."""
         reporter = ProgressiveReporter()
 

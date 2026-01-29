@@ -240,6 +240,8 @@ Each Genie Space is optimized for its domain:
 
 ## MLflow Integration
 
+> **Note:** This section describes planned capabilities not yet implemented in the current workshop code.
+
 All agent executions are traced with MLflow:
 
 ```python
@@ -308,6 +310,8 @@ Run directly in Databricks notebooks with:
 ```
 
 ### Option 2: Model Serving (Production)
+
+> **Note:** This section describes planned capabilities not yet implemented in the current workshop code.
 
 Deploy as a Databricks Model Serving endpoint:
 ```python

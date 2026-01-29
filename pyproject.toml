@@ -25,17 +25,6 @@ dependencies = [
     "litellm>=1.30.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=4.0.0",
-    "ipykernel>=6.29.0",
-    "ruff>=0.8.0",
-    "mypy>=1.13.0",
-    "types-PyYAML>=6.0.0",
-]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -84,10 +73,12 @@ ignore = [
 # E402 for path manipulation before imports
 "scripts/**" = ["F821", "E402"]
 # B023 false positives in closures, F841 unused vars from pattern matching, F601 intentional traps
-"dataset_generators/**" = ["B023", "F841", "B007", "F601", "F401", "UP035"]
+"dataset_generators/**" = ["B023", "F841", "B007", "F601", "F401", "UP035", "E402"]
 "tests/**" = ["B023"]
-# SIM103 sometimes more readable, F841 unused var for clarity, B007 loop vars, B904 re-raise chain, F401 availability check
-"src/**" = ["SIM103", "F841", "B007", "B904", "F401"]
+# Databricks snippet files use spark global
+"snippets/**" = ["F821"]
+# SIM103 sometimes more readable
+"src/**" = ["SIM103"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]

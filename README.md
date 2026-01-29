@@ -37,7 +37,7 @@ This hands-on workshop teaches you to build AI data analysts that can:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/ai-data-analyst-workshop.git
+git clone https://github.com/YOUR_ORG/ai-data-analyst-workshop.git
 cd ai-data-analyst-workshop
 
 # Install dependencies
@@ -53,18 +53,20 @@ See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.
 ### Run Demo Notebook
 
 1. Upload `notebooks/` to your Databricks workspace
-2. Or import the DBC archive: `workshop-materials.dbc`
-3. Follow along with Part 1, 2, or 3
+2. Follow along with Part 1, 2, or 3
 
 ## Repository Structure
 
 ```
 ai-data-analyst-workshop/
-├── notebooks/              # Demo notebooks for each workshop part
-├── src/                    # Agent code (Genie, RAG, Supervisor)
-├── dataset_generators/     # Generate sample data (dirty vs clean)
-├── infra/                  # Genie Space Infrastructure-as-Code
-├── scripts/                # Setup and deployment scripts
+├── notebooks/              # Workshop notebooks (00a/00b setup, 01-03 exercises)
+├── src/                    # Agent code, benchmark, evaluation, demo, workshop
+├── dataset_generators/     # Generate Velocity Motors sample data (16 tables)
+├── config/                 # Dataset schemas and Genie Space configurations
+├── infra/                  # Genie Space Infrastructure-as-Code manager + configs
+├── snippets/               # Condensed copy-paste setup scripts for Databricks
+├── scripts/                # Setup, deployment, and testing scripts
+├── tests/                  # Unit tests
 ├── data/documents/         # Sample documents for RAG demo
 ├── docs/                   # Workshop documentation
 └── databricks.yml          # Databricks Asset Bundle config
