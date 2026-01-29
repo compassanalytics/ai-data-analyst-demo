@@ -134,6 +134,45 @@ Focus on scenarios where:
 
 The AI assistant might use wrong join types or produce Cartesian products.
 Generate questions that require specific join patterns to answer correctly.""",
+    FailureCategory.TRICK_QUESTIONS: """Generate ADVERSARIAL / TRICK QUESTIONS that test whether the AI appropriately refuses or indicates uncertainty.
+
+These queries are designed to have NO valid SQL answer. The correct response is "I don't know" or "This data is not available."
+
+Focus on 5 subcategories:
+
+1. **IMPOSSIBLE QUERIES** - Ask about data that doesn't exist in the schema:
+   - Weather/climate data (no weather tables exist)
+   - Employee HR data (salary, benefits, PTO - only basic salesperson info exists)
+   - Customer reviews/star ratings (only service_orders.customer_rating exists for service)
+   - Competitor pricing or market share
+   - Marketing campaign data or ad spend
+
+2. **AMBIGUOUS PRONOUNS** - Use unclear references:
+   - "What were their sales last month?" (whose sales?)
+   - "Show the other customers" (other than what?)
+   - "Compare it to the previous one" (what to what?)
+
+3. **MISLEADING ASSUMPTIONS** - Presuppose facts that aren't true:
+   - "Why did sales drop in March?" (assumes sales dropped)
+   - "Show the 10 stores in California" (assumes stores exist)
+   - "What is our refund policy impact?" (assumes refund tracking exists)
+
+4. **CROSS-DOMAIN CONFUSION** - Ask about wrong domain concepts:
+   - Ask medical questions about automotive data
+   - Ask about flight schedules or hotel bookings
+   - Ask about streaming subscriptions
+
+5. **CALCULATION TRAPS** - Request metrics requiring missing data:
+   - Market share (no competitor data)
+   - Weather-adjusted sales (no weather data)
+   - ROI by marketing channel (no marketing data)
+
+IMPORTANT: For trick questions, do NOT require using schema tables. These should reference data that DOES NOT EXIST.
+All generated queries should have:
+- expected_columns: [] (empty)
+- expected_tables: [] (empty)
+
+The AI should recognize these as unanswerable and NOT generate SQL.""",
 }
 
 
@@ -378,6 +417,113 @@ MOCK_QUERY_TEMPLATES: dict[FailureCategory, list[dict[str, Any]]] = {
             "expected_tables": ["customers", "sales", "products"],
             "description": "Tests CTE with ROW_NUMBER across multiple joins",
             "expected_failure": "May create Cartesian product or use wrong ranking",
+            "severity": Severity.CRITICAL,
+        },
+    ],
+    FailureCategory.TRICK_QUESTIONS: [
+        # Subcategory 1: Impossible queries
+        {
+            "question": "How did weather affect our vehicle sales last quarter?",
+            "query_type": QueryType.AGGREGATION,
+            "complexity": ComplexityLevel.MODERATE,
+            "expected_columns": [],
+            "expected_tables": [],
+            "description": "IMPOSSIBLE: No weather data exists in the schema",
+            "expected_failure": "Appropriate refusal - no weather data available",
+            "severity": Severity.HIGH,
+        },
+        {
+            "question": "What is the average employee salary by department?",
+            "query_type": QueryType.AGGREGATION,
+            "complexity": ComplexityLevel.SIMPLE,
+            "expected_columns": [],
+            "expected_tables": [],
+            "description": "IMPOSSIBLE: No HR/salary data exists - only basic salesperson info",
+            "expected_failure": "Appropriate refusal - no salary data available",
+            "severity": Severity.HIGH,
+        },
+        # Subcategory 2: Ambiguous pronouns
+        {
+            "question": "What were their sales last month?",
+            "query_type": QueryType.AGGREGATION,
+            "complexity": ComplexityLevel.SIMPLE,
+            "expected_columns": [],
+            "expected_tables": [],
+            "description": "AMBIGUOUS: 'their' has no clear referent - whose sales?",
+            "expected_failure": "Appropriate clarification request - ambiguous pronoun",
+            "severity": Severity.MEDIUM,
+        },
+        {
+            "question": "Compare it to the previous period",
+            "query_type": QueryType.COMPARISON,
+            "complexity": ComplexityLevel.MODERATE,
+            "expected_columns": [],
+            "expected_tables": [],
+            "description": "AMBIGUOUS: 'it' and 'previous period' have no clear referent",
+            "expected_failure": "Appropriate clarification request - ambiguous reference",
+            "severity": Severity.MEDIUM,
+        },
+        # Subcategory 3: Misleading assumptions
+        {
+            "question": "Why did our customer satisfaction score drop in Q2?",
+            "query_type": QueryType.FILTER,
+            "complexity": ComplexityLevel.MODERATE,
+            "expected_columns": [],
+            "expected_tables": [],
+            "description": "MISLEADING: Presupposes satisfaction dropped - may not be true",
+            "expected_failure": "Appropriate challenge of assumption or data verification",
+            "severity": Severity.HIGH,
+        },
+        {
+            "question": "Show me the refund rate by product category",
+            "query_type": QueryType.AGGREGATION,
+            "complexity": ComplexityLevel.MODERATE,
+            "expected_columns": [],
+            "expected_tables": [],
+            "description": "MISLEADING: Assumes refund tracking exists - no refund data in schema",
+            "expected_failure": "Appropriate refusal - no refund data available",
+            "severity": Severity.HIGH,
+        },
+        # Subcategory 4: Cross-domain confusion
+        {
+            "question": "What is the average patient wait time by department?",
+            "query_type": QueryType.AGGREGATION,
+            "complexity": ComplexityLevel.SIMPLE,
+            "expected_columns": [],
+            "expected_tables": [],
+            "description": "CROSS-DOMAIN: Medical/healthcare question for automotive data",
+            "expected_failure": "Appropriate domain mismatch indication",
+            "severity": Severity.HIGH,
+        },
+        {
+            "question": "Show flight bookings by destination for last month",
+            "query_type": QueryType.AGGREGATION,
+            "complexity": ComplexityLevel.SIMPLE,
+            "expected_columns": [],
+            "expected_tables": [],
+            "description": "CROSS-DOMAIN: Travel/airline question for automotive data",
+            "expected_failure": "Appropriate domain mismatch indication",
+            "severity": Severity.HIGH,
+        },
+        # Subcategory 5: Calculation traps
+        {
+            "question": "What is our market share compared to competitors?",
+            "query_type": QueryType.AGGREGATION,
+            "complexity": ComplexityLevel.COMPLEX,
+            "expected_columns": [],
+            "expected_tables": [],
+            "description": "CALCULATION TRAP: Requires competitor data which doesn't exist",
+            "expected_failure": "Appropriate refusal - no competitor data available",
+            "severity": Severity.CRITICAL,
+        },
+        {
+            "question": "Calculate ROI for each marketing campaign",
+            "query_type": QueryType.AGGREGATION,
+            "complexity": ComplexityLevel.COMPLEX,
+            "expected_columns": [],
+            "expected_tables": [],
+            "description": "CALCULATION TRAP: No marketing campaign data exists in schema",
+            "expected_failure": "Appropriate refusal - no marketing data available",
             "severity": Severity.CRITICAL,
         },
     ],
@@ -798,7 +944,7 @@ Return ONLY valid JSON in the format specified in the system prompt."""
             expected_columns=query_dict.get("expected_columns", []),
             expected_tables=query_dict.get("expected_tables", []),
             description=query_dict.get("description", ""),
-            is_adversarial=False,
+            is_adversarial=(category == FailureCategory.TRICK_QUESTIONS),
             domain=domain_context.domain_name,
             generated_by="llm",
             schema_version=schema_version,
@@ -860,9 +1006,11 @@ Return ONLY valid JSON in the format specified in the system prompt."""
                 )
 
                 # Get expected tables from domain if not specified
+                # Skip auto-fill for adversarial queries that intentionally have empty expectations
                 expected_tables = template.get("expected_tables", [])
-                if not expected_tables and domain_context.tables:
-                    expected_tables = [domain_context.tables[0].name]
+                if category != FailureCategory.TRICK_QUESTIONS:
+                    if not expected_tables and domain_context.tables:
+                        expected_tables = [domain_context.tables[0].name]
 
                 query_id = f"mock_{category.value}_{idx:03d}"
 
@@ -875,7 +1023,7 @@ Return ONLY valid JSON in the format specified in the system prompt."""
                     expected_columns=template.get("expected_columns", []),
                     expected_tables=expected_tables,
                     description=template.get("description", ""),
-                    is_adversarial=False,
+                    is_adversarial=(category == FailureCategory.TRICK_QUESTIONS),
                     domain=domain_context.domain_name,
                     generated_by="llm",  # Mark as LLM for consistency
                     schema_version=schema_version,

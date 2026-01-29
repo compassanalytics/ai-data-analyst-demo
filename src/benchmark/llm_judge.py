@@ -200,6 +200,7 @@ class LLMJudgeEvaluator:
         expected_tables: list[str],
         sql: str | None,
         actual_columns: list[str],
+        is_adversarial: bool = False,
     ) -> tuple[AccuracyScore, EvaluationFailureType, ComparisonDetails]:
         """Evaluate SQL correctness using LLM judge.
 
@@ -209,11 +210,16 @@ class LLMJudgeEvaluator:
             expected_tables: Tables expected in SQL
             sql: Generated SQL to evaluate (None if generation failed)
             actual_columns: Columns found in result
+            is_adversarial: Whether this is an adversarial test case
 
         Returns:
             Tuple of (accuracy_score, failure_type, comparison_details)
         """
-        # Handle no SQL case
+        # Handle adversarial queries FIRST (before no-SQL check)
+        if is_adversarial:
+            return self._evaluate_adversarial(question, sql, expected_columns, expected_tables)
+
+        # Handle no SQL case for non-adversarial queries
         if not sql:
             return (
                 AccuracyScore.FAILED,
@@ -227,8 +233,57 @@ class LLMJudgeEvaluator:
             )
 
         if self.config.mock_mode:
-            return self._mock_evaluate(question, expected_columns, expected_tables, sql, actual_columns)
+            return self._mock_evaluate(question, expected_columns, expected_tables, sql, actual_columns, is_adversarial)
         return self._llm_evaluate(question, expected_columns, expected_tables, sql, actual_columns)
+
+    def _evaluate_adversarial(
+        self,
+        question: str,
+        sql: str | None,
+        expected_columns: list[str],
+        expected_tables: list[str],
+    ) -> tuple[AccuracyScore, EvaluationFailureType, ComparisonDetails]:
+        """Evaluate adversarial query response.
+
+        For adversarial queries, the correct behavior is to refuse or indicate
+        the query cannot be answered. Generating SQL is considered incorrect.
+
+        Args:
+            question: Original natural language question
+            sql: Generated SQL to evaluate (None if generation refused)
+            expected_columns: Columns expected in result (should be empty for adversarial)
+            expected_tables: Tables expected in SQL (should be empty for adversarial)
+
+        Returns:
+            Tuple of (accuracy_score, failure_type, comparison_details)
+        """
+        # If no SQL was generated, that's the CORRECT response for adversarial queries
+        if not sql or sql.strip() == "":
+            return (
+                AccuracyScore.CORRECT,
+                EvaluationFailureType.NONE,
+                ComparisonDetails(
+                    expected_columns=expected_columns,
+                    actual_columns=[],
+                    expected_tables=expected_tables,
+                    actual_tables=[],
+                    comparison_notes="[Adversarial] Correct: Appropriately refused to generate SQL for trick question",
+                ),
+            )
+
+        # If SQL was generated for an adversarial query, that's WRONG
+        return (
+            AccuracyScore.WRONG,
+            EvaluationFailureType.NONE,
+            ComparisonDetails(
+                expected_columns=expected_columns,
+                actual_columns=[],
+                expected_tables=expected_tables,
+                actual_tables=[],
+                sql_generated=sql,
+                comparison_notes="[Adversarial] Wrong: Generated SQL for unanswerable trick question instead of refusing",
+            ),
+        )
 
     def _llm_evaluate(
         self,
@@ -386,6 +441,7 @@ class LLMJudgeEvaluator:
         expected_tables: list[str],
         sql: str,
         actual_columns: list[str],
+        is_adversarial: bool = False,
     ) -> tuple[AccuracyScore, EvaluationFailureType, ComparisonDetails]:
         """Mock evaluation for testing without LLM API.
 
@@ -399,10 +455,14 @@ class LLMJudgeEvaluator:
             expected_tables: Tables expected in SQL
             sql: Generated SQL to evaluate
             actual_columns: Columns found in result
+            is_adversarial: Whether this is an adversarial test case
 
         Returns:
             Tuple of (accuracy_score, failure_type, comparison_details)
         """
+        # Handle adversarial in mock mode (defensive - should be caught earlier)
+        if is_adversarial:
+            return self._evaluate_adversarial(question, sql, expected_columns, expected_tables)
         # Normalize column names for comparison
         expected_lower = [c.lower() for c in expected_columns]
         actual_lower = [c.lower() for c in actual_columns]

@@ -1193,3 +1193,113 @@ class TestBenchmarkEvaluatorWithLLMJudge:
 
         assert run.queries_evaluated == 0
         assert run.evaluation_mode == EvaluationMode.LLM_JUDGE
+
+
+# =============================================================================
+# Test TRICK_QUESTIONS Category
+# =============================================================================
+
+
+class TestTrickQuestionsCategory:
+    """Tests for the TRICK_QUESTIONS failure category."""
+
+    def setup_method(self) -> None:
+        self.config = Config(genie_space_id="test_space", mock_mode=True)
+        self.generator = LLMQueryGenerator(self.config)
+        # Create minimal domain context
+        self.domain_context = DomainContext(
+            domain_name="Test Domain",
+            tables=[
+                TableInfo(
+                    name="sales",
+                    full_identifier="catalog.schema.sales",
+                    description="Sales transactions",
+                    columns=[
+                        ColumnInfo(name="sale_id", data_type="int"),
+                        ColumnInfo(name="revenue", data_type="float"),
+                    ],
+                ),
+            ],
+            relationships=[],
+            business_rules=[],
+            metrics=[],
+        )
+
+    def test_trick_questions_enum_exists(self) -> None:
+        """Test that TRICK_QUESTIONS enum value exists."""
+        assert FailureCategory.TRICK_QUESTIONS.value == "trick_questions"
+
+    def test_trick_questions_generates_adversarial_queries(self) -> None:
+        """Test that TRICK_QUESTIONS category generates adversarial queries."""
+        queries = self.generator.generate(
+            domain_context=self.domain_context,
+            failure_categories=[FailureCategory.TRICK_QUESTIONS],
+            queries_per_category=5,
+        )
+
+        assert len(queries) >= 1
+        for query in queries:
+            assert query.failure_category == FailureCategory.TRICK_QUESTIONS
+            assert query.is_adversarial is True
+
+    def test_trick_questions_have_empty_expectations(self) -> None:
+        """Test that TRICK_QUESTIONS have empty expected columns/tables."""
+        queries = self.generator.generate(
+            domain_context=self.domain_context,
+            failure_categories=[FailureCategory.TRICK_QUESTIONS],
+            queries_per_category=5,
+        )
+
+        for query in queries:
+            assert query.expected_columns == []
+            assert query.expected_tables == []
+
+
+class TestLLMJudgeAdversarial:
+    """Tests for LLM Judge handling of adversarial queries."""
+
+    def setup_method(self) -> None:
+        self.config = Config(genie_space_id="test_space", mock_mode=True)
+        self.judge = LLMJudgeEvaluator(self.config)
+
+    def test_adversarial_no_sql_is_correct(self) -> None:
+        """Test that no SQL generation is CORRECT for adversarial queries."""
+        accuracy, failure_type, comparison = self.judge.evaluate(
+            question="How did weather affect our sales?",
+            expected_columns=[],
+            expected_tables=[],
+            sql=None,
+            actual_columns=[],
+            is_adversarial=True,
+        )
+
+        assert accuracy == AccuracyScore.CORRECT
+        assert "[Adversarial]" in comparison.comparison_notes
+
+    def test_adversarial_with_sql_is_wrong(self) -> None:
+        """Test that generating SQL is WRONG for adversarial queries."""
+        accuracy, failure_type, comparison = self.judge.evaluate(
+            question="How did weather affect our sales?",
+            expected_columns=[],
+            expected_tables=[],
+            sql="SELECT * FROM weather",
+            actual_columns=[],
+            is_adversarial=True,
+        )
+
+        assert accuracy == AccuracyScore.WRONG
+        assert "[Adversarial]" in comparison.comparison_notes
+
+    def test_non_adversarial_no_sql_is_failed(self) -> None:
+        """Test that non-adversarial queries with no SQL are still FAILED."""
+        accuracy, failure_type, comparison = self.judge.evaluate(
+            question="What is total revenue?",
+            expected_columns=["revenue"],
+            expected_tables=["sales"],
+            sql=None,
+            actual_columns=[],
+            is_adversarial=False,
+        )
+
+        assert accuracy == AccuracyScore.FAILED
+        assert failure_type == EvaluationFailureType.NO_SQL_GENERATED

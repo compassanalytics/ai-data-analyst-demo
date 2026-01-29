@@ -242,6 +242,7 @@ class BenchmarkEvaluator:
                 expected_tables=result.test_query.expected_tables,
                 sql=sql,
                 actual_columns=actual_columns,
+                is_adversarial=result.test_query.is_adversarial,
             )
 
             # Create new result with LLM judge scores

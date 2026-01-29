@@ -42,6 +42,7 @@ class FailureCategory(Enum):
     4. Temporal confusion
     5. Aggregation ambiguity
     6. Join complexity
+    7. Trick questions (adversarial queries)
     """
 
     AMBIGUOUS_COLUMNS = "ambiguous_columns"
@@ -50,6 +51,7 @@ class FailureCategory(Enum):
     TEMPORAL_CONFUSION = "temporal_confusion"
     AGGREGATION_AMBIGUITY = "aggregation_ambiguity"
     JOIN_COMPLEXITY = "join_complexity"
+    TRICK_QUESTIONS = "trick_questions"
 
 
 class EvaluationFailureType(Enum):

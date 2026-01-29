@@ -85,6 +85,7 @@ class TestFailureCategoryEnum:
             "temporal_confusion",
             "aggregation_ambiguity",
             "join_complexity",
+            "trick_questions",
         ]
         actual = [fc.value for fc in FailureCategory]
         assert set(actual) == set(expected)
