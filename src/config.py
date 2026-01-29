@@ -40,6 +40,8 @@ class Config:
         genie_space_id: The Genie Space ID for data analysis
         warehouse_id: SQL Warehouse ID for queries
         model_endpoint: Model serving endpoint for ChatDatabricks
+        llm_provider: LLM provider - "litellm" (default) or "databricks"
+        llm_model: Model identifier for LiteLLM (e.g., "claude-sonnet-4-5-20250929")
         mock_mode: Enable mock mode for demos without real Genie access
         vector_search_endpoint: Optional Vector Search endpoint
         vector_search_index: Optional Vector Search index name
@@ -59,6 +61,8 @@ class Config:
     genie_space_id: str = field(default="")
     warehouse_id: str = field(default="")
     model_endpoint: str = field(default="databricks-meta-llama-3-3-70b-instruct")
+    llm_provider: str = field(default="litellm")
+    llm_model: str = field(default="claude-sonnet-4-5-20250929")
     mock_mode: bool = field(default=False)
     vector_search_endpoint: str | None = field(default=None)
     vector_search_index: str | None = field(default=None)
@@ -89,6 +93,8 @@ class Config:
             GENIE_SPACE_ID: Target Genie Space ID
             WAREHOUSE_ID: SQL Warehouse ID
             MODEL_ENDPOINT: Model serving endpoint name
+            LLM_PROVIDER: LLM provider - "litellm" or "databricks" (default: litellm)
+            LLM_MODEL: Model identifier for LiteLLM (default: claude-sonnet-4-5-20250929)
             MOCK_MODE: Enable mock mode (true/false)
             VECTOR_SEARCH_ENDPOINT: VS endpoint (optional)
             VECTOR_SEARCH_INDEX: VS index name (optional)
@@ -107,6 +113,8 @@ class Config:
             genie_space_id=os.getenv("GENIE_SPACE_ID", ""),
             warehouse_id=os.getenv("WAREHOUSE_ID", ""),
             model_endpoint=os.getenv("MODEL_ENDPOINT", "databricks-meta-llama-3-3-70b-instruct"),
+            llm_provider=os.getenv("LLM_PROVIDER", "litellm"),
+            llm_model=os.getenv("LLM_MODEL", "claude-sonnet-4-5-20250929"),
             mock_mode=_str_to_bool(os.getenv("MOCK_MODE", "false")),
             vector_search_endpoint=os.getenv("VECTOR_SEARCH_ENDPOINT"),
             vector_search_index=os.getenv("VECTOR_SEARCH_INDEX"),

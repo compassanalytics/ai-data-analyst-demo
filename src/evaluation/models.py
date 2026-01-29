@@ -169,6 +169,7 @@ class ComparisonDetails:
         extra_tables: Found tables not expected
         sql_generated: The SQL that Genie generated
         comparison_notes: Additional notes about the comparison
+        judge_info: LLM Judge information (passed, score, reasoning)
     """
 
     expected_columns: list[str] = field(default_factory=list)
@@ -181,6 +182,7 @@ class ComparisonDetails:
     extra_tables: list[str] = field(default_factory=list)
     sql_generated: str | None = None
     comparison_notes: str = ""
+    judge_info: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization.
@@ -199,6 +201,7 @@ class ComparisonDetails:
             "extra_tables": self.extra_tables,
             "sql_generated": self.sql_generated,
             "comparison_notes": self.comparison_notes,
+            "judge_info": self.judge_info,
         }
 
     @classmethod
@@ -222,6 +225,7 @@ class ComparisonDetails:
             extra_tables=data.get("extra_tables", []),
             sql_generated=data.get("sql_generated"),
             comparison_notes=data.get("comparison_notes", ""),
+            judge_info=data.get("judge_info"),
         )
 
 
@@ -239,6 +243,9 @@ class EvaluationResult:
         error_message: Error message if query failed
         error_category: Error category from AgentError if available
         timestamp: When the evaluation was performed
+        judge_passed: Whether the LLM judge determined the query passed (score >= 3)
+        judge_score: LLM judge score (1-5 rating)
+        judge_reasoning: LLM judge explanation of the assessment
     """
 
     test_query: TestQuery
@@ -250,6 +257,9 @@ class EvaluationResult:
     error_message: str | None = None
     error_category: str | None = None
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+    judge_passed: bool | None = None
+    judge_score: int | None = None
+    judge_reasoning: str | None = None
 
     @property
     def is_correct(self) -> bool:
@@ -303,6 +313,9 @@ class EvaluationResult:
             "error_message": self.error_message,
             "error_category": self.error_category,
             "timestamp": self.timestamp,
+            "judge_passed": self.judge_passed,
+            "judge_score": self.judge_score,
+            "judge_reasoning": self.judge_reasoning,
         }
 
     @classmethod
@@ -325,6 +338,9 @@ class EvaluationResult:
             error_message=data.get("error_message"),
             error_category=data.get("error_category"),
             timestamp=data.get("timestamp", datetime.now().isoformat()),
+            judge_passed=data.get("judge_passed"),
+            judge_score=data.get("judge_score"),
+            judge_reasoning=data.get("judge_reasoning"),
         )
 
 

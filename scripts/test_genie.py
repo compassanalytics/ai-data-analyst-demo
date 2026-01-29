@@ -129,25 +129,25 @@ Or just type your question!
 
 
 def print_examples():
-    """Print example queries for TPCH data."""
+    """Print example queries for Velocity Motors data."""
     print("""
-Example queries for TPCH data:
+Example queries for Velocity Motors data:
 
   Data Analysis:
-    - What are total sales by order status?
-    - Show top 10 customers by total order value
-    - What is the average order value by market segment?
-    - Which suppliers have the most parts?
-    - Show monthly order trends
+    - What is the total revenue by vehicle make?
+    - Show top 10 salespeople by total sales
+    - What is the average order value by customer segment?
+    - Which suppliers have the longest lead times?
+    - Show monthly sales trends for the past 12 months
 
   Aggregations:
     - How many orders per region?
-    - What's the total revenue by nation?
-    - Count customers by market segment
+    - What is the breakdown of orders by payment method?
+    - Count customers by segment (Individual/Fleet/Dealer)
 
   Comparisons:
-    - Compare order volumes: completed vs pending
-    - Which region has highest average order value?
+    - Compare sales: New vs Certified Pre-Owned vs Used vehicles
+    - Which region has the highest average order value?
 """)
 
 

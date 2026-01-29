@@ -493,8 +493,8 @@ Example modifications:
         difficulty=Difficulty.EASY,
         time_estimate_minutes=5,
         hints=[
-            "Try adding a segment filter like 'from AUTOMOBILE segment'",
-            "Check the TPCH schema - common filters include: segment, region, order_status",
+            "Try adding a segment filter like 'from Fleet segment'",
+            "Check the Velocity Motors schema - common filters include: customer segment (Individual/Fleet/Dealer), vehicle condition (New/Certified Pre-Owned/Used), region, payment_method",
             "Your modified query should return fewer rows than the original",
         ],
         validator=_validate_modified_query,

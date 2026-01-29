@@ -1,6 +1,7 @@
 """LLM-Powered Benchmark System for Genie Spaces."""
 
 from .evaluator import BenchmarkEvaluator
+from .llm_client import LLMConfig, LLMResponse, UnifiedLLMClient, create_llm_client
 from .llm_generator import LLMQueryGenerator
 from .llm_judge import LLMJudgeEvaluator
 from .models import (
@@ -20,6 +21,8 @@ from .schema_parser import (
     SchemaParser,
     TableInfo,
 )
+from .data_aware_generator import DataAwareGenerator
+from .data_profiler import ColumnProfile, DataProfile, DataProfiler
 from .suite import (
     TIER_COMPLEXITY_MAP,
     TIER_FAILURE_CATEGORIES,
@@ -34,8 +37,19 @@ from .suite import (
 )
 
 __all__ = [
+    # Data-Aware Generator
+    "DataAwareGenerator",
+    # Data Profiler
+    "ColumnProfile",
+    "DataProfile",
+    "DataProfiler",
     # Evaluator
     "BenchmarkEvaluator",
+    # LLM Client
+    "LLMConfig",
+    "LLMResponse",
+    "UnifiedLLMClient",
+    "create_llm_client",
     # LLM Generator
     "LLMQueryGenerator",
     # LLM Judge

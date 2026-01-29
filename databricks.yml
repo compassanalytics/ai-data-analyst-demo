@@ -38,7 +38,7 @@ resources:
       tasks:
         - task_key: run_demo
           notebook_task:
-            notebook_path: notebooks/demo.ipynb
+            notebook_path: notebooks/01_agent_basics.ipynb
             base_parameters:
               genie_space_id: ${var.genie_space_id}
               model_endpoint: ${var.model_endpoint}

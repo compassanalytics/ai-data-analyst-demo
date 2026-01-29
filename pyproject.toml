@@ -22,6 +22,7 @@ dependencies = [
     "matplotlib>=3.8.0",
     "seaborn>=0.13.0",
     "azure-storage-blob>=12.28.0",
+    "litellm>=1.30.0",
 ]
 
 [project.optional-dependencies]

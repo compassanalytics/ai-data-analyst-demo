@@ -1,7 +1,12 @@
 """LLM-powered query generator for the benchmark system.
 
-This module generates domain-specific test queries using an LLM (ChatDatabricks)
-based on schema context. Supports mock mode for testing without LLM API access.
+This module generates domain-specific test queries using an LLM
+based on schema context. Supports multiple providers via LiteLLM:
+- Anthropic (Claude)
+- OpenAI (GPT-4)
+- Databricks Foundation Models
+
+Supports mock mode for testing without LLM API access.
 """
 
 from __future__ import annotations
@@ -9,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -21,6 +27,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from src.config import Config
 from src.evaluation.models import ComplexityLevel, FailureCategory, QueryType
 
+from .llm_client import LLMConfig, UnifiedLLMClient, create_llm_client
 from .models import BenchmarkQuery, Severity
 from .schema_parser import DomainContext
 
@@ -76,17 +83,28 @@ Focus on scenarios where:
 
 The AI assistant might pick the wrong column or fail to disambiguate between options.
 Generate questions that would naturally refer to these ambiguous concepts.""",
-    FailureCategory.CRYPTIC_CODES: """Generate queries that test handling of CRYPTIC CODES and abbreviations.
+    FailureCategory.CRYPTIC_CODES: """Generate queries that test handling of CRYPTIC CODES, abbreviations, and synonyms.
+
+CRITICAL: Only test codes and values that ACTUALLY EXIST in this schema.
+Check the "Valid Column Values" section above for the exact values available.
 
 Focus on scenarios where:
-- Status codes are numeric (1,2,3,4,5) instead of descriptive
-- Segment codes like ENT/MID/SMB need interpretation
-- Channel codes like ON/OFF/EC represent business concepts
-- Category codes like BER/CID/RTD/NAB need domain knowledge
-- Type indicators use non-obvious abbreviations
+- Users use abbreviations that need mapping to actual column values
+  (e.g., "CPO cars" -> condition = 'Certified Pre-Owned')
+- Users use synonyms that need translation
+  (e.g., "financed deals" -> payment_method = 'Financing')
+- Case sensitivity might cause issues
+  (e.g., "COMPLETED orders" -> status = 'Completed')
+- Users describe values differently than stored
+  (e.g., "paid in full" -> payment_method = 'Cash')
 
-The AI assistant might not know how to map natural language terms to these codes.
-Generate questions using natural language that requires code translation.""",
+DO NOT generate queries for:
+- Columns that don't exist in the schema (no channel, segment, category, type unless listed)
+- Numeric codes if the column uses text values
+- Values not listed in the Valid Column Values section
+
+The AI assistant might fail to map user terminology to actual column values.
+Generate questions using natural language synonyms for existing values.""",
     FailureCategory.BUSINESS_LOGIC: """Generate queries that test understanding of BUSINESS LOGIC and domain rules.
 
 Focus on scenarios where:
@@ -554,8 +572,10 @@ class GenerationMetadata:
 class LLMQueryGenerator:
     """Generate benchmark queries using LLM.
 
-    Uses ChatDatabricks to generate domain-specific test queries based on
-    schema context. Supports mock mode for testing without LLM API access.
+    Supports multiple LLM providers via LiteLLM:
+    - Anthropic (Claude) - recommended for best schema understanding
+    - OpenAI (GPT-4)
+    - Databricks Foundation Models
 
     Example:
         >>> config = Config.from_env()
@@ -563,27 +583,78 @@ class LLMQueryGenerator:
         >>> queries = generator.generate(domain_context, queries_per_category=5)
     """
 
-    def __init__(self, config: Config):
+    # Default to Claude for better schema understanding
+    DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
+
+    def __init__(self, config: Config, model: str | None = None, provider: str = "litellm"):
         """Initialize the LLM query generator.
 
         Args:
             config: Configuration instance with model settings
+            model: Model identifier (defaults to Claude 3.5 Sonnet)
+            provider: LLM provider - "litellm" (default) or "databricks"
         """
         self.config = config
         self._llm = None
-        self._temperature = 0.7  # Some creativity for variety
+        self._litellm_client = None
+        self._temperature = 0.3  # Lower for more deterministic generation
+        self._model = model or os.getenv("LLM_MODEL", self.DEFAULT_MODEL)
+        self._provider = provider
 
     @property
     def llm(self):
-        """Lazy-load ChatDatabricks LLM."""
-        if self._llm is None and not self.config.mock_mode:
-            from databricks_langchain import ChatDatabricks
+        """Lazy-load LLM client based on provider.
 
-            self._llm = ChatDatabricks(
-                endpoint=self.config.model_endpoint,
-                temperature=self._temperature,
-            )
+        Uses LiteLLM for multi-provider support, or Databricks directly.
+        """
+        if self._llm is None and not self.config.mock_mode:
+            if self._provider == "databricks":
+                # Use Databricks directly
+                from databricks_langchain import ChatDatabricks
+
+                self._llm = ChatDatabricks(
+                    endpoint=self.config.model_endpoint,
+                    temperature=self._temperature,
+                )
+            else:
+                # Use LiteLLM for flexible model access
+                self._litellm_client = create_llm_client(
+                    provider="litellm",
+                    model=self._model,
+                    temperature=self._temperature,
+                )
+                # Create a wrapper that matches the ChatDatabricks interface
+                self._llm = self._create_litellm_wrapper()
         return self._llm
+
+    def _create_litellm_wrapper(self):
+        """Create a wrapper that provides invoke() with LangChain message support."""
+
+        class LiteLLMWrapper:
+            def __init__(wrapper_self, client):
+                wrapper_self.client = client
+
+            def invoke(wrapper_self, messages):
+                """Invoke the LLM with LangChain-style messages."""
+                # Convert LangChain messages to dict format
+                msg_dicts = []
+                for msg in messages:
+                    if hasattr(msg, "type"):
+                        role = "system" if msg.type == "system" else "user"
+                    else:
+                        role = "user"
+                    msg_dicts.append({"role": role, "content": msg.content})
+
+                response = wrapper_self.client.invoke(msg_dicts)
+
+                # Return an object with .content attribute
+                class Response:
+                    def __init__(self, content):
+                        self.content = content
+
+                return Response(response.content)
+
+        return LiteLLMWrapper(self._litellm_client)
 
     def generate(
         self,
@@ -803,7 +874,7 @@ Return ONLY valid JSON in the format specified in the system prompt."""
     def _parse_llm_response(self, response_text: str) -> list[dict]:
         """Parse LLM JSON response.
 
-        Handles JSON wrapped in markdown code blocks.
+        Handles JSON wrapped in markdown code blocks and various edge cases.
 
         Args:
             response_text: Raw LLM response text
@@ -811,12 +882,26 @@ Return ONLY valid JSON in the format specified in the system prompt."""
         Returns:
             List of query dictionaries
         """
-        # Extract JSON from markdown code blocks if present
+        if not response_text or not response_text.strip():
+            logger.error("Empty response from LLM")
+            return []
+
+        # Try multiple extraction strategies
+        json_str = None
+
+        # Strategy 1: Extract JSON from markdown code blocks
         json_match = re.search(r"```(?:json)?\s*([\s\S]*?)```", response_text)
         if json_match:
             json_str = json_match.group(1).strip()
-        else:
-            # Try to find raw JSON
+
+        # Strategy 2: Find JSON object starting with {
+        if not json_str:
+            brace_match = re.search(r"(\{[\s\S]*\})", response_text)
+            if brace_match:
+                json_str = brace_match.group(1).strip()
+
+        # Strategy 3: Use the raw response
+        if not json_str:
             json_str = response_text.strip()
 
         try:
@@ -828,7 +913,9 @@ Return ONLY valid JSON in the format specified in the system prompt."""
             return queries
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse LLM response as JSON: {e}")
-            logger.debug(f"Response text: {response_text[:500]}")
+            # Log more context for debugging
+            logger.warning(f"Response preview (first 300 chars): {response_text[:300]}")
+            logger.warning(f"JSON string preview (first 300 chars): {json_str[:300] if json_str else 'None'}")
             return []
 
     def _validate_query(
@@ -860,12 +947,37 @@ Return ONLY valid JSON in the format specified in the system prompt."""
             logger.warning("Query has empty question")
             return False
 
-        # Validate query_type is valid
+        # Validate query_type is valid, with auto-correction for common LLM mistakes
         query_type_str = query_dict.get("query_type", "").lower()
         valid_query_types = {qt.value for qt in QueryType}
+
+        # Map common invalid query_types to valid ones
+        query_type_mapping = {
+            "anti_join": "join",
+            "anti-join": "join",
+            "self_join": "join",
+            "self-join": "join",
+            "relational_division": "join",
+            "subquery": "join",
+            "cte": "aggregation",
+            "window": "ranking",
+            "window_function": "ranking",
+            "trick_questions": "filter",  # Adversarial queries default to filter
+            "trick_question": "filter",   # Singular variant
+            "trick": "filter",
+            "adversarial": "filter",
+            "unanswerable": "filter",
+            "invalid": "filter",
+        }
+
         if query_type_str not in valid_query_types:
-            logger.warning(f"Invalid query_type: {query_type_str}")
-            return False
+            if query_type_str in query_type_mapping:
+                corrected = query_type_mapping[query_type_str]
+                logger.info(f"Auto-corrected query_type '{query_type_str}' -> '{corrected}'")
+                query_dict["query_type"] = corrected
+            else:
+                logger.warning(f"Invalid query_type: {query_type_str}")
+                return False
 
         # Validate complexity is valid
         complexity_str = query_dict.get("complexity", "").lower()
@@ -887,6 +999,30 @@ Return ONLY valid JSON in the format specified in the system prompt."""
                     logger.warning(f"Table '{table}' not found in domain schema. Available: {domain_tables}")
                     # Don't fail validation - LLM might use reasonable table names
                     # that we should accept even if not exact matches
+
+        # Validate expected_columns - reject only known fictional columns
+        # We can't validate all columns since YAML may not have full schema
+        expected_columns = query_dict.get("expected_columns", [])
+        if expected_columns:
+            # Known fictional columns that indicate hallucination
+            # These are columns that cryptic_codes tests incorrectly assume exist
+            fictional_columns = {
+                "channel", "segment", "category", "type", "type_indicator",
+                "segment_code", "channel_code", "category_code", "status_code",
+            }
+
+            # Check for fictional columns
+            fictional_found = []
+            for col in expected_columns:
+                col_lower = col.lower()
+                if col_lower in fictional_columns:
+                    fictional_found.append(col)
+
+            if fictional_found:
+                logger.warning(
+                    f"Query expects fictional columns: {fictional_found}. Rejecting."
+                )
+                return False
 
         return True
 

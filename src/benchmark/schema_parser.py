@@ -71,6 +71,7 @@ class ColumnInfo:
         description: Human-readable description
         is_key: Whether this is a key column (primary or foreign)
         is_metric: Whether this is a metric/measure column
+        valid_values: List of valid enum values (if known)
     """
 
     name: str
@@ -78,6 +79,7 @@ class ColumnInfo:
     description: str | None = None
     is_key: bool = False
     is_metric: bool = False
+    valid_values: list[str] | None = None
 
 
 @dataclass
@@ -129,6 +131,7 @@ class DomainContext:
         metrics: List of identified metrics
         sample_questions: Sample questions from the config
         example_sqls: Example SQL queries with their questions
+        column_values: Mapping of column names to their valid values (enums)
     """
 
     domain_name: str
@@ -138,6 +141,7 @@ class DomainContext:
     metrics: list[str] = field(default_factory=list)
     sample_questions: list[str] = field(default_factory=list)
     example_sqls: list[dict] = field(default_factory=list)
+    column_values: dict[str, list[str]] = field(default_factory=dict)
 
     def get_table_names(self) -> list[str]:
         """Get list of all table names (short names without catalog/schema).
@@ -157,6 +161,17 @@ class DomainContext:
         for table in self.tables:
             columns.extend(col.name for col in table.columns)
         return columns
+
+    def get_column_values(self, column_name: str) -> list[str] | None:
+        """Get valid values for a column if known.
+
+        Args:
+            column_name: Name of the column
+
+        Returns:
+            List of valid values, or None if not known
+        """
+        return self.column_values.get(column_name)
 
     def to_prompt_context(self) -> str:
         """Format the domain context as a string for LLM prompts.
@@ -230,6 +245,14 @@ class DomainContext:
                 sections.append(f"Question: {example.get('question', '')}")
                 sections.append(f"```sql\n{example.get('sql', '').strip()}\n```\n")
 
+        # Column values/enums section (critical for schema-aware generation)
+        if self.column_values:
+            sections.append("## Valid Column Values (IMPORTANT)\n")
+            sections.append("These are the ONLY valid values for these columns. Do NOT invent other values:\n")
+            for col_name, values in sorted(self.column_values.items()):
+                sections.append(f"- **{col_name}**: {', '.join(f'\"{v}\"' for v in values)}")
+            sections.append("")
+
         return "\n".join(sections)
 
 
@@ -277,6 +300,7 @@ class SchemaParser:
         business_rules = self._extract_business_rules()
         sample_questions = self._extract_sample_questions()
         example_sqls = self._extract_example_sqls()
+        column_values = self._extract_column_values()
 
         # Infer metrics from tables and instructions
         metrics = self._infer_metrics(tables, config.get("instructions", ""))
@@ -289,6 +313,7 @@ class SchemaParser:
             metrics=metrics,
             sample_questions=sample_questions,
             example_sqls=example_sqls,
+            column_values=column_values,
         )
 
     def _load_yaml(self) -> dict:
@@ -574,6 +599,131 @@ class SchemaParser:
                     rules.append(rule)
 
         return rules
+
+    def _extract_column_values(self) -> dict[str, list[str]]:
+        """Extract valid column values (enums) from instructions.
+
+        Parses patterns like:
+        - "Order status values: Completed (85%), Pending (5%), Processing (5%)"
+        - "Payment methods: Financing (55%), Cash (20%), Lease (15%)"
+        - "Vehicle conditions: New (60%), Certified Pre-Owned (25%), Used (15%)"
+        - "condition: New (60%), Certified Pre-Owned (25%), Used (15%)"
+
+        Returns:
+            Dict mapping column names to lists of valid values
+        """
+        if self._raw_config is None:
+            return {}
+
+        instructions = self._raw_config.get("instructions", "")
+        if not instructions:
+            return {}
+
+        column_values: dict[str, list[str]] = {}
+
+        # Pattern 1: Lines with percentages like "Status values: Completed (85%), Pending (5%)"
+        # Only match if there are percentage values - this indicates enum values
+        values_with_pct_pattern = re.compile(
+            r"[-•]\s*(?:Order\s+)?(\w+)(?:\s+(?:values|status|codes?))?:\s*(.+?\(\d+%\).*)$",
+            re.IGNORECASE | re.MULTILINE,
+        )
+
+        for match in values_with_pct_pattern.finditer(instructions):
+            column_name = match.group(1).lower()
+            values_str = match.group(2)
+
+            # Extract individual values (handles "Value (%), Value (%)" format)
+            # Only extract words/phrases before parentheses with percentages
+            value_pattern = re.compile(r"([A-Za-z][A-Za-z\s\-\+]+?)\s*\(\d+%?\)")
+            values = [v.group(1).strip() for v in value_pattern.finditer(values_str)]
+            values = [v for v in values if v and len(v) > 1 and len(v) < 30]
+
+            if values:
+                # Normalize column name
+                col_key = self._normalize_column_name(column_name)
+                column_values[col_key] = values
+
+        # Pattern 2: Explicit column patterns with percentages
+        # "Order status values: Completed (85%), ..." or "Payment methods: Financing (55%), ..."
+        explicit_patterns = [
+            (r"(?:order\s+)?status\s+(?:values|codes?)?:\s*(.+?\(\d+%\).*)", "status"),
+            (r"payment\s+methods?:\s*(.+?\(\d+%\).*)", "payment_method"),
+            (r"(?:vehicle\s+)?conditions?:\s*(.+?\(\d+%\).*)", "condition"),
+            (r"interaction\s+sentiment:\s*(.+?\(\d+%\).*)", "sentiment"),
+            (r"lead\s+sources?:\s*(.+?\(\d+%\).*)", "lead_source"),
+            (r"parts?\s+status:\s*(.+?)(?:\n|$)", "parts_status"),
+            (r"warehouse\s+types?:\s*(.+?)(?:\n|$)", "warehouse_type"),
+        ]
+
+        for pattern, col_name in explicit_patterns:
+            matches = re.findall(pattern, instructions, re.IGNORECASE)
+            for match in matches:
+                # Extract values from the matched string
+                value_pattern = re.compile(r"([A-Za-z][A-Za-z\s\-\+]+?)\s*\(\d+%?\)")
+                values = [v.group(1).strip() for v in value_pattern.finditer(match)]
+                values = [v for v in values if v and len(v) > 1 and len(v) < 30]
+                if values and col_name not in column_values:
+                    column_values[col_name] = values
+
+        # Pattern 3: Arrow-separated progressions like "Lead status progression: Cold -> Contacted -> ..."
+        arrow_pattern = re.compile(
+            r"(\w+)\s+(?:status\s+)?progression:\s*(.+?)(?:\n|$)",
+            re.IGNORECASE,
+        )
+        for match in arrow_pattern.finditer(instructions):
+            column_name = match.group(1).lower()
+            values_str = match.group(2)
+            # Split by arrow and clean up
+            values = [v.strip() for v in re.split(r"\s*->\s*", values_str)]
+            # Handle "Converted/Lost" -> ["Converted", "Lost"]
+            expanded_values = []
+            for v in values:
+                if "/" in v:
+                    expanded_values.extend([part.strip() for part in v.split("/")])
+                else:
+                    expanded_values.append(v)
+            values = [v for v in expanded_values if v and len(v) > 1 and len(v) < 30]
+            if values:
+                col_key = f"{column_name}_status"
+                if col_key not in column_values:
+                    column_values[col_key] = values
+
+        # Pattern 4: Comma-separated values without percentages (for simpler enums)
+        # "Parts status: In Stock, Below Reorder, Critical Low, Out of Stock"
+        simple_enum_patterns = [
+            (r"parts?\s+status:\s*([^(\n]+?)(?:\n|$)", "parts_status"),
+        ]
+        for pattern, col_name in simple_enum_patterns:
+            if col_name not in column_values:
+                matches = re.findall(pattern, instructions, re.IGNORECASE)
+                for match in matches:
+                    values = [v.strip() for v in match.split(",")]
+                    values = [v for v in values if v and len(v) > 1 and len(v) < 30]
+                    if values:
+                        column_values[col_name] = values
+
+        return column_values
+
+    def _normalize_column_name(self, name: str) -> str:
+        """Normalize a column name reference to standard form.
+
+        Args:
+            name: Raw column name from text
+
+        Returns:
+            Normalized column name
+        """
+        name = name.lower().strip()
+        # Common mappings
+        mappings = {
+            "statuses": "status",
+            "order status": "status",
+            "payment": "payment_method",
+            "payments": "payment_method",
+            "conditions": "condition",
+            "vehicle condition": "condition",
+        }
+        return mappings.get(name, name)
 
     def _extract_sample_questions(self) -> list[str]:
         """Extract sample questions from config.

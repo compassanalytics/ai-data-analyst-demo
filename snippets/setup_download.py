@@ -9,10 +9,36 @@ import subprocess
 
 # === CONFIGURATION ===
 REPO = "compassanalytics/ai-data-analyst-demo"
-VERSION = "v1.0"
+VERSION = "latest"
 TARGET_PATH = None  # Auto-detected if None
 
+
 # === FUNCTIONS ===
+def get_latest_version(repo: str) -> str | None:
+    """Get the latest release version from GitHub API.
+
+    Args:
+        repo: GitHub repo in format "owner/repo"
+
+    Returns:
+        Version string (e.g., "v1.0") or None if failed
+    """
+    import json
+    import urllib.request
+
+    api_url = f"https://api.github.com/repos/{repo}/releases/latest"
+    try:
+        req = urllib.request.Request(api_url, headers={"Accept": "application/vnd.github.v3+json"})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode())
+            tag = data.get("tag_name", "")
+            # Handle both "workshop-v1.0" and "v1.0" tag formats
+            if tag.startswith("workshop-"):
+                return tag.replace("workshop-", "")
+            return tag
+    except Exception as e:
+        print(f"Could not fetch latest version: {e}")
+        return None
 
 
 def download_workshop_materials(version: str, target_path: str) -> bool:
@@ -78,7 +104,17 @@ if __name__ == "__main__":
 
     print(f"Environment: {'Databricks' if IN_DATABRICKS else 'Local'}")
 
-    if download_workshop_materials(VERSION, target):
+    # Resolve "latest" to actual version
+    version = VERSION
+    if version == "latest":
+        print("Fetching latest release version...")
+        version = get_latest_version(REPO)
+        if not version:
+            print("Failed to get latest version, falling back to v1.0")
+            version = "v1.0"
+        print(f"Latest version: {version}")
+
+    if download_workshop_materials(version, target):
         verify_download(target)
         print(f"\nWorkshop materials ready at: {target}")
     else:

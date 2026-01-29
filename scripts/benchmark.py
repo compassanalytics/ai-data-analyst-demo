@@ -33,6 +33,7 @@ from src.benchmark import (
     SuiteRunner,
     TIER_NAMES,
 )
+from src.benchmark.data_aware_generator import DataAwareGenerator
 from src.config import Config
 from src.evaluation.models import ComplexityLevel, FailureCategory
 
@@ -143,6 +144,16 @@ Examples:
         "--seed",
         type=int,
         help="Random seed for reproducibility",
+    )
+    gen_parser.add_argument(
+        "--data-dir",
+        help="Path to parquet data directory for data-aware generation (e.g., dataset_generators/data/velocity_motors/)",
+    )
+    gen_parser.add_argument(
+        "--num-queries",
+        type=int,
+        default=20,
+        help="Number of queries for data-aware generation (default: 20)",
     )
 
     # =========================================================================
@@ -357,6 +368,66 @@ Examples:
 
 def cmd_generate(args: argparse.Namespace) -> int:
     """Handle generate subcommand."""
+    # Create config
+    config = Config.from_env()
+    if args.mock:
+        config.mock_mode = True
+
+    # Check if using data-aware generation
+    if hasattr(args, "data_dir") and args.data_dir:
+        return _cmd_generate_data_aware(args, config)
+    else:
+        return _cmd_generate_schema_based(args, config)
+
+
+def _cmd_generate_data_aware(args: argparse.Namespace, config: Config) -> int:
+    """Generate benchmark queries using data-aware approach."""
+    logger.info(f"Generating data-aware benchmark queries from: {args.data_dir}")
+
+    data_dir = Path(args.data_dir)
+    if not data_dir.exists():
+        logger.error(f"Data directory not found: {data_dir}")
+        return 1
+
+    # Create generator
+    generator = DataAwareGenerator(config, data_dir)
+
+    try:
+        queries = generator.generate(num_queries=args.num_queries)
+    except Exception as e:
+        logger.error(f"Failed to generate queries: {e}")
+        return 1
+
+    logger.info(f"Generated {len(queries)} data-aware queries")
+
+    # Save queries
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    generator.save_queries(queries, output_path)
+    logger.info(f"Saved queries to: {output_path}")
+
+    # Print summary
+    complexity_counts: dict[str, int] = {}
+    for q in queries:
+        cx = q.complexity.value
+        complexity_counts[cx] = complexity_counts.get(cx, 0) + 1
+
+    print("\n" + "=" * 60)
+    print("DATA-AWARE BENCHMARK QUERIES GENERATED")
+    print("=" * 60)
+    print(f"Output: {output_path}")
+    print(f"Total queries: {len(queries)}")
+    print(f"Data directory: {data_dir}")
+    print("\nBy complexity:")
+    for cx, count in sorted(complexity_counts.items()):
+        print(f"  {cx}: {count}")
+    print("=" * 60)
+
+    return 0
+
+
+def _cmd_generate_schema_based(args: argparse.Namespace, config: Config) -> int:
+    """Generate benchmark queries using schema-based LLM approach."""
     logger.info(f"Generating benchmark queries from schema: {args.schema}")
 
     # Parse schema
@@ -395,11 +466,6 @@ def cmd_generate(args: argparse.Namespace) -> int:
             logger.error(f"Invalid complexity tier: {e}")
             logger.info(f"Valid tiers: {[c.value for c in ComplexityLevel]}")
             return 1
-
-    # Create config
-    config = Config.from_env()
-    if args.mock:
-        config.mock_mode = True
 
     # Generate queries
     generator = LLMQueryGenerator(config)
