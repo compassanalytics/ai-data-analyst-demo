@@ -8,6 +8,9 @@ Usage:
     uv run python scripts/benchmark.py generate --schema PATH --output PATH
     uv run python scripts/benchmark.py run --queries PATH --space-id ID [--baseline|--compare-to PATH]
     uv run python scripts/benchmark.py report --baseline PATH --enhanced PATH --output PATH
+    uv run python scripts/benchmark.py generate-suite --schema PATH --output-dir PATH
+    uv run python scripts/benchmark.py run-suite --suite PATH --output-dir PATH
+    uv run python scripts/benchmark.py progressive-report --result PATH --output PATH
 """
 
 from __future__ import annotations
@@ -24,7 +27,11 @@ from src.benchmark import (
     BenchmarkEvaluator,
     BenchmarkReporter,
     LLMQueryGenerator,
+    ProgressiveReporter,
     SchemaParser,
+    SuiteGenerator,
+    SuiteRunner,
+    TIER_NAMES,
 )
 from src.config import Config
 from src.evaluation.models import ComplexityLevel, FailureCategory
@@ -75,6 +82,22 @@ Examples:
     --baseline results/baseline_run.json \\
     --enhanced results/enhanced_run.json \\
     --output reports/
+
+  # Generate progressive difficulty suite (100 queries, 20 per tier)
+  uv run python scripts/benchmark.py generate-suite \\
+    --schema infra/configs/velocity_motors/sales_analytics.yaml \\
+    --output-dir benchmarks/velocity_motors/ \\
+    --queries-per-tier 20
+
+  # Run progressive suite
+  uv run python scripts/benchmark.py run-suite \\
+    --suite benchmarks/velocity_motors/full_suite.json \\
+    --output-dir results/progressive/
+
+  # Generate progressive report
+  uv run python scripts/benchmark.py progressive-report \\
+    --result results/progressive/tiered_result.json \\
+    --output reports/progressive/
         """,
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -206,6 +229,125 @@ Examples:
         help="Comma-separated output formats (default: md,html,json)",
     )
     report_parser.add_argument(
+        "--title",
+        help="Report title",
+    )
+
+    # =========================================================================
+    # Generate-suite subcommand (NEW)
+    # =========================================================================
+    gen_suite_parser = subparsers.add_parser(
+        "generate-suite",
+        help="Generate a progressive difficulty benchmark suite",
+        description="Generate a 5-tier progressive difficulty benchmark suite with 20 queries per tier.",
+    )
+    gen_suite_parser.add_argument(
+        "--schema",
+        required=True,
+        help="Path to YAML schema config file",
+    )
+    gen_suite_parser.add_argument(
+        "--output-dir",
+        required=True,
+        help="Output directory for suite files",
+    )
+    gen_suite_parser.add_argument(
+        "--queries-per-tier",
+        type=int,
+        default=20,
+        help="Number of queries to generate per tier (default: 20)",
+    )
+    gen_suite_parser.add_argument(
+        "--tiers",
+        default="1,2,3,4,5",
+        help="Comma-separated list of tiers to generate (default: 1,2,3,4,5)",
+    )
+    gen_suite_parser.add_argument(
+        "--mock",
+        action="store_true",
+        help="Use mock LLM for testing (no API calls)",
+    )
+    gen_suite_parser.add_argument(
+        "--seed",
+        type=int,
+        help="Random seed for reproducibility",
+    )
+
+    # =========================================================================
+    # Run-suite subcommand (NEW)
+    # =========================================================================
+    run_suite_parser = subparsers.add_parser(
+        "run-suite",
+        help="Run a progressive difficulty benchmark suite",
+        description="Execute a tiered benchmark suite against a Genie Space.",
+    )
+    run_suite_parser.add_argument(
+        "--suite",
+        required=True,
+        help="Path to full_suite.json file",
+    )
+    run_suite_parser.add_argument(
+        "--space-id",
+        help="Genie Space ID (overrides GENIE_SPACE_ID env var)",
+    )
+    run_suite_parser.add_argument(
+        "--output-dir",
+        default="results",
+        help="Output directory for results (default: results/)",
+    )
+    run_suite_parser.add_argument(
+        "--tiers",
+        help="Comma-separated list of tiers to run (default: all with queries)",
+    )
+    run_suite_parser.add_argument(
+        "--baseline",
+        action="store_true",
+        help="Mark this as a baseline run",
+    )
+    run_suite_parser.add_argument(
+        "--mock",
+        action="store_true",
+        help="Use mock mode for testing",
+    )
+    run_suite_parser.add_argument(
+        "--judge",
+        action="store_true",
+        help="Use LLM-as-Judge for semantic evaluation",
+    )
+    run_suite_parser.add_argument(
+        "--judge-model",
+        help="Model endpoint for LLM judge",
+    )
+    run_suite_parser.add_argument(
+        "--stop-on-failure",
+        action="store_true",
+        help="Stop if a tier has 0%% accuracy",
+    )
+
+    # =========================================================================
+    # Progressive-report subcommand (NEW)
+    # =========================================================================
+    prog_report_parser = subparsers.add_parser(
+        "progressive-report",
+        help="Generate progressive difficulty benchmark report",
+        description="Generate tier-by-tier report from a tiered benchmark result.",
+    )
+    prog_report_parser.add_argument(
+        "--result",
+        required=True,
+        help="Path to tiered result JSON file",
+    )
+    prog_report_parser.add_argument(
+        "--output",
+        required=True,
+        help="Output directory for reports",
+    )
+    prog_report_parser.add_argument(
+        "--formats",
+        default="md,html,json",
+        help="Comma-separated output formats (default: md,html,json)",
+    )
+    prog_report_parser.add_argument(
         "--title",
         help="Report title",
     )
@@ -480,6 +622,206 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_generate_suite(args: argparse.Namespace) -> int:
+    """Handle generate-suite subcommand."""
+    logger.info(f"Generating progressive difficulty suite from schema: {args.schema}")
+
+    # Create config
+    config = Config.from_env()
+    if args.mock:
+        config.mock_mode = True
+
+    # Parse tiers
+    try:
+        tiers = [int(t.strip()) for t in args.tiers.split(",")]
+        for t in tiers:
+            if t not in range(1, 6):
+                raise ValueError(f"Invalid tier: {t}")
+    except ValueError as e:
+        logger.error(f"Invalid tiers specification: {e}")
+        logger.info("Valid tiers: 1, 2, 3, 4, 5")
+        return 1
+
+    # Create generator and generate suite
+    try:
+        generator = SuiteGenerator(config, args.schema)
+        suite = generator.generate(
+            queries_per_tier=args.queries_per_tier,
+            tiers=tiers,
+            seed=args.seed,
+        )
+    except Exception as e:
+        logger.error(f"Failed to generate suite: {e}")
+        return 1
+
+    # Save suite
+    try:
+        saved = generator.save_suite(suite, args.output_dir)
+    except Exception as e:
+        logger.error(f"Failed to save suite: {e}")
+        return 1
+
+    # Print summary
+    print("\n" + "=" * 60)
+    print("PROGRESSIVE DIFFICULTY SUITE GENERATED")
+    print("=" * 60)
+    print(f"Suite ID: {suite.suite_id}")
+    print(f"Domain: {suite.domain_name}")
+    print(f"Total queries: {suite.total_queries}")
+    print("\nTier breakdown:")
+    for tier in range(1, 6):
+        tier_queries = suite.tiers.get(tier, [])
+        tier_name = TIER_NAMES.get(tier, f"Tier {tier}")
+        print(f"  Tier {tier} ({tier_name}): {len(tier_queries)} queries")
+    print("\nSaved files:")
+    for file_type, path in saved.items():
+        print(f"  {file_type}: {path}")
+    print("=" * 60)
+
+    return 0
+
+
+def cmd_run_suite(args: argparse.Namespace) -> int:
+    """Handle run-suite subcommand."""
+    logger.info(f"Running progressive difficulty suite: {args.suite}")
+
+    # Load suite
+    try:
+        suite = SuiteGenerator.load_suite(args.suite)
+    except Exception as e:
+        logger.error(f"Failed to load suite: {e}")
+        return 1
+
+    logger.info(f"Loaded suite: {suite.suite_id}")
+    logger.info(f"Domain: {suite.domain_name}")
+    logger.info(f"Total queries: {suite.total_queries}")
+
+    # Create config
+    config = Config.from_env()
+    if args.mock:
+        config.mock_mode = True
+    if args.space_id:
+        config.genie_space_id = args.space_id
+
+    # Parse tiers if specified
+    tiers: list[int] | None = None
+    if args.tiers:
+        try:
+            tiers = [int(t.strip()) for t in args.tiers.split(",")]
+        except ValueError as e:
+            logger.error(f"Invalid tiers specification: {e}")
+            return 1
+
+    # Determine run type
+    run_type = "baseline" if args.baseline else "enhanced"
+    logger.info(f"Run type: {run_type}")
+
+    # Create runner
+    use_llm_judge = getattr(args, "judge", False)
+    judge_model = getattr(args, "judge_model", None)
+
+    runner = SuiteRunner(
+        config,
+        use_llm_judge=use_llm_judge,
+        judge_model=judge_model,
+    )
+
+    # Progress callback
+    def progress_callback(tier: int, current: int, total: int, message: str) -> None:
+        tier_name = TIER_NAMES.get(tier, f"Tier {tier}")
+        print(f"  [Tier {tier} - {tier_name}] [{current}/{total}] {message}", flush=True)
+
+    # Run suite
+    try:
+        result = runner.run(
+            suite=suite,
+            run_type=run_type,
+            tiers=tiers,
+            progress_callback=progress_callback,
+            stop_on_zero_accuracy=args.stop_on_failure,
+        )
+    except Exception as e:
+        logger.error(f"Suite run failed: {e}")
+        return 1
+
+    # Save result
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    result_path = output_dir / f"tiered_result_{run_type}.json"
+    runner.save_result(result, result_path)
+    logger.info(f"Saved result to: {result_path}")
+
+    # Print summary
+    print("\n" + "=" * 60)
+    print(f"PROGRESSIVE SUITE RUN COMPLETE ({run_type.upper()})")
+    print("=" * 60)
+    print(f"Result ID: {result.result_id}")
+    print(f"Suite ID: {result.suite_id}")
+    print(f"Space ID: {result.space_id}")
+    print(f"Total queries: {result.total_queries}")
+    print(f"\nOverall accuracy: {result.overall_accuracy:.1f}%")
+    print(f"Capability score (Tiers 1-4): {result.capability_score:.1f}%")
+    print(f"Safety score (Tier 5): {result.safety_score:.1f}%")
+    print("\nTier breakdown:")
+    for tier in range(1, 6):
+        tr = result.tier_results.get(tier)
+        tier_name = TIER_NAMES.get(tier, f"Tier {tier}")
+        if tr and tr.queries_count > 0:
+            print(f"  Tier {tier} ({tier_name}): {tr.accuracy:.1f}% ({tr.correct_count}/{tr.queries_count} correct)")
+        else:
+            print(f"  Tier {tier} ({tier_name}): N/A (0 queries)")
+    print(f"\nOutput: {result_path}")
+    print("=" * 60)
+
+    return 0
+
+
+def cmd_progressive_report(args: argparse.Namespace) -> int:
+    """Handle progressive-report subcommand."""
+    logger.info(f"Generating progressive difficulty report: {args.result}")
+
+    # Load result
+    try:
+        result = SuiteRunner.load_result(args.result)
+    except Exception as e:
+        logger.error(f"Failed to load result: {e}")
+        return 1
+
+    logger.info(f"Loaded result: {result.result_id}")
+    logger.info(f"Suite ID: {result.suite_id}")
+    logger.info(f"Total queries: {result.total_queries}")
+
+    # Generate reports
+    reporter = ProgressiveReporter()
+    formats = [f.strip() for f in args.formats.split(",")]
+
+    try:
+        saved = reporter.save_reports(
+            result=result,
+            output_dir=args.output,
+            formats=formats,
+            title=args.title,
+        )
+    except Exception as e:
+        logger.error(f"Failed to generate reports: {e}")
+        return 1
+
+    # Print summary
+    print("\n" + "=" * 60)
+    print("PROGRESSIVE REPORTS GENERATED")
+    print("=" * 60)
+    print(f"Result ID: {result.result_id}")
+    print(f"Overall accuracy: {result.overall_accuracy:.1f}%")
+    print(f"Capability score: {result.capability_score:.1f}%")
+    print(f"Safety score: {result.safety_score:.1f}%")
+    print("\nGenerated files:")
+    for fmt, path in saved.items():
+        print(f"  {fmt}: {path}")
+    print("=" * 60)
+
+    return 0
+
+
 def main() -> int:
     """Main entry point."""
     parser = create_parser()
@@ -491,6 +833,12 @@ def main() -> int:
         return cmd_run(args)
     elif args.command == "report":
         return cmd_report(args)
+    elif args.command == "generate-suite":
+        return cmd_generate_suite(args)
+    elif args.command == "run-suite":
+        return cmd_run_suite(args)
+    elif args.command == "progressive-report":
+        return cmd_progressive_report(args)
     else:
         parser.print_help()
         return 1

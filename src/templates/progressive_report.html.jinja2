@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .accuracy-high { color: #059669; }
+        .accuracy-medium { color: #d97706; }
+        .accuracy-low { color: #dc2626; }
+        .tier-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .tier-1 { background-color: #d1fae5; color: #065f46; }
+        .tier-2 { background-color: #dbeafe; color: #1e40af; }
+        .tier-3 { background-color: #fef3c7; color: #92400e; }
+        .tier-4 { background-color: #fce7f3; color: #9d174d; }
+        .tier-5 { background-color: #fee2e2; color: #991b1b; }
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e5e7eb;
+            border-radius: 9999px;
+            height: 0.5rem;
+        }
+        .progress-bar-fill {
+            height: 0.5rem;
+            border-radius: 9999px;
+            transition: width 0.5s ease-in-out;
+        }
+        .progress-high { background-color: #059669; }
+        .progress-medium { background-color: #d97706; }
+        .progress-low { background-color: #dc2626; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">{{ title }}</h1>
+            <p class="text-gray-500 mt-2">Generated: {{ generated_at }}</p>
+        </header>
+
+        <!-- Executive Summary Cards -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Executive Summary</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Overall Accuracy -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-500 text-sm">Overall Accuracy</span>
+                        <span class="p-2 rounded-full bg-blue-100 text-blue-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-2xl font-bold {{ overall_accuracy | accuracy_class }}">
+                            {{ overall_accuracy | format_percent }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Capability Score -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-500 text-sm">Capability Score</span>
+                        <span class="p-2 rounded-full bg-green-100 text-green-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-2xl font-bold {{ capability_score | accuracy_class }}">
+                            {{ capability_score | format_percent }}
+                        </span>
+                        <span class="text-gray-400 text-sm ml-2">Tiers 1-4</span>
+                    </div>
+                </div>
+
+                <!-- Safety Score -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-500 text-sm">Safety Score</span>
+                        <span class="p-2 rounded-full bg-red-100 text-red-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-2xl font-bold {{ safety_score | accuracy_class }}">
+                            {{ safety_score | format_percent }}
+                        </span>
+                        <span class="text-gray-400 text-sm ml-2">Tier 5</span>
+                    </div>
+                </div>
+
+                <!-- Total Queries -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-500 text-sm">Total Queries</span>
+                        <span class="p-2 rounded-full bg-purple-100 text-purple-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-2xl font-bold text-gray-700">{{ total_queries }}</span>
+                        <span class="text-gray-400 text-sm ml-2">evaluated</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chart Section -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Tier Accuracy Visualization</h2>
+            <div class="bg-white rounded-lg shadow p-6">
+                <canvas id="tierChart" height="100"></canvas>
+            </div>
+        </section>
+
+        <!-- Tier Results Table -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Tier-by-Tier Results</h2>
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tier</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Queries</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correct</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Partial</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wrong</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Failed</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Accuracy</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for tier in range(1, 6) %}
+                        {% set tr = tier_results.get(tier) %}
+                        <tr class="{% if loop.index is odd %}bg-white{% else %}bg-gray-50{% endif %}">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="tier-badge tier-{{ tier }}">
+                                    Tier {{ tier }}: {{ tier | tier_name }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {% if tr %}{{ tr.queries_count }}{% else %}0{% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
+                                {% if tr %}{{ tr.correct_count }}{% else %}-{% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">
+                                {% if tr %}{{ tr.partial_count }}{% else %}-{% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">
+                                {% if tr %}{{ tr.wrong_count }}{% else %}-{% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                {% if tr %}{{ tr.failed_count }}{% else %}-{% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold {{ tr.accuracy | accuracy_class if tr else 'text-gray-400' }}">
+                                {% if tr and tr.queries_count > 0 %}{{ tr.accuracy | format_percent }}{% else %}N/A{% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if tr and tr.queries_count > 0 %}
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill {% if tr.accuracy >= 80 %}progress-high{% elif tr.accuracy >= 50 %}progress-medium{% else %}progress-low{% endif %}" style="width: {{ tr.accuracy }}%"></div>
+                                </div>
+                                {% else %}
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill" style="width: 0%"></div>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Tier Detail Cards -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Tier Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for tier in range(1, 6) %}
+                {% set tr = tier_results.get(tier) %}
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="tier-badge tier-{{ tier }}">
+                            Tier {{ tier }}: {{ tier | tier_name }}
+                        </span>
+                        {% if tr and tr.queries_count > 0 %}
+                        <span class="text-lg font-bold {{ tr.accuracy | accuracy_class }}">
+                            {{ tr.accuracy | format_percent }}
+                        </span>
+                        {% else %}
+                        <span class="text-lg font-bold text-gray-400">N/A</span>
+                        {% endif %}
+                    </div>
+
+                    {% if tr and tr.queries_count > 0 %}
+                    <!-- Progress bar -->
+                    <div class="mb-3">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill {% if tr.accuracy >= 80 %}progress-high{% elif tr.accuracy >= 50 %}progress-medium{% else %}progress-low{% endif %}" style="width: {{ tr.accuracy }}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stats grid -->
+                    <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                        <div>
+                            <div class="text-green-600 font-bold">{{ tr.correct_count }}</div>
+                            <div class="text-gray-400">Correct</div>
+                        </div>
+                        <div>
+                            <div class="text-yellow-600 font-bold">{{ tr.partial_count }}</div>
+                            <div class="text-gray-400">Partial</div>
+                        </div>
+                        <div>
+                            <div class="text-red-600 font-bold">{{ tr.wrong_count }}</div>
+                            <div class="text-gray-400">Wrong</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-500 font-bold">{{ tr.failed_count }}</div>
+                            <div class="text-gray-400">Failed</div>
+                        </div>
+                    </div>
+
+                    <!-- Tier description -->
+                    <p class="mt-3 text-xs text-gray-500">
+                        {% if tier == 1 %}
+                        Single table queries with basic filters and aggregations.
+                        {% elif tier == 2 %}
+                        2-table joins with GROUP BY and multiple conditions.
+                        {% elif tier == 3 %}
+                        3+ table joins, subqueries, and set operations.
+                        {% elif tier == 4 %}
+                        CTEs, window functions, and complex analytics.
+                        {% elif tier == 5 %}
+                        Adversarial queries that should be refused.
+                        {% endif %}
+                    </p>
+                    {% else %}
+                    <p class="text-sm text-gray-400 text-center py-4">No queries evaluated</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Run Details -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Run Details</h2>
+            <div class="bg-white rounded-lg shadow p-4">
+                <dl class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                        <dt class="text-gray-500">Result ID</dt>
+                        <dd class="text-gray-900 font-mono truncate">{{ result.result_id }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500">Suite ID</dt>
+                        <dd class="text-gray-900 font-mono truncate">{{ result.suite_id }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500">Space ID</dt>
+                        <dd class="text-gray-900 font-mono truncate">{{ result.space_id }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500">Run Type</dt>
+                        <dd class="text-gray-900 capitalize">{{ result.run_type }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500">Evaluation Mode</dt>
+                        <dd class="text-gray-900">{{ result.evaluation_mode.value }}</dd>
+                    </div>
+                    {% if result.judge_model %}
+                    <div>
+                        <dt class="text-gray-500">Judge Model</dt>
+                        <dd class="text-gray-900">{{ result.judge_model }}</dd>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <dt class="text-gray-500">Started</dt>
+                        <dd class="text-gray-900">{{ result.started_at }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500">Completed</dt>
+                        <dd class="text-gray-900">{{ result.completed_at }}</dd>
+                    </div>
+                </dl>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center text-gray-400 text-sm mt-8 pt-8 border-t">
+            <p>Report generated by Progressive Benchmark System</p>
+            <p>Result ID: {{ result.result_id }}</p>
+        </footer>
+    </div>
+
+    <!-- Chart.js Configuration -->
+    <script>
+        const tierData = {{ tier_data | tojson }};
+
+        const ctx = document.getElementById('tierChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: tierData.map(d => `Tier ${d.tier}: ${d.name}`),
+                datasets: [{
+                    label: 'Accuracy (%)',
+                    data: tierData.map(d => d.accuracy),
+                    backgroundColor: tierData.map(d => {
+                        if (d.accuracy >= 80) return 'rgba(5, 150, 105, 0.8)';
+                        if (d.accuracy >= 50) return 'rgba(217, 119, 6, 0.8)';
+                        return 'rgba(220, 38, 38, 0.8)';
+                    }),
+                    borderColor: tierData.map(d => {
+                        if (d.accuracy >= 80) return 'rgba(5, 150, 105, 1)';
+                        if (d.accuracy >= 50) return 'rgba(217, 119, 6, 1)';
+                        return 'rgba(220, 38, 38, 1)';
+                    }),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const d = tierData[context.dataIndex];
+                                return [
+                                    `Accuracy: ${d.accuracy}%`,
+                                    `Queries: ${d.queries}`,
+                                    `Correct: ${d.correct}`,
+                                    `Partial: ${d.partial}`,
+                                    `Wrong: ${d.wrong}`,
+                                    `Failed: ${d.failed}`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Accuracy (%)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Difficulty Tier'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

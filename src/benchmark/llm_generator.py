@@ -877,8 +877,11 @@ Return ONLY valid JSON in the format specified in the system prompt."""
         # Validate expected_tables exist in domain (if provided)
         expected_tables = query_dict.get("expected_tables", [])
         if expected_tables:
-            # Use get_table_names() method from DomainContext
-            domain_tables = {name.lower() for name in domain_context.get_table_names()}
+            # Build set of valid table names - both short names and full identifiers
+            domain_tables: set[str] = set()
+            for table_info in domain_context.tables:
+                domain_tables.add(table_info.name.lower())
+                domain_tables.add(table_info.full_identifier.lower())
             for table in expected_tables:
                 if table.lower() not in domain_tables:
                     logger.warning(f"Table '{table}' not found in domain schema. Available: {domain_tables}")
