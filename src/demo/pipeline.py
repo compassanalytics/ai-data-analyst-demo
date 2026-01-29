@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from src.agents.planner_agent import Plan
     from src.agents.multi_genie_orchestrator import MultiGenieResult
+    from src.agents.planner_agent import Plan
     from src.agents.synthesizer_agent import SynthesisResult
 
 
@@ -58,14 +59,14 @@ class SpaceProgress:
 
     space_name: str
     status: SpaceQueryStatus = SpaceQueryStatus.PENDING
-    start_time: Optional[float] = None
-    end_time: Optional[float] = None
+    start_time: float | None = None
+    end_time: float | None = None
     current_attempt: int = 0
-    error_message: Optional[str] = None
+    error_message: str | None = None
     cached: bool = False
 
     @property
-    def duration_seconds(self) -> Optional[float]:
+    def duration_seconds(self) -> float | None:
         """Calculate query duration in seconds."""
         if self.start_time is None:
             return None
@@ -92,12 +93,12 @@ class StageResult:
 
     stage: PipelineStage
     start_time: float
-    end_time: Optional[float] = None
+    end_time: float | None = None
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
     @property
-    def duration_seconds(self) -> Optional[float]:
+    def duration_seconds(self) -> float | None:
         """Calculate stage duration in seconds."""
         if self.end_time is None:
             return None
@@ -114,7 +115,7 @@ class StageResult:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "StageResult":
+    def from_dict(cls, data: dict[str, Any]) -> StageResult:
         """Restore from dictionary."""
         return cls(
             stage=PipelineStage(data["stage"]),
@@ -149,15 +150,15 @@ class PipelineState:
         self._current_stage = PipelineStage.IDLE
         self._stage_results: dict[PipelineStage, StageResult] = {}
         self._space_progress: dict[str, SpaceProgress] = {}
-        self._pipeline_start: Optional[float] = None
-        self._pipeline_end: Optional[float] = None
+        self._pipeline_start: float | None = None
+        self._pipeline_end: float | None = None
 
         # Intermediate results (set by notebook code, not callbacks)
-        self.plan: Optional[Plan] = None
-        self.multi_result: Optional[MultiGenieResult] = None
-        self.synthesis_result: Optional[SynthesisResult] = None
-        self.markdown_report: Optional[str] = None
-        self.html_report: Optional[str] = None
+        self.plan: Plan | None = None
+        self.multi_result: MultiGenieResult | None = None
+        self.synthesis_result: SynthesisResult | None = None
+        self.markdown_report: str | None = None
+        self.html_report: str | None = None
         self.errors: list[str] = []
 
     @property
@@ -176,7 +177,7 @@ class PipelineState:
         )
 
     @property
-    def total_duration_seconds(self) -> Optional[float]:
+    def total_duration_seconds(self) -> float | None:
         """Get total pipeline duration in seconds."""
         if self._pipeline_start is None:
             return None
@@ -190,9 +191,7 @@ class PipelineState:
             space_names: List of Genie Space names to track
         """
         with self._lock:
-            self._space_progress = {
-                name: SpaceProgress(space_name=name) for name in space_names
-            }
+            self._space_progress = {name: SpaceProgress(space_name=name) for name in space_names}
 
     def start_stage(self, stage: PipelineStage) -> None:
         """Mark a stage as started.
@@ -363,7 +362,7 @@ class PipelineState:
         with self._lock:
             return {k: v for k, v in self._space_progress.items()}
 
-    def get_stage_result(self, stage: PipelineStage) -> Optional[StageResult]:
+    def get_stage_result(self, stage: PipelineStage) -> StageResult | None:
         """Get result for a specific stage.
 
         Args:
@@ -442,12 +441,10 @@ class PipelineState:
             # Include serializable data for checkpoint restoration
             with self._lock:
                 base_dict["stage_results"] = {
-                    stage.value: result.to_dict()
-                    for stage, result in self._stage_results.items()
+                    stage.value: result.to_dict() for stage, result in self._stage_results.items()
                 }
                 base_dict["space_progress"] = {
-                    name: progress.to_dict()
-                    for name, progress in self._space_progress.items()
+                    name: progress.to_dict() for name, progress in self._space_progress.items()
                 }
                 base_dict["pipeline_start"] = self._pipeline_start
                 base_dict["pipeline_end"] = self._pipeline_end
@@ -455,7 +452,7 @@ class PipelineState:
         return base_dict
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "PipelineState":
+    def from_dict(cls, data: dict[str, Any]) -> PipelineState:
         """Restore PipelineState from dictionary.
 
         Creates a new PipelineState with a fresh threading.Lock, then restores

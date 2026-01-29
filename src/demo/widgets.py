@@ -63,6 +63,7 @@ def _get_dbutils():
     try:
         # In Databricks, dbutils is available globally
         import builtins
+
         return getattr(builtins, "dbutils", None)
     except Exception:
         return None
@@ -176,6 +177,7 @@ class LocalWidgets:
 
         try:
             import ipywidgets
+
             self._ipywidgets_available = True
         except ImportError:
             pass
@@ -232,14 +234,18 @@ class LocalWidgets:
             )
 
             # Layout
-            row1 = widgets.HBox([
-                self._widgets["report_type"],
-                self._widgets["cache_enabled"],
-            ])
-            row2 = widgets.HBox([
-                self._widgets["mock_mode"],
-                self._widgets["verbose"],
-            ])
+            row1 = widgets.HBox(
+                [
+                    self._widgets["report_type"],
+                    self._widgets["cache_enabled"],
+                ]
+            )
+            row2 = widgets.HBox(
+                [
+                    self._widgets["mock_mode"],
+                    self._widgets["verbose"],
+                ]
+            )
             row3 = self._widgets["custom_question"]
 
             self._container = widgets.VBox([row1, row2, row3])
@@ -299,8 +305,7 @@ def get_question_for_report_type(config: WidgetConfig) -> str:
     """
     questions = {
         "Q4 Executive Report": (
-            "Generate a Q4 executive report analyzing sales performance, "
-            "customer trends, and inventory status"
+            "Generate a Q4 executive report analyzing sales performance, customer trends, and inventory status"
         ),
         "YTD Summary": (
             "Provide a year-to-date summary of business performance including "

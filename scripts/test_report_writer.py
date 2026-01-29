@@ -20,11 +20,11 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.agents.multi_genie_orchestrator import (
-    MultiGenieOrchestrator,
     GenieSpaceConfig,
+    MultiGenieOrchestrator,
 )
+from src.agents.report_writer import ReportConfig, ReportWriter
 from src.agents.synthesizer_agent import SynthesizerAgent
-from src.agents.report_writer import ReportWriter, ReportConfig
 from src.config import Config
 
 
@@ -87,45 +87,27 @@ Examples:
 
   # Custom title
   uv run python scripts/test_report_writer.py --mock --title "Q4 Analysis Report"
-        """
+        """,
     )
     parser.add_argument(
         "query",
         nargs="?",
         default="What are the current sales trends, inventory levels, and customer segments?",
-        help="Natural language query to run across spaces"
+        help="Natural language query to run across spaces",
     )
-    parser.add_argument(
-        "--mock",
-        action="store_true",
-        help="Use mock mode (no Databricks connection)"
-    )
+    parser.add_argument("--mock", action="store_true", help="Use mock mode (no Databricks connection)")
     parser.add_argument(
         "--output",
         "-o",
         type=str,
         default=None,
-        help="Output directory for saving reports (if not specified, only prints markdown)"
+        help="Output directory for saving reports (if not specified, only prints markdown)",
     )
+    parser.add_argument("--title", "-t", type=str, default=None, help="Custom title for the reports")
     parser.add_argument(
-        "--title",
-        "-t",
-        type=str,
-        default=None,
-        help="Custom title for the reports"
+        "--open", action="store_true", dest="open_browser", help="Open HTML report in browser after generation"
     )
-    parser.add_argument(
-        "--open",
-        action="store_true",
-        dest="open_browser",
-        help="Open HTML report in browser after generation"
-    )
-    parser.add_argument(
-        "--concurrency",
-        type=int,
-        default=3,
-        help="Maximum parallel queries (default: 3)"
-    )
+    parser.add_argument("--concurrency", type=int, default=3, help="Maximum parallel queries (default: 3)")
 
     args = parser.parse_args()
 
@@ -236,7 +218,7 @@ Examples:
         print(f"  HTML:     {html_path}")
 
         if args.open_browser:
-            print(f"\nOpening HTML report in browser...")
+            print("\nOpening HTML report in browser...")
             webbrowser.open(f"file://{html_path.absolute()}")
 
     # Always print markdown output

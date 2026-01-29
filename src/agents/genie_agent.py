@@ -7,8 +7,8 @@ for natural language to SQL data analysis.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
 from enum import Enum
+from typing import Any
 
 from src.config import Config
 from src.utils.cache import QueryCache, get_query_cache
@@ -17,6 +17,7 @@ from src.utils.errors import AgentError, classify_error
 
 class QueryStatus(Enum):
     """Status of a Genie query."""
+
     PENDING = "PENDING"
     EXECUTING = "EXECUTING"
     COMPLETED = "COMPLETED"
@@ -36,13 +37,14 @@ class GenieResult:
         columns: Column names in the result
         error_details: Structured error information for classification
     """
+
     success: bool
     data: list[dict[str, Any]] = field(default_factory=list)
-    sql: Optional[str] = None
-    description: Optional[str] = None
-    error: Optional[str] = None
+    sql: str | None = None
+    description: str | None = None
+    error: str | None = None
     columns: list[str] = field(default_factory=list)
-    error_details: Optional[AgentError] = None
+    error_details: AgentError | None = None
     from_cache: bool = False
 
     @property
@@ -114,7 +116,7 @@ class GenieDataAgent:
     def __init__(
         self,
         config: Config,
-        cache: Optional[QueryCache] = None,
+        cache: QueryCache | None = None,
     ):
         """Initialize the Genie Data Agent.
 
@@ -124,7 +126,7 @@ class GenieDataAgent:
         """
         self.config = config
         self._client = None
-        self._conversation_id: Optional[str] = None
+        self._conversation_id: str | None = None
         self._cache = cache
 
         # Determine cache usage from config
@@ -176,12 +178,11 @@ class GenieDataAgent:
         # Check cache
         if can_use_cache:
             cache = self._cache or get_query_cache()
-            cached_result = cache.get(
-                self.config.genie_space_id, question, fresh=fresh
-            )
+            cached_result = cache.get(self.config.genie_space_id, question, fresh=fresh)
             if cached_result is not None:
                 # Mark as from cache (create new instance to avoid mutation)
                 from dataclasses import replace
+
                 return replace(cached_result, from_cache=True)
 
         # Execute query
@@ -217,7 +218,6 @@ class GenieDataAgent:
         """
         try:
             from datetime import timedelta
-            from databricks.sdk.service.dashboards import GenieMessage
 
             genie = self.client.genie
             space_id = self.config.genie_space_id
@@ -307,10 +307,7 @@ class GenieDataAgent:
             )
 
         except Exception as e:
-            return GenieResult(
-                success=False,
-                error=f"Failed to parse Genie response: {e}"
-            )
+            return GenieResult(success=False, error=f"Failed to parse Genie response: {e}")
 
     def _mock_query(self, question: str) -> GenieResult:
         """Return mock data for demonstration purposes.
@@ -434,7 +431,7 @@ ORDER BY avg_revenue DESC""",
         """Reset the conversation state to start fresh."""
         self._conversation_id = None
 
-    def get_conversation_id(self) -> Optional[str]:
+    def get_conversation_id(self) -> str | None:
         """Get the current conversation ID.
 
         Returns:

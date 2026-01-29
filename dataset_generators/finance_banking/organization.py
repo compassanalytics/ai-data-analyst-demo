@@ -10,21 +10,20 @@ Generates organization-related dimension tables:
 
 import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 
 from .utils import (
+    BRANCH_TYPES,
+    CITIES,
+    DEPARTMENTS,
+    EMPLOYEE_ROLES,
+    REGIONS,
+    fake,
     generate_person_name,
     scale_count,
     weighted_choice,
-    fake,
-    REGIONS,
-    BRANCH_TYPES,
-    EMPLOYEE_ROLES,
-    DEPARTMENTS,
-    CITIES,
 )
 
 
@@ -54,40 +53,42 @@ def generate_dim_branch(n: int = 50) -> pd.DataFrame:
 
         # Generate manager name
         first_name, last_name = generate_person_name()
-        manager_name = f'{first_name} {last_name}'
+        manager_name = f"{first_name} {last_name}"
 
         # Branch name based on location and type
-        if branch_type == 'Private Banking Center':
-            branch_name = f'{city} Private Banking'
-        elif branch_type == 'Commercial Center':
-            branch_name = f'{city} Commercial Banking'
+        if branch_type == "Private Banking Center":
+            branch_name = f"{city} Private Banking"
+        elif branch_type == "Commercial Center":
+            branch_name = f"{city} Commercial Banking"
         else:
-            branch_name = f'{city} {address.split()[0]} Branch'
+            branch_name = f"{city} {address.split()[0]} Branch"
 
         # Is active - most branches are active
         is_active = random.random() < 0.95
 
-        records.append({
-            'branch_key': i,
-            'branch_code': f'BR-{i:04d}',
-            'branch_name': branch_name,
-            'branch_type': branch_type,
-            'region': region,
-            'city': city,
-            'state': state,
-            'address': address,
-            'zip_code': zip_code,
-            'phone': phone,
-            'manager_name': manager_name,
-            'is_active': is_active,
-        })
+        records.append(
+            {
+                "branch_key": i,
+                "branch_code": f"BR-{i:04d}",
+                "branch_name": branch_name,
+                "branch_type": branch_type,
+                "region": region,
+                "city": city,
+                "state": state,
+                "address": address,
+                "zip_code": zip_code,
+                "phone": phone,
+                "manager_name": manager_name,
+                "is_active": is_active,
+            }
+        )
 
     return pd.DataFrame(records)
 
 
 def generate_dim_employee(
     n: int = 200,
-    branch_keys: Optional[List[int]] = None,
+    branch_keys: list[int] | None = None,
 ) -> pd.DataFrame:
     """
     Generate employee dimension table.
@@ -103,7 +104,7 @@ def generate_dim_employee(
 
     for i in range(1, n + 1):
         first_name, last_name = generate_person_name()
-        full_name = f'{first_name} {last_name}'
+        full_name = f"{first_name} {last_name}"
 
         role = weighted_choice(EMPLOYEE_ROLES)
         department = weighted_choice(DEPARTMENTS)
@@ -124,21 +125,23 @@ def generate_dim_employee(
         is_active = random.random() > churn_prob
 
         # Generate email (corporate)
-        email = f'{first_name.lower()}.{last_name.lower()}@firstnationalbank.com'
+        email = f"{first_name.lower()}.{last_name.lower()}@firstnationalbank.com"
 
-        records.append({
-            'employee_key': i,
-            'employee_id': f'EMP-{i:05d}',
-            'first_name': first_name,
-            'last_name': last_name,
-            'full_name': full_name,
-            'email': email,
-            'role': role,
-            'department': department,
-            'branch_key': branch_key,
-            'hire_date': hire_date.date(),
-            'is_active': is_active,
-        })
+        records.append(
+            {
+                "employee_key": i,
+                "employee_id": f"EMP-{i:05d}",
+                "first_name": first_name,
+                "last_name": last_name,
+                "full_name": full_name,
+                "email": email,
+                "role": role,
+                "department": department,
+                "branch_key": branch_key,
+                "hire_date": hire_date.date(),
+                "is_active": is_active,
+            }
+        )
 
     return pd.DataFrame(records)
 
@@ -161,9 +164,9 @@ def generate_dim_date(
     """
     # US federal holidays (fixed dates)
     federal_holidays = [
-        (1, 1),   # New Year's Day
-        (7, 4),   # Independence Day
-        (12, 25), # Christmas Day
+        (1, 1),  # New Year's Day
+        (7, 4),  # Independence Day
+        (12, 25),  # Christmas Day
     ]
 
     # Create date range
@@ -179,16 +182,28 @@ def generate_dim_date(
         day = current.day
 
         # Date key as integer YYYYMMDD
-        date_key = int(current.strftime('%Y%m%d'))
+        date_key = int(current.strftime("%Y%m%d"))
 
         # Day of week (0=Monday, 6=Sunday)
         day_of_week = current.weekday()
-        day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         day_name = day_names[day_of_week]
 
         # Month name
-        month_names = ['January', 'February', 'March', 'April', 'May', 'June',
-                       'July', 'August', 'September', 'October', 'November', 'December']
+        month_names = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ]
         month_name = month_names[month - 1]
 
         # Week of year
@@ -206,7 +221,7 @@ def generate_dim_date(
             fiscal_month = month + 11  # Jan = 12
 
         fiscal_quarter = (fiscal_month - 1) // 3 + 1
-        fiscal_quarter_name = f'FY{fiscal_year} Q{fiscal_quarter}'
+        fiscal_quarter_name = f"FY{fiscal_year} Q{fiscal_quarter}"
 
         # Is weekend
         is_weekend = day_of_week >= 5
@@ -221,32 +236,34 @@ def generate_dim_date(
         next_day = current + timedelta(days=1)
         is_month_end = next_day.month != month
 
-        records.append({
-            'date_key': date_key,
-            'full_date': current.date(),
-            'year': year,
-            'month': month,
-            'month_name': month_name,
-            'day_of_month': day,
-            'day_of_week': day_of_week,
-            'day_name': day_name,
-            'week_of_year': week_of_year,
-            'quarter': quarter,
-            'fiscal_year': fiscal_year,
-            'fiscal_quarter': fiscal_quarter,
-            'fiscal_quarter_name': fiscal_quarter_name,
-            'is_weekend': is_weekend,
-            'is_holiday': is_holiday,
-            'is_business_day': is_business_day,
-            'is_month_end': is_month_end,
-        })
+        records.append(
+            {
+                "date_key": date_key,
+                "full_date": current.date(),
+                "year": year,
+                "month": month,
+                "month_name": month_name,
+                "day_of_month": day,
+                "day_of_week": day_of_week,
+                "day_name": day_name,
+                "week_of_year": week_of_year,
+                "quarter": quarter,
+                "fiscal_year": fiscal_year,
+                "fiscal_quarter": fiscal_quarter,
+                "fiscal_quarter_name": fiscal_quarter_name,
+                "is_weekend": is_weekend,
+                "is_holiday": is_holiday,
+                "is_business_day": is_business_day,
+                "is_month_end": is_month_end,
+            }
+        )
 
         current += timedelta(days=1)
 
     return pd.DataFrame(records)
 
 
-def generate_operations_domain(scale: float = 1.0) -> Dict[str, pd.DataFrame]:
+def generate_operations_domain(scale: float = 1.0) -> dict[str, pd.DataFrame]:
     """
     Generate all organization-related dimension tables.
 
@@ -262,14 +279,14 @@ def generate_operations_domain(scale: float = 1.0) -> Dict[str, pd.DataFrame]:
     print("  Generating dim_employee...")
     dim_employee = generate_dim_employee(
         n=scale_count(200, scale),
-        branch_keys=dim_branch['branch_key'].tolist(),
+        branch_keys=dim_branch["branch_key"].tolist(),
     )
 
     print("  Generating dim_date...")
     dim_date = generate_dim_date()
 
     return {
-        'dim_branch': dim_branch,
-        'dim_employee': dim_employee,
-        'dim_date': dim_date,
+        "dim_branch": dim_branch,
+        "dim_employee": dim_employee,
+        "dim_date": dim_date,
     }

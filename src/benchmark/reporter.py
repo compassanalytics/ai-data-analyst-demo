@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .models import BenchmarkComparison
@@ -137,7 +137,7 @@ class BenchmarkReporter:
         """
         try:
             if ms >= 1000:
-                return f"{ms/1000:.2f}s"
+                return f"{ms / 1000:.2f}s"
             return f"{ms:.0f}ms"
         except (TypeError, ValueError):
             return str(ms)
@@ -180,8 +180,8 @@ class BenchmarkReporter:
 
     def _get_render_context(
         self,
-        comparison: "BenchmarkComparison",
-        title: Optional[str] = None,
+        comparison: BenchmarkComparison,
+        title: str | None = None,
     ) -> dict[str, Any]:
         """Build the template rendering context.
 
@@ -210,8 +210,8 @@ class BenchmarkReporter:
 
     def generate_markdown(
         self,
-        comparison: "BenchmarkComparison",
-        title: Optional[str] = None,
+        comparison: BenchmarkComparison,
+        title: str | None = None,
     ) -> str:
         """Generate a Markdown report from benchmark comparison.
 
@@ -228,8 +228,8 @@ class BenchmarkReporter:
 
     def generate_html(
         self,
-        comparison: "BenchmarkComparison",
-        title: Optional[str] = None,
+        comparison: BenchmarkComparison,
+        title: str | None = None,
     ) -> str:
         """Generate an HTML dashboard from benchmark comparison.
 
@@ -246,7 +246,7 @@ class BenchmarkReporter:
 
     def generate_json(
         self,
-        comparison: "BenchmarkComparison",
+        comparison: BenchmarkComparison,
         pretty: bool = True,
     ) -> str:
         """Generate a JSON export of benchmark comparison.
@@ -267,11 +267,11 @@ class BenchmarkReporter:
 
     def save_reports(
         self,
-        comparison: "BenchmarkComparison",
+        comparison: BenchmarkComparison,
         output_dir: str | Path,
-        formats: Optional[list[str]] = None,
+        formats: list[str] | None = None,
         filename_prefix: str = "benchmark",
-        title: Optional[str] = None,
+        title: str | None = None,
     ) -> dict[str, Path]:
         """Save reports in multiple formats to files.
 

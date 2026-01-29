@@ -8,29 +8,28 @@ Generates fact tables:
 """
 
 import random
-from datetime import datetime
-from typing import Dict, List, Optional
 import uuid
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
 
 from .utils import (
-    scale_count,
-    weighted_choice,
-    TRANSACTION_TYPES,
     CHANNELS,
     CURRENCIES,
+    TRANSACTION_TYPES,
+    scale_count,
+    weighted_choice,
 )
 
 
 def generate_fact_transaction(
     n: int = 500000,
-    date_keys: Optional[List[int]] = None,
-    account_keys: Optional[List[int]] = None,
-    customer_keys: Optional[List[int]] = None,
-    branch_keys: Optional[List[int]] = None,
-    employee_keys: Optional[List[int]] = None,
+    date_keys: list[int] | None = None,
+    account_keys: list[int] | None = None,
+    customer_keys: list[int] | None = None,
+    branch_keys: list[int] | None = None,
+    employee_keys: list[int] | None = None,
 ) -> pd.DataFrame:
     """
     Generate transaction fact table.
@@ -100,7 +99,7 @@ def generate_fact_transaction(
         channel = weighted_choice(CHANNELS)
 
         # Employee only for Branch transactions
-        if channel == 'Branch':
+        if channel == "Branch":
             branch_key = random.choice(branch_keys)
             employee_key = random.choice(employee_keys)
         else:
@@ -119,7 +118,7 @@ def generate_fact_transaction(
         amount = round(amount, 2)
 
         # For withdrawals and payments, amount is negative (outflow)
-        if transaction_type_code in ('WD', 'PYM', 'FEE', 'CHG'):
+        if transaction_type_code in ("WD", "PYM", "FEE", "CHG"):
             amount = -amount
 
         # Currency (mostly USD)
@@ -128,28 +127,30 @@ def generate_fact_transaction(
         # Reference number
         reference_number = str(uuid.uuid4()).upper()[:12]
 
-        records.append({
-            'transaction_key': i,
-            'date_key': date_key,
-            'transaction_date': transaction_date,
-            'account_key': account_key,
-            'customer_key': customer_key,
-            'branch_key': branch_key,
-            'employee_key': employee_key,
-            'transaction_type_code': transaction_type_code,
-            'transaction_type': transaction_type,
-            'amount': amount,
-            'currency_code': currency_code,
-            'channel': channel,
-            'reference_number': reference_number,
-        })
+        records.append(
+            {
+                "transaction_key": i,
+                "date_key": date_key,
+                "transaction_date": transaction_date,
+                "account_key": account_key,
+                "customer_key": customer_key,
+                "branch_key": branch_key,
+                "employee_key": employee_key,
+                "transaction_type_code": transaction_type_code,
+                "transaction_type": transaction_type,
+                "amount": amount,
+                "currency_code": currency_code,
+                "channel": channel,
+                "reference_number": reference_number,
+            }
+        )
 
     return pd.DataFrame(records)
 
 
 def generate_fact_account_balance(
-    date_keys: Optional[List[int]] = None,
-    account_keys: Optional[List[int]] = None,
+    date_keys: list[int] | None = None,
+    account_keys: list[int] | None = None,
     sample_rate: float = 0.1,
 ) -> pd.DataFrame:
     """
@@ -225,15 +226,17 @@ def generate_fact_account_balance(
         ledger_diff = random.uniform(-0.02, 0.02) * current_balance
         ledger_balance = round(max(0, current_balance + ledger_diff), 2)
 
-        records.append({
-            'balance_key': balance_key,
-            'date_key': date_key,
-            'account_key': account_key,
-            'current_balance': current_balance,
-            'available_balance': available_balance,
-            'ledger_balance': ledger_balance,
-            'hold_amount': hold_amount,
-        })
+        records.append(
+            {
+                "balance_key": balance_key,
+                "date_key": date_key,
+                "account_key": account_key,
+                "current_balance": current_balance,
+                "available_balance": available_balance,
+                "ledger_balance": ledger_balance,
+                "hold_amount": hold_amount,
+            }
+        )
 
         account_last_balance[account_key] = current_balance
         balance_key += 1
@@ -248,7 +251,7 @@ def generate_transaction_facts(
     dim_customer: pd.DataFrame,
     dim_branch: pd.DataFrame,
     dim_employee: pd.DataFrame,
-) -> Dict[str, pd.DataFrame]:
+) -> dict[str, pd.DataFrame]:
     """
     Generate all transaction fact tables.
 
@@ -264,11 +267,11 @@ def generate_transaction_facts(
         Dictionary with table names as keys and DataFrames as values
     """
     # Extract keys from dimension tables
-    date_keys = dim_date['date_key'].tolist()
-    account_keys = dim_account['account_key'].tolist()
-    customer_keys = dim_customer['customer_key'].tolist()
-    branch_keys = dim_branch['branch_key'].tolist()
-    employee_keys = dim_employee['employee_key'].tolist()
+    date_keys = dim_date["date_key"].tolist()
+    account_keys = dim_account["account_key"].tolist()
+    customer_keys = dim_customer["customer_key"].tolist()
+    branch_keys = dim_branch["branch_key"].tolist()
+    employee_keys = dim_employee["employee_key"].tolist()
 
     print("  Generating fact_transaction...")
     fact_transaction = generate_fact_transaction(
@@ -288,6 +291,6 @@ def generate_transaction_facts(
     )
 
     return {
-        'fact_transaction': fact_transaction,
-        'fact_account_balance': fact_account_balance,
+        "fact_transaction": fact_transaction,
+        "fact_account_balance": fact_account_balance,
     }

@@ -10,8 +10,8 @@ import hashlib
 import logging
 import threading
 import time
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class QueryCache:
         ...     print("Cache hit!")
     """
 
-    def __init__(self, config: Optional[CacheConfig] = None):
+    def __init__(self, config: CacheConfig | None = None):
         """Initialize the query cache.
 
         Args:
@@ -113,7 +113,7 @@ class QueryCache:
         space_id: str,
         question: str,
         fresh: bool = False,
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """Get cached result.
 
         Args:
@@ -195,7 +195,7 @@ class QueryCache:
             self._stats.cache_size = len(self._cache)
             logger.debug("Cached result for space=%s", space_id)
 
-    def invalidate(self, space_id: Optional[str] = None) -> int:
+    def invalidate(self, space_id: str | None = None) -> int:
         """Invalidate cache entries.
 
         Args:
@@ -215,9 +215,7 @@ class QueryCache:
                 logger.info("Invalidated all %d cache entries", count)
                 return count
 
-            keys_to_remove = [
-                k for k, e in self._cache.items() if e.space_id == space_id
-            ]
+            keys_to_remove = [k for k, e in self._cache.items() if e.space_id == space_id]
             for key in keys_to_remove:
                 del self._cache[key]
                 if key in self._access_order:
@@ -262,11 +260,11 @@ class QueryCache:
 
 
 # Module-level singleton
-_global_cache: Optional[QueryCache] = None
+_global_cache: QueryCache | None = None
 _global_cache_lock = threading.Lock()
 
 
-def get_query_cache(config: Optional[CacheConfig] = None) -> QueryCache:
+def get_query_cache(config: CacheConfig | None = None) -> QueryCache:
     """Get or create the global query cache singleton.
 
     Args:

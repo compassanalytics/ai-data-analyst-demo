@@ -7,15 +7,12 @@ evaluating Genie's ability to handle various data quality challenges.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from src.evaluation.models import (
     ComplexityLevel,
     FailureCategory,
     QueryType,
     TestQuery,
 )
-
 
 # =============================================================================
 # QUERY TEMPLATES BY FAILURE CATEGORY
@@ -83,7 +80,6 @@ QUERY_TEMPLATES: dict[FailureCategory, list[dict]] = {
             "description": "Tests order_date vs sale_date vs created_at and amount fields",
         },
     ],
-
     # -------------------------------------------------------------------------
     # FAILURE CATEGORY 2: CRYPTIC CODES/ABBREVIATIONS
     # -------------------------------------------------------------------------
@@ -153,7 +149,6 @@ QUERY_TEMPLATES: dict[FailureCategory, list[dict]] = {
             "description": "Tests mapping 'e-commerce' to 'EC' channel code",
         },
     ],
-
     # -------------------------------------------------------------------------
     # FAILURE CATEGORY 3: BUSINESS LOGIC
     # -------------------------------------------------------------------------
@@ -215,7 +210,6 @@ QUERY_TEMPLATES: dict[FailureCategory, list[dict]] = {
             "description": "Tests NPS calculation (promoters - detractors)",
         },
     ],
-
     # -------------------------------------------------------------------------
     # FAILURE CATEGORY 4: TEMPORAL CONFUSION
     # -------------------------------------------------------------------------
@@ -285,7 +279,6 @@ QUERY_TEMPLATES: dict[FailureCategory, list[dict]] = {
             "description": "Tests point-in-time snapshot logic",
         },
     ],
-
     # -------------------------------------------------------------------------
     # FAILURE CATEGORY 5: AGGREGATION AMBIGUITY
     # -------------------------------------------------------------------------
@@ -347,7 +340,6 @@ QUERY_TEMPLATES: dict[FailureCategory, list[dict]] = {
             "description": "Tests COUNT(DISTINCT visitor_id) grouping",
         },
     ],
-
     # -------------------------------------------------------------------------
     # FAILURE CATEGORY 6: JOIN COMPLEXITY
     # -------------------------------------------------------------------------
@@ -454,9 +446,9 @@ class QueryGenerator:
 
     def generate_suite(
         self,
-        query_types: Optional[list[QueryType]] = None,
-        complexity_levels: Optional[list[ComplexityLevel]] = None,
-        failure_categories: Optional[list[FailureCategory]] = None,
+        query_types: list[QueryType] | None = None,
+        complexity_levels: list[ComplexityLevel] | None = None,
+        failure_categories: list[FailureCategory] | None = None,
         adversarial: bool = False,
     ) -> list[TestQuery]:
         """Generate a test suite based on filters.

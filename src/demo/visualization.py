@@ -196,13 +196,15 @@ def _generate_timing_table_markdown(timing: dict) -> str:
     # Space timings
     spaces = timing.get("spaces", {})
     if spaces:
-        lines.extend([
-            "",
-            "### Genie Space Queries",
-            "",
-            "| Space | Duration (s) | Attempts | Status |",
-            "|-------|-------------|----------|--------|",
-        ])
+        lines.extend(
+            [
+                "",
+                "### Genie Space Queries",
+                "",
+                "| Space | Duration (s) | Attempts | Status |",
+                "|-------|-------------|----------|--------|",
+            ]
+        )
 
         for name, space_data in spaces.items():
             duration = space_data.get("duration_seconds")
@@ -341,13 +343,15 @@ def generate_mermaid_diagram(state: PipelineState) -> str:
     lines.append("    A --> B --> C --> D")
 
     # Add class definitions
-    lines.extend([
-        "",
-        "    classDef pending fill:#6B7280,color:white",
-        "    classDef active fill:#3B82F6,color:white",
-        "    classDef complete fill:#10B981,color:white",
-        "    classDef error fill:#EF4444,color:white",
-    ])
+    lines.extend(
+        [
+            "",
+            "    classDef pending fill:#6B7280,color:white",
+            "    classDef active fill:#3B82F6,color:white",
+            "    classDef complete fill:#10B981,color:white",
+            "    classDef error fill:#EF4444,color:white",
+        ]
+    )
 
     lines.append("```")
 
@@ -448,24 +452,28 @@ def render_progress_html(
             duration = result.duration_seconds
             error = result.error
 
-        stages.append({
-            "name": stage.value.title(),
-            "status": status,
-            "duration": duration,
-            "error": error,
-        })
+        stages.append(
+            {
+                "name": stage.value.title(),
+                "status": status,
+                "duration": duration,
+                "error": error,
+            }
+        )
 
     # Build space data
     spaces = []
     for name, progress in state.get_space_progress().items():
-        spaces.append({
-            "name": name,
-            "status": progress.status.value,
-            "duration": progress.duration_seconds,
-            "attempt": progress.current_attempt,
-            "cached": progress.cached,
-            "error": progress.error_message,
-        })
+        spaces.append(
+            {
+                "name": name,
+                "status": progress.status.value,
+                "duration": progress.duration_seconds,
+                "attempt": progress.current_attempt,
+                "cached": progress.cached,
+                "error": progress.error_message,
+            }
+        )
 
     return template.render(
         stages=stages,
@@ -512,13 +520,13 @@ def _render_progress_html_inline(
         color = status_colors.get(status, "#6B7280")
         duration_str = f"{duration:.2f}s" if duration else status.title()
 
-        stage_html.append(f'''
+        stage_html.append(f"""
         <div style="display:inline-block;padding:12px 16px;margin:4px;border-radius:8px;
                     background-color:{color}20;border-left:4px solid {color};min-width:120px;">
             <div style="font-size:14px;font-weight:600;color:{color};">{stage.value.title()}</div>
             <div style="font-size:12px;color:#666;margin-top:4px;">{duration_str}</div>
         </div>
-        ''')
+        """)
         if i < len(stage_order) - 1:
             stage_html.append('<span style="color:#9CA3AF;font-size:18px;margin:0 4px;">&#8594;</span>')
 
@@ -529,14 +537,14 @@ def _render_progress_html_inline(
         color = status_colors.get(status, status_colors.get("pending"))
         duration_str = f"{progress.duration_seconds:.2f}s" if progress.duration_seconds else status.title()
 
-        space_html.append(f'''
+        space_html.append(f"""
         <div style="display:flex;align-items:center;padding:8px 12px;margin:2px 0;
                     background-color:{color}10;border-radius:4px;font-size:13px;">
             <div style="width:10px;height:10px;border-radius:50%;background-color:{color};margin-right:10px;"></div>
             <div style="flex:1;font-weight:500;">{name}</div>
             <div style="color:#666;margin-left:8px;">{duration_str}</div>
         </div>
-        ''')
+        """)
 
     # Total time and cache stats
     total_html = ""
@@ -546,13 +554,13 @@ def _render_progress_html_inline(
             hits = cache_stats.get("hits", 0)
             misses = cache_stats.get("misses", 0)
             cache_info = f" &nbsp;|&nbsp; <strong>Cache:</strong> {hits} hits, {misses} misses"
-        total_html = f'''
+        total_html = f"""
         <div style="margin-top:16px;padding:12px;background-color:#F3F4F6;border-radius:6px;font-size:14px;">
             <strong>Total Time:</strong> {state.total_duration_seconds:.2f}s{cache_info}
         </div>
-        '''
+        """
 
-    return f'''
+    return f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:800px;padding:16px;">
         <div style="font-size:14px;font-weight:600;color:#374151;margin:16px 0 8px 0;padding-bottom:4px;border-bottom:1px solid #E5E7EB;">
             Pipeline Progress
@@ -568,4 +576,4 @@ def _render_progress_html_inline(
         </div>
         {total_html}
     </div>
-    '''
+    """

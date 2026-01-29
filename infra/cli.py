@@ -70,8 +70,8 @@ def cmd_deploy(args: argparse.Namespace) -> int:
             print(f"  Space ID: {space_id}")
 
             # Print the workspace URL hint
-            print(f"\nTo view the space, navigate to:")
-            print(f"  SQL > Genie Spaces > (find by title)")
+            print("\nTo view the space, navigate to:")
+            print("  SQL > Genie Spaces > (find by title)")
 
         return 0
 
@@ -135,7 +135,7 @@ def cmd_get(args: argparse.Namespace) -> int:
         if args.json:
             print(json.dumps(space, indent=2))
         else:
-            print(f"Genie Space Details")
+            print("Genie Space Details")
             print("=" * 60)
             print(f"Space ID:    {space.get('space_id', 'N/A')}")
             print(f"Title:       {space.get('title', 'N/A')}")
@@ -263,12 +263,8 @@ Examples:
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # deploy command
-    deploy_parser = subparsers.add_parser(
-        "deploy", help="Deploy a Genie Space from a YAML configuration file"
-    )
-    deploy_parser.add_argument(
-        "config", help="Path to the YAML configuration file"
-    )
+    deploy_parser = subparsers.add_parser("deploy", help="Deploy a Genie Space from a YAML configuration file")
+    deploy_parser.add_argument("config", help="Path to the YAML configuration file")
     deploy_parser.add_argument(
         "--update",
         metavar="SPACE_ID",
@@ -283,37 +279,25 @@ Examples:
 
     # list command
     list_parser = subparsers.add_parser("list", help="List all Genie Spaces")
-    list_parser.add_argument(
-        "--json", action="store_true", help="Output as JSON"
-    )
+    list_parser.add_argument("--json", action="store_true", help="Output as JSON")
     list_parser.set_defaults(func=cmd_list)
 
     # get command
     get_parser = subparsers.add_parser("get", help="Get Genie Space details")
     get_parser.add_argument("space_id", help="Space ID to retrieve")
-    get_parser.add_argument(
-        "--json", action="store_true", help="Output as JSON"
-    )
+    get_parser.add_argument("--json", action="store_true", help="Output as JSON")
     get_parser.set_defaults(func=cmd_get)
 
     # export command
-    export_parser = subparsers.add_parser(
-        "export", help="Export a Genie Space configuration to YAML"
-    )
+    export_parser = subparsers.add_parser("export", help="Export a Genie Space configuration to YAML")
     export_parser.add_argument("space_id", help="Space ID to export")
-    export_parser.add_argument(
-        "--output", "-o", help="Output file path (default: genie_space_<id>.yaml)"
-    )
+    export_parser.add_argument("--output", "-o", help="Output file path (default: genie_space_<id>.yaml)")
     export_parser.set_defaults(func=cmd_export)
 
     # delete command
-    delete_parser = subparsers.add_parser(
-        "delete", help="Delete (trash) a Genie Space"
-    )
+    delete_parser = subparsers.add_parser("delete", help="Delete (trash) a Genie Space")
     delete_parser.add_argument("space_id", help="Space ID to delete")
-    delete_parser.add_argument(
-        "--force", "-f", action="store_true", help="Skip confirmation prompt"
-    )
+    delete_parser.add_argument("--force", "-f", action="store_true", help="Skip confirmation prompt")
     delete_parser.add_argument(
         "--dry-run",
         action="store_true",

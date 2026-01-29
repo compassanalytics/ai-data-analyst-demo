@@ -14,14 +14,15 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from .models import BenchmarkQuery, Severity
-from .schema_parser import DomainContext
 from src.config import Config
 from src.evaluation.models import ComplexityLevel, FailureCategory, QueryType
+
+from .models import BenchmarkQuery, Severity
+from .schema_parser import DomainContext
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 # SYSTEM PROMPT TEMPLATE
 # =============================================================================
 
-QUERY_GENERATION_SYSTEM_PROMPT = '''You are an expert at generating test queries for evaluating AI data assistants like Databricks Genie.
+QUERY_GENERATION_SYSTEM_PROMPT = """You are an expert at generating test queries for evaluating AI data assistants like Databricks Genie.
 
 Given a database schema and domain context, generate natural language questions that test specific failure scenarios.
 
@@ -57,7 +58,7 @@ Output Format:
         }
     ]
 }
-'''
+"""
 
 
 # =============================================================================
@@ -65,7 +66,7 @@ Output Format:
 # =============================================================================
 
 FAILURE_CATEGORY_PROMPTS: dict[FailureCategory, str] = {
-    FailureCategory.AMBIGUOUS_COLUMNS: '''Generate queries that test handling of AMBIGUOUS COLUMN NAMES.
+    FailureCategory.AMBIGUOUS_COLUMNS: """Generate queries that test handling of AMBIGUOUS COLUMN NAMES.
 
 Focus on scenarios where:
 - Multiple columns have similar names (e.g., net_amt, net_sales, REV, revenue)
@@ -74,9 +75,8 @@ Focus on scenarios where:
 - Abbreviations make intent unclear (e.g., qty vs quantity, amt vs amount)
 
 The AI assistant might pick the wrong column or fail to disambiguate between options.
-Generate questions that would naturally refer to these ambiguous concepts.''',
-
-    FailureCategory.CRYPTIC_CODES: '''Generate queries that test handling of CRYPTIC CODES and abbreviations.
+Generate questions that would naturally refer to these ambiguous concepts.""",
+    FailureCategory.CRYPTIC_CODES: """Generate queries that test handling of CRYPTIC CODES and abbreviations.
 
 Focus on scenarios where:
 - Status codes are numeric (1,2,3,4,5) instead of descriptive
@@ -86,9 +86,8 @@ Focus on scenarios where:
 - Type indicators use non-obvious abbreviations
 
 The AI assistant might not know how to map natural language terms to these codes.
-Generate questions using natural language that requires code translation.''',
-
-    FailureCategory.BUSINESS_LOGIC: '''Generate queries that test understanding of BUSINESS LOGIC and domain rules.
+Generate questions using natural language that requires code translation.""",
+    FailureCategory.BUSINESS_LOGIC: """Generate queries that test understanding of BUSINESS LOGIC and domain rules.
 
 Focus on scenarios where:
 - Fiscal vs calendar year definitions differ
@@ -98,9 +97,8 @@ Focus on scenarios where:
 - Custom business rules apply (e.g., specific discount calculations)
 
 The AI assistant might use incorrect formulas or misinterpret business terminology.
-Generate questions that require specific business logic to answer correctly.''',
-
-    FailureCategory.TEMPORAL_CONFUSION: '''Generate queries that test handling of TEMPORAL/DATE concepts.
+Generate questions that require specific business logic to answer correctly.""",
+    FailureCategory.TEMPORAL_CONFUSION: """Generate queries that test handling of TEMPORAL/DATE concepts.
 
 Focus on scenarios where:
 - "Last week" could mean 7 days, calendar week, or business week
@@ -111,9 +109,8 @@ Focus on scenarios where:
 - Time zone considerations affect results
 
 The AI assistant might use wrong date boundaries or interpret periods incorrectly.
-Generate questions with time-based requirements that could be misinterpreted.''',
-
-    FailureCategory.AGGREGATION_AMBIGUITY: '''Generate queries that test AGGREGATION logic and calculations.
+Generate questions with time-based requirements that could be misinterpreted.""",
+    FailureCategory.AGGREGATION_AMBIGUITY: """Generate queries that test AGGREGATION logic and calculations.
 
 Focus on scenarios where:
 - AVG might be per-row vs per-order/customer
@@ -124,9 +121,8 @@ Focus on scenarios where:
 - Weighted vs unweighted averages apply
 
 The AI assistant might use wrong aggregation functions or improper grouping.
-Generate questions about averages, counts, rates, and ratios that need precise definitions.''',
-
-    FailureCategory.JOIN_COMPLEXITY: '''Generate queries that test complex JOIN scenarios.
+Generate questions about averages, counts, rates, and ratios that need precise definitions.""",
+    FailureCategory.JOIN_COMPLEXITY: """Generate queries that test complex JOIN scenarios.
 
 Focus on scenarios where:
 - Anti-joins find "customers who didn't buy" or "products never sold"
@@ -137,7 +133,7 @@ Focus on scenarios where:
 - Left/right outer joins affect result completeness
 
 The AI assistant might use wrong join types or produce Cartesian products.
-Generate questions that require specific join patterns to answer correctly.''',
+Generate questions that require specific join patterns to answer correctly.""",
 }
 
 
@@ -285,6 +281,7 @@ MOCK_QUERY_TEMPLATES: dict[FailureCategory, list[dict[str, Any]]] = {
 # LLM QUERY GENERATOR
 # =============================================================================
 
+
 @dataclass
 class GenerationMetadata:
     """Metadata about a query generation session."""
@@ -338,9 +335,9 @@ class LLMQueryGenerator:
     def generate(
         self,
         domain_context: DomainContext,
-        failure_categories: Optional[list[FailureCategory]] = None,
+        failure_categories: list[FailureCategory] | None = None,
         queries_per_category: int = 5,
-        seed: Optional[int] = None,
+        seed: int | None = None,
         schema_version: str = "",
     ) -> list[BenchmarkQuery]:
         """Generate benchmark queries for the domain.
@@ -357,18 +354,16 @@ class LLMQueryGenerator:
         """
         if self.config.mock_mode:
             return self._mock_generate(
-                domain_context, failure_categories, queries_per_category, seed,
-                schema_version=schema_version
+                domain_context, failure_categories, queries_per_category, seed, schema_version=schema_version
             )
         return self._llm_generate(
-            domain_context, failure_categories, queries_per_category,
-            schema_version=schema_version
+            domain_context, failure_categories, queries_per_category, schema_version=schema_version
         )
 
     def _llm_generate(
         self,
         domain_context: DomainContext,
-        failure_categories: Optional[list[FailureCategory]],
+        failure_categories: list[FailureCategory] | None,
         queries_per_category: int,
         schema_version: str = "",
     ) -> list[BenchmarkQuery]:
@@ -397,13 +392,9 @@ class LLMQueryGenerator:
                     schema_version=schema_version,
                 )
                 all_queries.extend(queries)
-                logger.info(
-                    f"Generated {len(queries)} queries for {category.value}"
-                )
+                logger.info(f"Generated {len(queries)} queries for {category.value}")
             except Exception as e:
-                logger.error(
-                    f"Failed to generate queries for {category.value}: {e}"
-                )
+                logger.error(f"Failed to generate queries for {category.value}: {e}")
                 # Continue with other categories
 
         return all_queries
@@ -442,10 +433,12 @@ class LLMQueryGenerator:
         prompt_hash = hashlib.sha256(prompt_content.encode()).hexdigest()[:16]
 
         # Invoke LLM
-        response = llm.invoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt),
-        ])
+        response = llm.invoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt),
+            ]
+        )
 
         # Parse response
         query_dicts = self._parse_llm_response(response.content)
@@ -465,9 +458,7 @@ class LLMQueryGenerator:
                 )
                 queries.append(query)
             else:
-                logger.warning(
-                    f"Skipping invalid query: {query_dict.get('question', 'unknown')}"
-                )
+                logger.warning(f"Skipping invalid query: {query_dict.get('question', 'unknown')}")
 
         return queries
 
@@ -497,8 +488,7 @@ class LLMQueryGenerator:
         """
         # Get category-specific instructions
         category_instructions = FAILURE_CATEGORY_PROMPTS.get(
-            category,
-            f"Generate queries that test {category.value.replace('_', ' ')} scenarios."
+            category, f"Generate queries that test {category.value.replace('_', ' ')} scenarios."
         )
 
         # Get schema context from domain
@@ -604,15 +594,10 @@ Return ONLY valid JSON in the format specified in the system prompt."""
         expected_tables = query_dict.get("expected_tables", [])
         if expected_tables:
             # Use get_table_names() method from DomainContext
-            domain_tables = {
-                name.lower() for name in domain_context.get_table_names()
-            }
+            domain_tables = {name.lower() for name in domain_context.get_table_names()}
             for table in expected_tables:
                 if table.lower() not in domain_tables:
-                    logger.warning(
-                        f"Table '{table}' not found in domain schema. "
-                        f"Available: {domain_tables}"
-                    )
+                    logger.warning(f"Table '{table}' not found in domain schema. Available: {domain_tables}")
                     # Don't fail validation - LLM might use reasonable table names
                     # that we should accept even if not exact matches
 
@@ -691,9 +676,9 @@ Return ONLY valid JSON in the format specified in the system prompt."""
     def _mock_generate(
         self,
         domain_context: DomainContext,
-        failure_categories: Optional[list[FailureCategory]],
+        failure_categories: list[FailureCategory] | None,
         queries_per_category: int,
-        seed: Optional[int] = None,
+        seed: int | None = None,
         schema_version: str = "",
     ) -> list[BenchmarkQuery]:
         """Generate mock queries for testing (no LLM).
@@ -760,10 +745,7 @@ Return ONLY valid JSON in the format specified in the system prompt."""
                 )
                 all_queries.append(query)
 
-        logger.info(
-            f"Mock generated {len(all_queries)} queries for "
-            f"{len(categories)} categories"
-        )
+        logger.info(f"Mock generated {len(all_queries)} queries for {len(categories)} categories")
         return all_queries
 
     def _customize_mock_question(

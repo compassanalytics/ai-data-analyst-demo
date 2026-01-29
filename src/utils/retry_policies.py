@@ -7,7 +7,8 @@ agent operations, with support for exponential backoff and jitter.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, TypeVar
 
 from tenacity import (
     RetryCallState,
@@ -111,7 +112,7 @@ genie_retry_policy = create_genie_retry_policy(
 )
 
 
-def retry_with_config(config: "Config") -> Callable[[Callable[..., T]], Callable[..., T]]:
+def retry_with_config(config: Config) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Create a retry policy using configuration settings.
 
     Args:
@@ -228,7 +229,7 @@ class RetryContext:
         import random
 
         # Exponential backoff: base * 2^attempt
-        delay = min(self.base_delay * (2 ** self._attempt), self.max_delay)
+        delay = min(self.base_delay * (2**self._attempt), self.max_delay)
 
         # Add jitter (up to 50% of delay)
         jitter = random.uniform(0, delay * 0.5)

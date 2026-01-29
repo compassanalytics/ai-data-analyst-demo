@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any
 
 from src.agents.genie_agent import GenieDataAgent, GenieResult
 from src.config import Config
@@ -37,7 +38,7 @@ class EvaluationResults:
     """
 
     results: list[EvaluationResult] = field(default_factory=list)
-    summary: Optional[EvaluationSummary] = None
+    summary: EvaluationSummary | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization.
@@ -82,7 +83,7 @@ class GenieEvaluator:
     def __init__(
         self,
         config: Config,
-        genie_agent: Optional[GenieDataAgent] = None,
+        genie_agent: GenieDataAgent | None = None,
     ) -> None:
         """Initialize the evaluator.
 
@@ -96,7 +97,7 @@ class GenieEvaluator:
     def evaluate(
         self,
         test_queries: list[TestQuery],
-        progress_callback: Optional[Callable[[int, int, TestQuery], None]] = None,
+        progress_callback: Callable[[int, int, TestQuery], None] | None = None,
         fresh: bool = True,
     ) -> EvaluationResults:
         """Evaluate a list of test queries.
@@ -160,9 +161,7 @@ class GenieEvaluator:
             execution_time_ms = (time.time() - start_time) * 1000
 
             # Compare results
-            accuracy, failure_type, comparison = self._compare_results(
-                test_query, genie_result
-            )
+            accuracy, failure_type, comparison = self._compare_results(test_query, genie_result)
 
             # Build raw response for debugging
             raw_response = {
@@ -183,11 +182,7 @@ class GenieEvaluator:
                 execution_time_ms=execution_time_ms,
                 genie_response_raw=raw_response,
                 error_message=genie_result.error if not genie_result.success else None,
-                error_category=(
-                    genie_result.error_details.category.value
-                    if genie_result.error_details
-                    else None
-                ),
+                error_category=(genie_result.error_details.category.value if genie_result.error_details else None),
             )
 
         except Exception as e:
@@ -197,9 +192,7 @@ class GenieEvaluator:
                 test_query=test_query,
                 accuracy=AccuracyScore.FAILED,
                 failure_type=EvaluationFailureType.API_ERROR,
-                comparison=ComparisonDetails(
-                    comparison_notes=f"Exception during evaluation: {e}"
-                ),
+                comparison=ComparisonDetails(comparison_notes=f"Exception during evaluation: {e}"),
                 execution_time_ms=execution_time_ms,
                 error_message=str(e),
             )
@@ -313,19 +306,23 @@ class GenieEvaluator:
 
         # Update missing/extra lists
         comparison.missing_columns = [
-            c for c in test_query.expected_columns
+            c
+            for c in test_query.expected_columns
             if not any(c.lower() in ac.lower() or ac.lower() in c.lower() for ac in actual_columns)
         ]
         comparison.extra_columns = [
-            c for c in actual_columns
+            c
+            for c in actual_columns
             if not any(c.lower() in ec.lower() or ec.lower() in c.lower() for ec in test_query.expected_columns)
         ]
         comparison.missing_tables = [
-            t for t in test_query.expected_tables
+            t
+            for t in test_query.expected_tables
             if not any(t.lower() in at.lower() or at.lower() in t.lower() for at in actual_tables)
         ]
         comparison.extra_tables = [
-            t for t in actual_tables
+            t
+            for t in actual_tables
             if not any(t.lower() in et.lower() or et.lower() in t.lower() for et in test_query.expected_tables)
         ]
 
@@ -346,25 +343,21 @@ class GenieEvaluator:
         sql_upper = sql.upper()
 
         # Extract from SELECT clause
-        select_match = re.search(
-            r'SELECT\s+(.*?)\s+FROM',
-            sql_upper,
-            re.IGNORECASE | re.DOTALL
-        )
+        select_match = re.search(r"SELECT\s+(.*?)\s+FROM", sql_upper, re.IGNORECASE | re.DOTALL)
 
         if select_match:
             select_clause = select_match.group(1)
 
             # Handle SELECT *
-            if '*' in select_clause:
-                columns.add('*')
+            if "*" in select_clause:
+                columns.add("*")
 
             # Extract column names and aliases
             # Pattern matches: column_name, table.column, column AS alias, etc.
             col_patterns = [
-                r'(\w+)\s+AS\s+(\w+)',  # column AS alias
-                r'(\w+)\.(\w+)',  # table.column
-                r'\b(\w+)\b',  # simple column name
+                r"(\w+)\s+AS\s+(\w+)",  # column AS alias
+                r"(\w+)\.(\w+)",  # table.column
+                r"\b(\w+)\b",  # simple column name
             ]
 
             for pattern in col_patterns:
@@ -372,34 +365,69 @@ class GenieEvaluator:
                 for match in matches:
                     if isinstance(match, tuple):
                         for part in match:
-                            if part.lower() not in {'as', 'from', 'select', 'distinct', 'all'}:
+                            if part.lower() not in {"as", "from", "select", "distinct", "all"}:
                                 columns.add(part.lower())
                     else:
-                        if match.lower() not in {'as', 'from', 'select', 'distinct', 'all'}:
+                        if match.lower() not in {"as", "from", "select", "distinct", "all"}:
                             columns.add(match.lower())
 
         # Also extract from GROUP BY, ORDER BY clauses
-        for clause in ['GROUP BY', 'ORDER BY']:
-            clause_match = re.search(
-                rf'{clause}\s+([\w\s,\.]+?)(?:HAVING|ORDER|LIMIT|$)',
-                sql_upper,
-                re.IGNORECASE
-            )
+        for clause in ["GROUP BY", "ORDER BY"]:
+            clause_match = re.search(rf"{clause}\s+([\w\s,\.]+?)(?:HAVING|ORDER|LIMIT|$)", sql_upper, re.IGNORECASE)
             if clause_match:
                 clause_content = clause_match.group(1)
-                words = re.findall(r'\b(\w+)\b', clause_content)
+                words = re.findall(r"\b(\w+)\b", clause_content)
                 for word in words:
-                    if word.lower() not in {'by', 'asc', 'desc', 'nulls', 'first', 'last'}:
+                    if word.lower() not in {"by", "asc", "desc", "nulls", "first", "last"}:
                         columns.add(word.lower())
 
         # Remove SQL keywords that might have been captured
         sql_keywords = {
-            'select', 'from', 'where', 'and', 'or', 'not', 'in', 'is', 'null',
-            'between', 'like', 'case', 'when', 'then', 'else', 'end', 'as',
-            'sum', 'count', 'avg', 'min', 'max', 'distinct', 'group', 'by',
-            'order', 'having', 'limit', 'offset', 'join', 'left', 'right',
-            'inner', 'outer', 'on', 'using', 'union', 'intersect', 'except',
-            'true', 'false', 'over', 'partition', 'row_number', 'rank',
+            "select",
+            "from",
+            "where",
+            "and",
+            "or",
+            "not",
+            "in",
+            "is",
+            "null",
+            "between",
+            "like",
+            "case",
+            "when",
+            "then",
+            "else",
+            "end",
+            "as",
+            "sum",
+            "count",
+            "avg",
+            "min",
+            "max",
+            "distinct",
+            "group",
+            "by",
+            "order",
+            "having",
+            "limit",
+            "offset",
+            "join",
+            "left",
+            "right",
+            "inner",
+            "outer",
+            "on",
+            "using",
+            "union",
+            "intersect",
+            "except",
+            "true",
+            "false",
+            "over",
+            "partition",
+            "row_number",
+            "rank",
         }
 
         columns = {c for c in columns if c not in sql_keywords}
@@ -418,25 +446,39 @@ class GenieEvaluator:
         tables: set[str] = set()
 
         # Pattern for FROM clause tables (including schema.table)
-        from_pattern = r'FROM\s+([\w\.]+)'
+        from_pattern = r"FROM\s+([\w\.]+)"
         matches = re.findall(from_pattern, sql, re.IGNORECASE)
         for match in matches:
             # Handle schema.table format
-            parts = match.split('.')
+            parts = match.split(".")
             tables.add(parts[-1].lower())  # Add just the table name
 
         # Pattern for JOIN clause tables
-        join_pattern = r'JOIN\s+([\w\.]+)'
+        join_pattern = r"JOIN\s+([\w\.]+)"
         matches = re.findall(join_pattern, sql, re.IGNORECASE)
         for match in matches:
-            parts = match.split('.')
+            parts = match.split(".")
             tables.add(parts[-1].lower())
 
         # Also check for subquery aliases (just in case)
         # Skip common SQL keywords
         sql_keywords = {
-            'select', 'from', 'where', 'and', 'or', 'not', 'in', 'is', 'null',
-            'join', 'left', 'right', 'inner', 'outer', 'on', 'using',
+            "select",
+            "from",
+            "where",
+            "and",
+            "or",
+            "not",
+            "in",
+            "is",
+            "null",
+            "join",
+            "left",
+            "right",
+            "inner",
+            "outer",
+            "on",
+            "using",
         }
 
         tables = {t for t in tables if t not in sql_keywords}
@@ -502,11 +544,11 @@ class GenieEvaluator:
             if has_missing_tables:
                 return EvaluationFailureType.WRONG_JOIN
             return EvaluationFailureType.WRONG_JOIN
-        elif category == FailureCategory.TEMPORAL_CONFUSION:
-            return EvaluationFailureType.WRONG_FILTER
-        elif category == FailureCategory.BUSINESS_LOGIC:
-            return EvaluationFailureType.WRONG_FILTER
-        elif category == FailureCategory.CRYPTIC_CODES:
+        elif (
+            category == FailureCategory.TEMPORAL_CONFUSION
+            or category == FailureCategory.BUSINESS_LOGIC
+            or category == FailureCategory.CRYPTIC_CODES
+        ):
             return EvaluationFailureType.WRONG_FILTER
 
         # Default based on what's missing

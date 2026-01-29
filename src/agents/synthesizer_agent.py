@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal
 
 from src.config import Config
 
@@ -96,7 +96,7 @@ class SynthesisResult:
     anomalies: list[Anomaly] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)  # Partial failure disclaimers
-    error: Optional[str] = None
+    error: str | None = None
     domains_analyzed: list[str] = field(default_factory=list)
     data_limitations: list[str] = field(default_factory=list)  # Limitations due to missing data
     domains_unavailable: list[str] = field(default_factory=list)  # Domains that were unavailable
@@ -214,9 +214,9 @@ class SynthesizerAgent:
 
     def synthesize(
         self,
-        multi_result: "MultiGenieResult",
+        multi_result: MultiGenieResult,
         query: str,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> SynthesisResult:
         """Synthesize insights from multiple Genie Space results.
 
@@ -234,9 +234,9 @@ class SynthesizerAgent:
 
     def _build_user_prompt(
         self,
-        multi_result: "MultiGenieResult",
+        multi_result: MultiGenieResult,
         query: str,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> str:
         """Build the user prompt with data from successful results.
 
@@ -308,9 +308,9 @@ class SynthesizerAgent:
                 failed_info.append(f"- **{name}**{domain_info}: {error_msg}")
 
             prompt_parts.append(
-                f"\n## UNAVAILABLE DOMAINS\n"
-                f"The following data sources could not be queried. "
-                f"Your analysis is LIMITED without this data:\n\n" + "\n".join(failed_info)
+                "\n## UNAVAILABLE DOMAINS\n"
+                "The following data sources could not be queried. "
+                "Your analysis is LIMITED without this data:\n\n" + "\n".join(failed_info)
             )
 
         if context:
@@ -328,9 +328,9 @@ class SynthesizerAgent:
 
     def _real_synthesize(
         self,
-        multi_result: "MultiGenieResult",
+        multi_result: MultiGenieResult,
         query: str,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> SynthesisResult:
         """Execute real synthesis using LLM.
 
@@ -364,9 +364,7 @@ class SynthesizerAgent:
                 warnings.append(f"Data from '{name}' unavailable: {error_msg}")
                 meta = multi_result.metadata.get(name)
                 if meta and meta.domain:
-                    data_limitations.append(
-                        f"Analysis lacks {meta.domain} data from '{name}'"
-                    )
+                    data_limitations.append(f"Analysis lacks {meta.domain} data from '{name}'")
                 else:
                     data_limitations.append(f"Analysis lacks data from '{name}'")
 
@@ -386,10 +384,12 @@ class SynthesizerAgent:
                     warnings=warnings,
                 )
 
-            response = llm.invoke([
-                SystemMessage(content=SYNTHESIS_SYSTEM_PROMPT),
-                HumanMessage(content=user_prompt),
-            ])
+            response = llm.invoke(
+                [
+                    SystemMessage(content=SYNTHESIS_SYSTEM_PROMPT),
+                    HumanMessage(content=user_prompt),
+                ]
+            )
 
             result = self._parse_llm_response(
                 response.content,
@@ -511,7 +511,7 @@ class SynthesizerAgent:
 
     def _mock_synthesize(
         self,
-        multi_result: "MultiGenieResult",
+        multi_result: MultiGenieResult,
         query: str,
     ) -> SynthesisResult:
         """Return mock synthesis for demonstration purposes.
@@ -539,9 +539,7 @@ class SynthesizerAgent:
                 warnings.append(f"Data from '{name}' unavailable: {error_msg}")
                 meta = multi_result.metadata.get(name)
                 if meta and meta.domain:
-                    data_limitations.append(
-                        f"Analysis lacks {meta.domain} data from '{name}'"
-                    )
+                    data_limitations.append(f"Analysis lacks {meta.domain} data from '{name}'")
                 else:
                     data_limitations.append(f"Analysis lacks data from '{name}'")
 
@@ -583,8 +581,9 @@ class SynthesizerAgent:
             )
 
         # Scenario: Sales + Inventory keywords - stockout risk
-        if ("sales" in query_lower or any("sales" in d.lower() for d in domains_analyzed)) and \
-           ("inventory" in query_lower or any("inventory" in d.lower() for d in domains_analyzed)):
+        if ("sales" in query_lower or any("sales" in d.lower() for d in domains_analyzed)) and (
+            "inventory" in query_lower or any("inventory" in d.lower() for d in domains_analyzed)
+        ):
             return SynthesisResult(
                 success=True,
                 key_insights=[
@@ -707,12 +706,14 @@ class SynthesizerAgent:
                     metric_b="related_metric",
                     relationship="positive",
                 ),
-            ] if len(domains_analyzed) >= 2 else [],
+            ]
+            if len(domains_analyzed) >= 2
+            else [],
             anomalies=[],
             recommendations=[
                 "Continue monitoring cross-domain patterns for emerging trends",
                 "Consider establishing automated alerts for key metric thresholds",
-                f"Expand analysis to include additional domains for comprehensive view",
+                "Expand analysis to include additional domains for comprehensive view",
             ],
             warnings=warnings,
             domains_analyzed=domains_analyzed,

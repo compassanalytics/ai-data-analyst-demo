@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from src.evaluation.models import (
     AccuracyScore,
@@ -37,6 +37,18 @@ class Severity(Enum):
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+
+
+class EvaluationMode(Enum):
+    """Evaluation mode for benchmark scoring.
+
+    Determines how query results are evaluated for correctness:
+    - STRING_MATCH: Traditional substring/column presence matching
+    - LLM_JUDGE: Semantic evaluation using LLM to assess correctness
+    """
+
+    STRING_MATCH = "string_match"
+    LLM_JUDGE = "llm_judge"
 
 
 @dataclass
@@ -83,15 +95,15 @@ class BenchmarkQuery:
     domain: str = ""
     generated_by: Literal["llm", "static"] = "static"
     schema_version: str = ""
-    expected_failure: Optional[str] = None
-    correct_sql: Optional[str] = None
+    expected_failure: str | None = None
+    correct_sql: str | None = None
     severity: Severity = Severity.MEDIUM
 
     # Provenance fields (for LLM-generated queries)
-    model_name: Optional[str] = None
-    temperature: Optional[float] = None
-    prompt_hash: Optional[str] = None
-    generated_at: Optional[str] = None
+    model_name: str | None = None
+    temperature: float | None = None
+    prompt_hash: str | None = None
+    generated_at: str | None = None
 
     def to_test_query(self) -> TestQuery:
         """Convert to a TestQuery for evaluator compatibility.
@@ -190,6 +202,8 @@ class BenchmarkRun:
         completed_at: Timestamp when the run completed
         config_snapshot: Snapshot of configuration at time of run
         provenance: Additional provenance information (model info, schema hash, etc.)
+        evaluation_mode: How results were evaluated (string_match or llm_judge)
+        judge_model: Model endpoint used for LLM judge evaluation (if applicable)
     """
 
     run_id: str
@@ -197,11 +211,13 @@ class BenchmarkRun:
     run_type: Literal["baseline", "enhanced"]
     queries_evaluated: int
     results: list[EvaluationResult] = field(default_factory=list)
-    summary: Optional[EvaluationSummary] = None
+    summary: EvaluationSummary | None = None
     started_at: str = field(default_factory=lambda: datetime.now().isoformat())
     completed_at: str = ""
     config_snapshot: dict[str, Any] = field(default_factory=dict)
     provenance: dict[str, Any] = field(default_factory=dict)
+    evaluation_mode: EvaluationMode = EvaluationMode.STRING_MATCH
+    judge_model: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization.
@@ -220,6 +236,8 @@ class BenchmarkRun:
             "completed_at": self.completed_at,
             "config_snapshot": self.config_snapshot,
             "provenance": self.provenance,
+            "evaluation_mode": self.evaluation_mode.value,
+            "judge_model": self.judge_model,
         }
 
     @classmethod
@@ -232,21 +250,23 @@ class BenchmarkRun:
         Returns:
             BenchmarkRun instance
         """
+        # Handle evaluation_mode with backward compatibility
+        eval_mode_str = data.get("evaluation_mode", "string_match")
+        evaluation_mode = EvaluationMode(eval_mode_str)
+
         return cls(
             run_id=data["run_id"],
             space_id=data["space_id"],
             run_type=data["run_type"],
             queries_evaluated=data["queries_evaluated"],
             results=[EvaluationResult.from_dict(r) for r in data.get("results", [])],
-            summary=(
-                EvaluationSummary.from_dict(data["summary"])
-                if data.get("summary")
-                else None
-            ),
+            summary=(EvaluationSummary.from_dict(data["summary"]) if data.get("summary") else None),
             started_at=data.get("started_at", ""),
             completed_at=data.get("completed_at", ""),
             config_snapshot=data.get("config_snapshot", {}),
             provenance=data.get("provenance", {}),
+            evaluation_mode=evaluation_mode,
+            judge_model=data.get("judge_model"),
         )
 
 
@@ -294,21 +314,15 @@ class BenchmarkComparison:
             self.accuracy_delta = enhanced_accuracy - baseline_accuracy
 
             if baseline_accuracy > 0:
-                self.accuracy_delta_percent = (
-                    (enhanced_accuracy - baseline_accuracy) / baseline_accuracy
-                ) * 100
+                self.accuracy_delta_percent = ((enhanced_accuracy - baseline_accuracy) / baseline_accuracy) * 100
             else:
-                self.accuracy_delta_percent = (
-                    100.0 if enhanced_accuracy > 0 else 0.0
-                )
+                self.accuracy_delta_percent = 100.0 if enhanced_accuracy > 0 else 0.0
 
             # Calculate category improvements
             baseline_by_category = self.baseline.summary.accuracy_by_failure_category
             enhanced_by_category = self.enhanced.summary.accuracy_by_failure_category
 
-            for category in set(baseline_by_category.keys()) | set(
-                enhanced_by_category.keys()
-            ):
+            for category in set(baseline_by_category.keys()) | set(enhanced_by_category.keys()):
                 baseline_cat = baseline_by_category.get(category, {})
                 enhanced_cat = enhanced_by_category.get(category, {})
 
@@ -317,12 +331,8 @@ class BenchmarkComparison:
                 enhanced_correct = enhanced_cat.get("correct", 0)
                 enhanced_total = sum(enhanced_cat.values()) if enhanced_cat else 0
 
-                baseline_rate = (
-                    (baseline_correct / baseline_total * 100) if baseline_total > 0 else 0.0
-                )
-                enhanced_rate = (
-                    (enhanced_correct / enhanced_total * 100) if enhanced_total > 0 else 0.0
-                )
+                baseline_rate = (baseline_correct / baseline_total * 100) if baseline_total > 0 else 0.0
+                enhanced_rate = (enhanced_correct / enhanced_total * 100) if enhanced_total > 0 else 0.0
 
                 self.category_improvements[category] = enhanced_rate - baseline_rate
 

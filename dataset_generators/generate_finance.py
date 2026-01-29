@@ -27,14 +27,14 @@ from datetime import datetime
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from finance_banking import set_random_seed, generate_finance_domain
+from finance_banking import generate_finance_domain, set_random_seed
 from finance_banking.dirty_generator import save_finance_super_table
 
 
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description='Generate Finance Banking fictional bank dataset',
+        description="Generate Finance Banking fictional bank dataset",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -56,36 +56,36 @@ Examples:
     )
 
     parser.add_argument(
-        '--output-dir',
+        "--output-dir",
         type=str,
-        default='./data',
-        help='Base output directory for parquet files (default: ./data)',
+        default="./data",
+        help="Base output directory for parquet files (default: ./data)",
     )
 
     parser.add_argument(
-        '--scale',
+        "--scale",
         type=float,
         default=1.0,
-        help='Scale factor for record counts (default: 1.0, use 0.1 for 10%%)',
+        help="Scale factor for record counts (default: 1.0, use 0.1 for 10%%)",
     )
 
     parser.add_argument(
-        '--seed',
+        "--seed",
         type=int,
         default=42,
-        help='Random seed for reproducibility (default: 42)',
+        help="Random seed for reproducibility (default: 42)",
     )
 
     parser.add_argument(
-        '--clean-only',
-        action='store_true',
-        help='Generate only the star schema (clean) dataset',
+        "--clean-only",
+        action="store_true",
+        help="Generate only the star schema (clean) dataset",
     )
 
     parser.add_argument(
-        '--dirty-only',
-        action='store_true',
-        help='Generate only the super table (dirty) dataset',
+        "--dirty-only",
+        action="store_true",
+        help="Generate only the super table (dirty) dataset",
     )
 
     return parser.parse_args()
@@ -146,7 +146,7 @@ def main():
     print("=" * 70)
     print("FINANCE BANKING DATASET GENERATOR")
     print("=" * 70)
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"    Output:     {args.output_dir}")
     print(f"    Scale:      {args.scale}")
     print(f"    Seed:       {args.seed}")
@@ -170,7 +170,7 @@ def main():
 
     # Generate clean star schema
     if not args.dirty_only:
-        clean_output = os.path.join(output_dir, 'finance_star_schema')
+        clean_output = os.path.join(output_dir, "finance_star_schema")
         print(f"\nGenerating star schema to: {clean_output}")
         clean_tables = generate_finance_domain(
             scale=args.scale,
@@ -179,7 +179,7 @@ def main():
 
     # Generate dirty super table
     if not args.clean_only:
-        dirty_output = os.path.join(output_dir, 'finance_super_table')
+        dirty_output = os.path.join(output_dir, "finance_super_table")
         print(f"\nGenerating super table to: {dirty_output}")
         # Scale dirty table rows
         n_rows = int(500000 * args.scale)

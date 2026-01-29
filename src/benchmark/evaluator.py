@@ -9,14 +9,16 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Literal, Optional
+from typing import Any, Literal
 
-from .models import BenchmarkComparison, BenchmarkQuery, BenchmarkRun
 from src.config import Config
 from src.evaluation.evaluator import EvaluationResults, GenieEvaluator
 from src.evaluation.models import EvaluationResult, EvaluationSummary, TestQuery
+
+from .models import BenchmarkComparison, BenchmarkQuery, BenchmarkRun, EvaluationMode
 
 
 class BenchmarkEvaluator:
@@ -45,7 +47,9 @@ class BenchmarkEvaluator:
     def __init__(
         self,
         config: Config,
-        genie_evaluator: Optional[GenieEvaluator] = None,
+        genie_evaluator: GenieEvaluator | None = None,
+        use_llm_judge: bool = False,
+        judge_model: str | None = None,
     ) -> None:
         """Initialize the benchmark evaluator.
 
@@ -53,9 +57,16 @@ class BenchmarkEvaluator:
             config: Configuration instance with Genie settings
             genie_evaluator: Optional pre-configured GenieEvaluator instance.
                 If not provided, one will be created lazily when needed.
+            use_llm_judge: If True, use LLM-as-judge for semantic evaluation
+                instead of string matching. Default is False.
+            judge_model: Optional model endpoint override for LLM judge.
+                If not provided, uses config.model_endpoint.
         """
         self.config = config
         self._evaluator = genie_evaluator
+        self._use_llm_judge = use_llm_judge
+        self._judge_model = judge_model
+        self._llm_judge = None  # Lazy loaded
 
     @property
     def evaluator(self) -> GenieEvaluator:
@@ -68,11 +79,36 @@ class BenchmarkEvaluator:
             self._evaluator = GenieEvaluator(self.config)
         return self._evaluator
 
+    @property
+    def llm_judge(self):
+        """Lazy-load LLMJudgeEvaluator if enabled.
+
+        Returns:
+            LLMJudgeEvaluator instance if use_llm_judge is True, None otherwise
+        """
+        if self._use_llm_judge and self._llm_judge is None:
+            from .llm_judge import LLMJudgeEvaluator
+
+            self._llm_judge = LLMJudgeEvaluator(
+                self.config,
+                model_override=self._judge_model,
+            )
+        return self._llm_judge
+
+    @property
+    def evaluation_mode(self) -> EvaluationMode:
+        """Get the current evaluation mode.
+
+        Returns:
+            EvaluationMode.LLM_JUDGE if LLM judge is enabled, else STRING_MATCH
+        """
+        return EvaluationMode.LLM_JUDGE if self._use_llm_judge else EvaluationMode.STRING_MATCH
+
     def run_benchmark(
         self,
         queries: list[BenchmarkQuery],
         run_type: Literal["baseline", "enhanced"],
-        progress_callback: Optional[Callable[[int, int, str], None]] = None,
+        progress_callback: Callable[[int, int, str], None] | None = None,
         fresh: bool = True,
     ) -> BenchmarkRun:
         """Execute a single benchmark run.
@@ -108,6 +144,8 @@ class BenchmarkEvaluator:
                 completed_at=datetime.now().isoformat(),
                 config_snapshot=self._capture_config_snapshot(),
                 provenance=self._build_provenance(queries),
+                evaluation_mode=self.evaluation_mode,
+                judge_model=self._judge_model if self._use_llm_judge else None,
             )
 
         started_at = datetime.now().isoformat()
@@ -119,9 +157,7 @@ class BenchmarkEvaluator:
         # Create a wrapper callback that adapts the signature
         # GenieEvaluator expects: (current, total, TestQuery)
         # We expose: (current, total, message)
-        def adapted_callback(
-            current: int, total: int, test_query: TestQuery
-        ) -> None:
+        def adapted_callback(current: int, total: int, test_query: TestQuery) -> None:
             if progress_callback:
                 progress_callback(
                     current,
@@ -137,6 +173,10 @@ class BenchmarkEvaluator:
             progress_callback=adapted_callback,
             fresh=fresh,
         )
+
+        # If LLM judge is enabled, re-evaluate each result with semantic evaluation
+        if self._use_llm_judge and eval_results and eval_results.results:
+            eval_results = self._apply_llm_judge(eval_results, progress_callback)
 
         completed_at = datetime.now().isoformat()
 
@@ -158,7 +198,72 @@ class BenchmarkEvaluator:
             completed_at=completed_at,
             config_snapshot=self._capture_config_snapshot(),
             provenance=provenance,
+            evaluation_mode=self.evaluation_mode,
+            judge_model=self._judge_model if self._use_llm_judge else None,
         )
+
+    def _apply_llm_judge(
+        self,
+        eval_results: EvaluationResults,
+        progress_callback: Callable[[int, int, str], None] | None = None,
+    ) -> EvaluationResults:
+        """Re-evaluate results using LLM judge for semantic scoring.
+
+        Takes existing evaluation results (which have Genie responses) and
+        re-scores them using the LLM judge for semantic column matching
+        and answer correctness assessment.
+
+        Args:
+            eval_results: Original evaluation results from GenieEvaluator
+            progress_callback: Optional callback for progress updates
+
+        Returns:
+            New EvaluationResults with LLM judge scores
+        """
+        judge = self.llm_judge
+        if not judge:
+            return eval_results
+
+        re_evaluated_results: list[EvaluationResult] = []
+        total = len(eval_results.results)
+
+        for idx, result in enumerate(eval_results.results):
+            if progress_callback:
+                progress_callback(idx + 1, total, f"LLM Judge evaluating: {result.test_query.question[:40]}...")
+
+            # Extract info from original result for LLM judge
+            sql = result.comparison.sql_generated
+            actual_columns = result.comparison.actual_columns
+
+            # Run LLM judge evaluation
+            accuracy, failure_type, comparison = judge.evaluate(
+                question=result.test_query.question,
+                expected_columns=result.test_query.expected_columns,
+                expected_tables=result.test_query.expected_tables,
+                sql=sql,
+                actual_columns=actual_columns,
+            )
+
+            # Create new result with LLM judge scores
+            # Preserve original execution time and raw response
+            re_evaluated = EvaluationResult(
+                test_query=result.test_query,
+                accuracy=accuracy,
+                failure_type=failure_type,
+                comparison=comparison,
+                execution_time_ms=result.execution_time_ms,
+                genie_response_raw=result.genie_response_raw,
+                error_message=result.error_message,
+                error_category=result.error_category,
+                timestamp=result.timestamp,
+            )
+            re_evaluated_results.append(re_evaluated)
+
+        # Recalculate summary with new scores
+        # Use the underlying GenieEvaluator's _build_summary method
+        new_summary = self.evaluator._build_summary(re_evaluated_results)
+
+        return EvaluationResults(results=re_evaluated_results, summary=new_summary)
 
     def compare_runs(
         self,
@@ -307,7 +412,7 @@ class BenchmarkEvaluator:
             json.JSONDecodeError: If the file contains invalid JSON
             KeyError: If required fields are missing from the JSON
         """
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return BenchmarkRun.from_dict(data)
 
@@ -344,6 +449,6 @@ class BenchmarkEvaluator:
             json.JSONDecodeError: If the file contains invalid JSON
             KeyError: If required fields are missing from the JSON
         """
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return BenchmarkComparison.from_dict(data)

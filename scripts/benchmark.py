@@ -13,11 +13,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -63,6 +61,13 @@ Examples:
     --queries benchmarks/velocity_motors_sales.json \\
     --space-id $GENIE_SPACE_ID \\
     --compare-to results/baseline_run.json \\
+    --output-dir results/
+
+  # Run with LLM-as-Judge semantic evaluation
+  uv run python scripts/benchmark.py run \\
+    --queries benchmarks/velocity_motors_sales.json \\
+    --baseline \\
+    --judge \\
     --output-dir results/
 
   # Generate comparison report
@@ -154,6 +159,15 @@ Examples:
         type=int,
         help="Limit number of queries to evaluate",
     )
+    run_parser.add_argument(
+        "--judge",
+        action="store_true",
+        help="Use LLM-as-Judge for semantic evaluation (default: string matching)",
+    )
+    run_parser.add_argument(
+        "--judge-model",
+        help="Model endpoint for LLM judge (default: config.model_endpoint)",
+    )
 
     # =========================================================================
     # Report subcommand
@@ -211,7 +225,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
     logger.info(f"  Schema version: {schema_version[:12]}...")
 
     # Parse failure categories
-    failure_categories: Optional[list[FailureCategory]] = None
+    failure_categories: list[FailureCategory] | None = None
     if args.failure_categories:
         category_names = [c.strip() for c in args.failure_categories.split(",")]
         try:
@@ -295,8 +309,22 @@ def cmd_run(args: argparse.Namespace) -> int:
     run_type = "baseline" if args.baseline else "enhanced"
     logger.info(f"Run type: {run_type}")
 
+    # Determine evaluation mode
+    use_llm_judge = getattr(args, "judge", False)
+    judge_model = getattr(args, "judge_model", None)
+    if use_llm_judge:
+        logger.info("Evaluation mode: LLM Judge (semantic evaluation)")
+        if judge_model:
+            logger.info(f"Judge model: {judge_model}")
+    else:
+        logger.info("Evaluation mode: String matching")
+
     # Create evaluator and run
-    evaluator = BenchmarkEvaluator(config)
+    evaluator = BenchmarkEvaluator(
+        config,
+        use_llm_judge=use_llm_judge,
+        judge_model=judge_model,
+    )
 
     def progress_callback(current: int, total: int, message: str) -> None:
         print(f"  [{current}/{total}] {message}", flush=True)
@@ -324,6 +352,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     print("=" * 60)
     print(f"Run ID: {run.run_id}")
     print(f"Space ID: {run.space_id}")
+    print(f"Evaluation mode: {run.evaluation_mode.value}")
+    if run.judge_model:
+        print(f"Judge model: {run.judge_model}")
     print(f"Queries: {run.queries_evaluated}")
     print(f"Overall accuracy: {run.summary.overall_accuracy:.1f}%")
     print(f"  Correct: {run.summary.correct_count}")

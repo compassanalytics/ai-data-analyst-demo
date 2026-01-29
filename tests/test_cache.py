@@ -12,8 +12,6 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
-import pytest
-
 from src.utils.cache import (
     CacheConfig,
     CacheEntry,
@@ -22,7 +20,6 @@ from src.utils.cache import (
     clear_query_cache,
     get_query_cache,
 )
-
 
 # =============================================================================
 # Test CacheConfig

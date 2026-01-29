@@ -14,10 +14,9 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from src.demo.widgets import is_databricks, is_serverless
-
 
 # Standard checkpoint names for workshop milestones
 CHECKPOINT_SETUP = "setup_complete"
@@ -58,7 +57,7 @@ class Checkpoint:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Checkpoint":
+    def from_dict(cls, data: dict[str, Any]) -> Checkpoint:
         """Restore checkpoint from dictionary."""
         return cls(
             name=data["name"],
@@ -95,9 +94,9 @@ class CheckpointManager:
 
     # Instance attributes for in-memory mode
     _in_memory_only: bool
-    _memory_store: dict[str, "Checkpoint"]
+    _memory_store: dict[str, Checkpoint]
 
-    def __init__(self, base_path: Optional[str] = None) -> None:
+    def __init__(self, base_path: str | None = None) -> None:
         """Initialize checkpoint manager.
 
         Args:
@@ -170,7 +169,7 @@ class CheckpointManager:
         file_path.write_text(json_str, encoding="utf-8")
         return file_path
 
-    def restore(self, name: str) -> Optional[Checkpoint]:
+    def restore(self, name: str) -> Checkpoint | None:
         """Restore a checkpoint from storage.
 
         Args:
@@ -240,11 +239,13 @@ class CheckpointManager:
 
         if self._in_memory_only:
             for name, checkpoint in sorted(self._memory_store.items()):
-                checkpoints.append({
-                    "name": checkpoint.name,
-                    "timestamp": checkpoint.timestamp,
-                    "path": "(in-memory)",
-                })
+                checkpoints.append(
+                    {
+                        "name": checkpoint.name,
+                        "timestamp": checkpoint.timestamp,
+                        "path": "(in-memory)",
+                    }
+                )
             return checkpoints
 
         if not self._storage_path.exists():
@@ -253,11 +254,13 @@ class CheckpointManager:
         for json_file in sorted(self._storage_path.glob("*.json")):
             try:
                 data = json.loads(json_file.read_text(encoding="utf-8"))
-                checkpoints.append({
-                    "name": data.get("name", json_file.stem),
-                    "timestamp": data.get("timestamp", "unknown"),
-                    "path": str(json_file),
-                })
+                checkpoints.append(
+                    {
+                        "name": data.get("name", json_file.stem),
+                        "timestamp": data.get("timestamp", "unknown"),
+                        "path": str(json_file),
+                    }
+                )
             except (json.JSONDecodeError, KeyError):
                 # Skip invalid checkpoint files
                 continue
@@ -265,7 +268,7 @@ class CheckpointManager:
         return checkpoints
 
 
-def display_checkpoint_widget(manager: Optional[CheckpointManager] = None) -> Optional[str]:
+def display_checkpoint_widget(manager: CheckpointManager | None = None) -> str | None:
     """Display an interactive checkpoint selection widget.
 
     In Databricks, displays a simple selection interface.
@@ -289,7 +292,7 @@ def display_checkpoint_widget(manager: Optional[CheckpointManager] = None) -> Op
 
     # Try to use IPython display for interactive selection
     try:
-        from IPython.display import display, HTML
+        from IPython.display import HTML, display
 
         # Build HTML for checkpoint list
         html_parts = [
@@ -300,7 +303,7 @@ def display_checkpoint_widget(manager: Optional[CheckpointManager] = None) -> Op
             '<tr style="background: #e5e7eb;">',
             '<th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Name</th>',
             '<th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Timestamp</th>',
-            '</tr>',
+            "</tr>",
         ]
 
         for cp in checkpoints:
@@ -316,16 +319,18 @@ def display_checkpoint_widget(manager: Optional[CheckpointManager] = None) -> Op
                 f'<tr style="border-bottom: 1px solid #e5e7eb;">'
                 f'<td style="padding: 8px; font-family: monospace; color: #3b82f6;">{cp["name"]}</td>'
                 f'<td style="padding: 8px; color: #6b7280;">{timestamp}</td>'
-                f'</tr>'
+                f"</tr>"
             )
 
-        html_parts.extend([
-            '</table>',
-            '<p style="margin: 12px 0 0 0; font-size: 14px; color: #6b7280;">',
-            'Use <code>manager.restore("checkpoint_name")</code> to restore a checkpoint.',
-            '</p>',
-            '</div>',
-        ])
+        html_parts.extend(
+            [
+                "</table>",
+                '<p style="margin: 12px 0 0 0; font-size: 14px; color: #6b7280;">',
+                'Use <code>manager.restore("checkpoint_name")</code> to restore a checkpoint.',
+                "</p>",
+                "</div>",
+            ]
+        )
 
         display(HTML("".join(html_parts)))
 
@@ -348,9 +353,9 @@ def create_checkpoint(
     name: str,
     config: Any,
     pipeline_state: Any,
-    space_configs: Optional[list] = None,
-    extras: Optional[dict] = None,
-    manager: Optional[CheckpointManager] = None,
+    space_configs: list | None = None,
+    extras: dict | None = None,
+    manager: CheckpointManager | None = None,
 ) -> Checkpoint:
     """Convenience function to create and save a checkpoint.
 
@@ -374,22 +379,22 @@ def create_checkpoint(
         for sc in space_configs:
             if hasattr(sc, "__dict__"):
                 # Convert dataclass to dict
-                space_configs_data.append({
-                    "space_id": getattr(sc, "space_id", ""),
-                    "name": getattr(sc, "name", ""),
-                    "domain": getattr(sc, "domain", ""),
-                    "timeout_seconds": getattr(sc, "timeout_seconds", 120),
-                    "retry_count": getattr(sc, "retry_count", 2),
-                    "retry_delay": getattr(sc, "retry_delay", 1.0),
-                })
+                space_configs_data.append(
+                    {
+                        "space_id": getattr(sc, "space_id", ""),
+                        "name": getattr(sc, "name", ""),
+                        "domain": getattr(sc, "domain", ""),
+                        "timeout_seconds": getattr(sc, "timeout_seconds", 120),
+                        "retry_count": getattr(sc, "retry_count", 2),
+                        "retry_delay": getattr(sc, "retry_delay", 1.0),
+                    }
+                )
 
     checkpoint = Checkpoint(
         name=name,
         config_data=config.to_dict() if hasattr(config, "to_dict") else {},
         pipeline_state_data=(
-            pipeline_state.to_dict(include_results=True)
-            if hasattr(pipeline_state, "to_dict")
-            else {}
+            pipeline_state.to_dict(include_results=True) if hasattr(pipeline_state, "to_dict") else {}
         ),
         space_configs_data=space_configs_data,
         extras=extras or {},

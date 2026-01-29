@@ -11,7 +11,6 @@ import threading
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +58,8 @@ class CircuitBreakerStats:
     successful_calls: int = 0
     failed_calls: int = 0
     rejected_calls: int = 0
-    last_failure_time: Optional[float] = None
-    last_success_time: Optional[float] = None
+    last_failure_time: float | None = None
+    last_success_time: float | None = None
     current_state: CircuitState = CircuitState.CLOSED
 
 
@@ -70,10 +69,7 @@ class CircuitOpenError(Exception):
     def __init__(self, circuit_name: str, remaining_seconds: float):
         self.circuit_name = circuit_name
         self.remaining_seconds = remaining_seconds
-        super().__init__(
-            f"Circuit '{circuit_name}' is open. "
-            f"Retry in {remaining_seconds:.1f} seconds."
-        )
+        super().__init__(f"Circuit '{circuit_name}' is open. Retry in {remaining_seconds:.1f} seconds.")
 
 
 class CircuitBreaker:
@@ -101,7 +97,7 @@ class CircuitBreaker:
         ...     pass
     """
 
-    def __init__(self, name: str, config: Optional[CircuitBreakerConfig] = None):
+    def __init__(self, name: str, config: CircuitBreakerConfig | None = None):
         """Initialize a circuit breaker.
 
         Args:
@@ -114,9 +110,9 @@ class CircuitBreaker:
         self._state = CircuitState.CLOSED
         self._failure_count = 0
         self._success_count = 0
-        self._last_failure_time: Optional[float] = None
-        self._last_success_time: Optional[float] = None
-        self._opened_at: Optional[float] = None
+        self._last_failure_time: float | None = None
+        self._last_success_time: float | None = None
+        self._opened_at: float | None = None
         self._half_open_calls = 0
         self._total_calls = 0
         self._successful_calls = 0
@@ -140,8 +136,7 @@ class CircuitBreaker:
                 elapsed = time.time() - self._opened_at
                 if elapsed >= self.config.timeout_seconds:
                     logger.info(
-                        "Circuit '%s' transitioning from OPEN to HALF_OPEN "
-                        "after %.1fs timeout",
+                        "Circuit '%s' transitioning from OPEN to HALF_OPEN after %.1fs timeout",
                         self.name,
                         elapsed,
                     )
@@ -315,7 +310,7 @@ class CircuitBreakerRegistry:
         ...     # proceed with call
     """
 
-    def __init__(self, default_config: Optional[CircuitBreakerConfig] = None):
+    def __init__(self, default_config: CircuitBreakerConfig | None = None):
         """Initialize the registry.
 
         Args:
@@ -328,7 +323,7 @@ class CircuitBreakerRegistry:
     def get(
         self,
         name: str,
-        config: Optional[CircuitBreakerConfig] = None,
+        config: CircuitBreakerConfig | None = None,
     ) -> CircuitBreaker:
         """Get or create a circuit breaker by name.
 

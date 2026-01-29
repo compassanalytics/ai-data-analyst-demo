@@ -49,77 +49,71 @@ Presenter Mode:
 - load_fallback_or_execute: Execute with fallback support
 """
 
+from src.demo.challenges import (
+    ADVANCED_CHALLENGES,
+    DEMO_CHALLENGES,
+    Challenge,
+    ChallengeRunner,
+    Difficulty,
+    get_challenge_runner,
+    run_challenge,
+)
+from src.demo.checkpoints import (
+    CHECKPOINT_BASIC_QUERY,
+    CHECKPOINT_MULTI_AGENT,
+    CHECKPOINT_REPORT_GENERATED,
+    CHECKPOINT_SETUP,
+    Checkpoint,
+    CheckpointManager,
+    create_checkpoint,
+    display_checkpoint_widget,
+)
+from src.demo.feedback import (
+    compare_output,
+    display_code_block,
+    display_error,
+    display_info,
+    display_progress_spinner,
+    display_step_indicator,
+    display_success,
+    display_warning,
+)
 from src.demo.pipeline import (
-    PipelineState,
     PipelineStage,
-    SpaceQueryStatus,
+    PipelineState,
     SpaceProgress,
+    SpaceQueryStatus,
     StageResult,
 )
-
+from src.demo.presenter import (
+    FallbackOutputManager,
+    demo_marker,
+    display_demo_marker,
+    display_presenter_controls,
+    display_solution,
+    get_fallback_manager,
+    is_presenter_mode,
+    load_fallback_or_execute,
+    set_presenter_mode,
+    solution_cell,
+)
 from src.demo.visualization import (
+    generate_mermaid_diagram,
+    generate_pipeline_diagram_text,
+    generate_space_progress_text,
+    generate_stage_progress_text,
+    generate_timing_table,
     render_for_notebook,
     render_progress_html,
-    generate_stage_progress_text,
-    generate_space_progress_text,
-    generate_timing_table,
-    generate_pipeline_diagram_text,
-    generate_mermaid_diagram,
 )
-
 from src.demo.widgets import (
-    WidgetConfig,
     DatabricksWidgets,
     LocalWidgets,
+    WidgetConfig,
     create_widget_manager,
     get_question_for_report_type,
     is_databricks,
     is_serverless,
-)
-
-from src.demo.checkpoints import (
-    Checkpoint,
-    CheckpointManager,
-    CHECKPOINT_SETUP,
-    CHECKPOINT_BASIC_QUERY,
-    CHECKPOINT_MULTI_AGENT,
-    CHECKPOINT_REPORT_GENERATED,
-    create_checkpoint,
-    display_checkpoint_widget,
-)
-
-from src.demo.feedback import (
-    display_success,
-    display_error,
-    display_warning,
-    display_info,
-    compare_output,
-    display_progress_spinner,
-    display_code_block,
-    display_step_indicator,
-)
-
-from src.demo.challenges import (
-    Difficulty,
-    Challenge,
-    ChallengeRunner,
-    DEMO_CHALLENGES,
-    ADVANCED_CHALLENGES,
-    get_challenge_runner,
-    run_challenge,
-)
-
-from src.demo.presenter import (
-    is_presenter_mode,
-    set_presenter_mode,
-    solution_cell,
-    display_solution,
-    demo_marker,
-    display_demo_marker,
-    FallbackOutputManager,
-    get_fallback_manager,
-    load_fallback_or_execute,
-    display_presenter_controls,
 )
 
 __all__ = [

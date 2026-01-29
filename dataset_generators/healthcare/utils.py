@@ -7,13 +7,12 @@ Provides shared utilities for generating consistent, realistic healthcare data.
 
 import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple
 
 import numpy as np
 from faker import Faker
 
 # Initialize faker with US locale
-fake = Faker('en_US')
+fake = Faker("en_US")
 
 
 def set_random_seed(seed: int) -> None:
@@ -62,8 +61,8 @@ def generate_npi() -> str:
     Returns:
         10-digit NPI string
     """
-    first_digit = random.choice(['1', '2'])
-    remaining = ''.join(random.choices('0123456789', k=9))
+    first_digit = random.choice(["1", "2"])
+    remaining = "".join(random.choices("0123456789", k=9))
     return f"{first_digit}{remaining}"
 
 
@@ -107,8 +106,8 @@ def generate_insurance_member_id(payer_type: str) -> str:
 
     if payer_type == "Medicare":
         # Medicare format: prefix + alphanumeric
-        suffix = ''.join(random.choices('0123456789', k=7))
-        letter = random.choice('ABCDEFGHJKLMNPQRSTUVWXY')
+        suffix = "".join(random.choices("0123456789", k=7))
+        letter = random.choice("ABCDEFGHJKLMNPQRSTUVWXY")
         return f"{prefix}{suffix}{letter}"
     elif payer_type == "Medicaid":
         return f"{prefix}{random.randint(100000000, 999999999)}"
@@ -119,7 +118,7 @@ def generate_insurance_member_id(payer_type: str) -> str:
         return f"{prefix}{random.randint(100000000, 999999999)}"
 
 
-def generate_patient_demographics() -> Dict:
+def generate_patient_demographics() -> dict:
     """
     Generate realistic patient demographics with age skewed toward elderly.
 
@@ -132,12 +131,12 @@ def generate_patient_demographics() -> Dict:
     """
     # Age distribution skewed toward elderly (healthcare population)
     age_weights = [
-        (0, 17, 0.10),    # Pediatric
-        (18, 39, 0.15),   # Young adult
-        (40, 54, 0.20),   # Middle age
-        (55, 64, 0.20),   # Pre-retirement
-        (65, 74, 0.20),   # Young elderly
-        (75, 89, 0.12),   # Elderly
+        (0, 17, 0.10),  # Pediatric
+        (18, 39, 0.15),  # Young adult
+        (40, 54, 0.20),  # Middle age
+        (55, 64, 0.20),  # Pre-retirement
+        (65, 74, 0.20),  # Young elderly
+        (75, 89, 0.12),  # Elderly
         (90, 100, 0.03),  # Very elderly
     ]
 
@@ -158,10 +157,10 @@ def generate_patient_demographics() -> Dict:
     dob = datetime(birth_year, birth_month, birth_day).date()
 
     # Gender distribution (slight female skew for healthcare)
-    gender = random.choices(['Male', 'Female'], weights=[0.48, 0.52])[0]
+    gender = random.choices(["Male", "Female"], weights=[0.48, 0.52])[0]
 
     # Generate name based on gender
-    if gender == 'Male':
+    if gender == "Male":
         first_name = fake.first_name_male()
     else:
         first_name = fake.first_name_female()
@@ -170,31 +169,51 @@ def generate_patient_demographics() -> Dict:
 
     # US States with population-based weights
     us_states = [
-        ('CA', 0.12), ('TX', 0.09), ('FL', 0.07), ('NY', 0.06), ('PA', 0.04),
-        ('IL', 0.04), ('OH', 0.04), ('GA', 0.03), ('NC', 0.03), ('MI', 0.03),
-        ('NJ', 0.03), ('VA', 0.03), ('WA', 0.02), ('AZ', 0.02), ('MA', 0.02),
-        ('TN', 0.02), ('IN', 0.02), ('MO', 0.02), ('MD', 0.02), ('WI', 0.02),
-        ('CO', 0.02), ('MN', 0.02), ('SC', 0.02), ('AL', 0.01), ('LA', 0.01),
+        ("CA", 0.12),
+        ("TX", 0.09),
+        ("FL", 0.07),
+        ("NY", 0.06),
+        ("PA", 0.04),
+        ("IL", 0.04),
+        ("OH", 0.04),
+        ("GA", 0.03),
+        ("NC", 0.03),
+        ("MI", 0.03),
+        ("NJ", 0.03),
+        ("VA", 0.03),
+        ("WA", 0.02),
+        ("AZ", 0.02),
+        ("MA", 0.02),
+        ("TN", 0.02),
+        ("IN", 0.02),
+        ("MO", 0.02),
+        ("MD", 0.02),
+        ("WI", 0.02),
+        ("CO", 0.02),
+        ("MN", 0.02),
+        ("SC", 0.02),
+        ("AL", 0.01),
+        ("LA", 0.01),
     ]
     states, state_weights = zip(*us_states)
     state = random.choices(states, weights=state_weights)[0]
 
     return {
-        'first_name': first_name,
-        'last_name': last_name,
-        'dob': dob,
-        'age': age,
-        'gender': gender,
-        'address': fake.street_address(),
-        'city': fake.city(),
-        'state': state,
-        'zip_code': fake.zipcode(),
-        'phone': fake.phone_number(),
-        'email': f"{first_name.lower()}.{last_name.lower()}@{random.choice(['gmail.com', 'yahoo.com', 'outlook.com'])}",
+        "first_name": first_name,
+        "last_name": last_name,
+        "dob": dob,
+        "age": age,
+        "gender": gender,
+        "address": fake.street_address(),
+        "city": fake.city(),
+        "state": state,
+        "zip_code": fake.zipcode(),
+        "phone": fake.phone_number(),
+        "email": f"{first_name.lower()}.{last_name.lower()}@{random.choice(['gmail.com', 'yahoo.com', 'outlook.com'])}",
     }
 
 
-def generate_encounter_dates(encounter_type: str) -> Tuple[datetime, datetime]:
+def generate_encounter_dates(encounter_type: str) -> tuple[datetime, datetime]:
     """
     Generate admit and discharge dates with realistic length of stay based on encounter type.
 
@@ -218,11 +237,11 @@ def generate_encounter_dates(encounter_type: str) -> Tuple[datetime, datetime]:
 
     # Length of stay based on encounter type
     los_config = {
-        'Outpatient': (0, 0, 0.5),       # Same day, 0-0.5 hours (visits measured in hours)
-        'Telehealth': (0, 0, 0.25),      # Same day, 0-0.25 hours
-        'Emergency': (0, 0, 6),          # Same day, 0-6 hours average
-        'Observation': (0, 1, 24),       # 0-1 days, up to 24 hours
-        'Inpatient': (1, 7, None),       # 1-7 days typical
+        "Outpatient": (0, 0, 0.5),  # Same day, 0-0.5 hours (visits measured in hours)
+        "Telehealth": (0, 0, 0.25),  # Same day, 0-0.25 hours
+        "Emergency": (0, 0, 6),  # Same day, 0-6 hours average
+        "Observation": (0, 1, 24),  # 0-1 days, up to 24 hours
+        "Inpatient": (1, 7, None),  # 1-7 days typical
     }
 
     min_days, max_days, hours = los_config.get(encounter_type, (0, 1, 4))
@@ -246,7 +265,7 @@ def generate_encounter_dates(encounter_type: str) -> Tuple[datetime, datetime]:
     return admit_datetime, discharge_datetime
 
 
-def generate_claim_amounts(encounter_type: str) -> Dict[str, float]:
+def generate_claim_amounts(encounter_type: str) -> dict[str, float]:
     """
     Generate realistic claim amounts based on encounter type.
 
@@ -258,11 +277,11 @@ def generate_claim_amounts(encounter_type: str) -> Dict[str, float]:
     """
     # Base amounts by encounter type
     amount_ranges = {
-        'Outpatient': (150, 500),
-        'Telehealth': (75, 200),
-        'Emergency': (500, 5000),
-        'Observation': (1000, 4000),
-        'Inpatient': (5000, 50000),
+        "Outpatient": (150, 500),
+        "Telehealth": (75, 200),
+        "Emergency": (500, 5000),
+        "Observation": (1000, 4000),
+        "Inpatient": (5000, 50000),
     }
 
     min_amt, max_amt = amount_ranges.get(encounter_type, (100, 1000))
@@ -280,10 +299,10 @@ def generate_claim_amounts(encounter_type: str) -> Dict[str, float]:
     patient_responsibility = round(allowed_amount - paid_amount, 2)
 
     return {
-        'billed_amount': billed_amount,
-        'allowed_amount': allowed_amount,
-        'paid_amount': paid_amount,
-        'patient_responsibility': patient_responsibility,
+        "billed_amount": billed_amount,
+        "allowed_amount": allowed_amount,
+        "paid_amount": paid_amount,
+        "patient_responsibility": patient_responsibility,
     }
 
 
@@ -300,23 +319,23 @@ def is_diagnosis_appropriate(code: str, gender: str, age: int) -> bool:
         True if diagnosis is appropriate, False otherwise
     """
     # Pregnancy codes only for females 12-55
-    if code.startswith('O') or code.startswith('Z33') or code.startswith('Z34'):
-        if gender != 'Female' or age < 12 or age > 55:
+    if code.startswith("O") or code.startswith("Z33") or code.startswith("Z34"):
+        if gender != "Female" or age < 12 or age > 55:
             return False
 
     # Prostate conditions only for males
-    if code.startswith('N40') or code.startswith('N41') or code.startswith('C61'):
-        if gender != 'Male':
+    if code.startswith("N40") or code.startswith("N41") or code.startswith("C61"):
+        if gender != "Male":
             return False
 
     # Pediatric-specific conditions
-    pediatric_codes = ['P', 'Q']  # Perinatal and congenital conditions
+    pediatric_codes = ["P", "Q"]  # Perinatal and congenital conditions
     if any(code.startswith(p) for p in pediatric_codes):
         if age > 18:
             return False
 
     # Age-related conditions more common in elderly
-    elderly_codes = ['G30', 'F03', 'R54']  # Alzheimer's, dementia, age-related debility
+    elderly_codes = ["G30", "F03", "R54"]  # Alzheimer's, dementia, age-related debility
     if any(code.startswith(e) for e in elderly_codes):
         if age < 60:
             return False
@@ -324,11 +343,7 @@ def is_diagnosis_appropriate(code: str, gender: str, age: int) -> bool:
     return True
 
 
-def get_age_appropriate_diagnosis(
-    gender: str,
-    age: int,
-    codes: List[Tuple[str, str, str]]
-) -> Tuple[str, str, str]:
+def get_age_appropriate_diagnosis(gender: str, age: int, codes: list[tuple[str, str, str]]) -> tuple[str, str, str]:
     """
     Select a diagnosis that is appropriate for the patient demographics.
 
@@ -341,17 +356,11 @@ def get_age_appropriate_diagnosis(
         Tuple of (code, description, category)
     """
     # Filter codes to those appropriate for this patient
-    appropriate_codes = [
-        (code, desc, cat) for code, desc, cat in codes
-        if is_diagnosis_appropriate(code, gender, age)
-    ]
+    appropriate_codes = [(code, desc, cat) for code, desc, cat in codes if is_diagnosis_appropriate(code, gender, age)]
 
     # If no appropriate codes, fall back to symptoms (always appropriate)
     if not appropriate_codes:
-        appropriate_codes = [
-            (code, desc, cat) for code, desc, cat in codes
-            if cat == 'Symptoms'
-        ]
+        appropriate_codes = [(code, desc, cat) for code, desc, cat in codes if cat == "Symptoms"]
 
     # If still none, use the full list
     if not appropriate_codes:
@@ -360,7 +369,7 @@ def get_age_appropriate_diagnosis(
     # Weight by age - elderly more likely to have chronic conditions
     if age >= 65:
         # Prefer chronic conditions
-        chronic_categories = ['Diabetes', 'Cardiovascular', 'Respiratory', 'Musculoskeletal']
+        chronic_categories = ["Diabetes", "Cardiovascular", "Respiratory", "Musculoskeletal"]
         chronic_codes = [c for c in appropriate_codes if c[2] in chronic_categories]
         if chronic_codes and random.random() < 0.7:
             return random.choice(chronic_codes)
@@ -394,13 +403,13 @@ def generate_encounter_id_prefix(encounter_type: str) -> str:
         2-3 letter prefix string
     """
     prefixes = {
-        'Outpatient': 'OP',
-        'Inpatient': 'IP',
-        'Emergency': 'ED',
-        'Observation': 'OBS',
-        'Telehealth': 'TH',
+        "Outpatient": "OP",
+        "Inpatient": "IP",
+        "Emergency": "ED",
+        "Observation": "OBS",
+        "Telehealth": "TH",
     }
-    return prefixes.get(encounter_type, 'ENC')
+    return prefixes.get(encounter_type, "ENC")
 
 
 def generate_flu_season_flag(date: datetime) -> bool:
@@ -417,7 +426,7 @@ def generate_flu_season_flag(date: datetime) -> bool:
     return month >= 10 or month <= 3
 
 
-def weighted_choice(choices: List[Tuple[str, float]]) -> str:
+def weighted_choice(choices: list[tuple[str, float]]) -> str:
     """
     Make a weighted random choice from a list of (value, weight) tuples.
 

@@ -12,15 +12,16 @@ Color scheme for difficulty badges:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 from src.demo.feedback import (
     COLOR_SUCCESS,
-    display_success,
     display_error,
     display_info,
+    display_success,
 )
 
 
@@ -34,9 +35,9 @@ class Difficulty(Enum):
 
 # Difficulty badge colors
 DIFFICULTY_COLORS = {
-    Difficulty.EASY: "#10B981",    # Green
+    Difficulty.EASY: "#10B981",  # Green
     Difficulty.MEDIUM: "#F59E0B",  # Amber
-    Difficulty.HARD: "#EF4444",    # Red
+    Difficulty.HARD: "#EF4444",  # Red
 }
 
 
@@ -62,17 +63,16 @@ class Challenge:
     difficulty: Difficulty
     time_estimate_minutes: int
     hints: list[str] = field(default_factory=list)
-    validator: Callable[[Any], tuple[bool, str]] = field(
-        default=lambda _: (True, "")
-    )
+    validator: Callable[[Any], tuple[bool, str]] = field(default=lambda _: (True, ""))
     success_message: str = "Challenge completed!"
-    solution_code: Optional[str] = None
+    solution_code: str | None = None
 
 
 def _get_display():
     """Get IPython display function if available."""
     try:
-        from IPython.display import display, HTML
+        from IPython.display import HTML, display
+
         return display, HTML
     except ImportError:
         return None, None
@@ -90,7 +90,7 @@ def _create_difficulty_badge(difficulty: Difficulty) -> str:
     color = DIFFICULTY_COLORS.get(difficulty, COLOR_SUCCESS)
     label = difficulty.value.upper()
 
-    return f'''
+    return f"""
         <span style="
             display: inline-block;
             padding: 2px 8px;
@@ -102,7 +102,7 @@ def _create_difficulty_badge(difficulty: Difficulty) -> str:
             text-transform: uppercase;
             margin-left: 8px;
         ">{label}</span>
-    '''
+    """
 
 
 class ChallengeRunner:
@@ -208,7 +208,7 @@ class ChallengeRunner:
             print(f"Hints available: {len(challenge.hints)}")
             print("=" * 60)
 
-    def reveal_hint(self, challenge_id: str, challenge: Challenge) -> Optional[str]:
+    def reveal_hint(self, challenge_id: str, challenge: Challenge) -> str | None:
         """Reveal the next hint for a challenge.
 
         Hints are revealed progressively, one at a time.
@@ -227,10 +227,7 @@ class ChallengeRunner:
         current_hint_index = self._hints_revealed.get(challenge_id, 0)
 
         if current_hint_index >= len(challenge.hints):
-            display_info(
-                "All hints revealed!",
-                "You've seen all available hints for this challenge."
-            )
+            display_info("All hints revealed!", "You've seen all available hints for this challenge.")
             return None
 
         hint = challenge.hints[current_hint_index]
@@ -241,7 +238,7 @@ class ChallengeRunner:
         remaining = len(challenge.hints) - hint_number
 
         if display and HTML:
-            html = f'''
+            html = f"""
             <div style="
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 max-width: 700px;
@@ -276,11 +273,11 @@ class ChallengeRunner:
                             font-size: 12px;
                             color: #A16207;
                             margin-top: 8px;
-                        ">{remaining} hint{'s' if remaining != 1 else ''} remaining</div>
+                        ">{remaining} hint{"s" if remaining != 1 else ""} remaining</div>
                     </div>
                 </div>
             </div>
-            '''
+            """
             display(HTML(html))
         else:
             print(f"[HINT {hint_number}/{len(challenge.hints)}] {hint}")
@@ -305,10 +302,7 @@ class ChallengeRunner:
         try:
             success, message = challenge.validator(answer)
         except Exception as e:
-            display_error(
-                f"Validation error: {e}",
-                "Check that your answer is in the expected format."
-            )
+            display_error(f"Validation error: {e}", "Check that your answer is in the expected format.")
             return False
 
         if success:
@@ -326,10 +320,7 @@ class ChallengeRunner:
             if hints_available > 0:
                 suggestion += f" ({hints_available} hints still available)"
 
-            display_error(
-                f"Not quite right (attempt {attempt_num})",
-                suggestion
-            )
+            display_error(f"Not quite right (attempt {attempt_num})", suggestion)
             return False
 
     def is_completed(self, challenge_id: str) -> bool:
@@ -363,7 +354,7 @@ class ChallengeRunner:
 
 
 # Global runner instance for convenience functions
-_global_runner: Optional[ChallengeRunner] = None
+_global_runner: ChallengeRunner | None = None
 
 
 def get_challenge_runner() -> ChallengeRunner:
@@ -401,16 +392,17 @@ def run_challenge(challenge: Challenge, answer: Any) -> bool:
 # Pre-defined Challenges
 # =============================================================================
 
+
 def _validate_modified_query(answer: Any) -> tuple[bool, str]:
     """Validate that a query was modified to include a filter or aggregation."""
     if answer is None:
         return False, "No result provided."
 
     # Check if it's a GenieResult or similar
-    if hasattr(answer, 'success') and not answer.success:
+    if hasattr(answer, "success") and not answer.success:
         return False, f"Query failed: {getattr(answer, 'error', 'Unknown error')}"
 
-    if hasattr(answer, 'data'):
+    if hasattr(answer, "data"):
         if answer.data and len(answer.data) > 0:
             return True, "Query executed successfully with results!"
         return False, "Query returned no data. Check your filter conditions."
@@ -449,7 +441,7 @@ def _validate_report_type_change(answer: Any) -> tuple[bool, str]:
         return False, "Report seems too short. Did the generation complete?"
 
     # Check for synthesis result
-    if hasattr(answer, 'key_insights'):
+    if hasattr(answer, "key_insights"):
         if answer.key_insights:
             return True, "Synthesis completed successfully!"
         return False, "No insights generated. Check the pipeline execution."
@@ -469,7 +461,7 @@ def _validate_genie_space_added(answer: Any) -> tuple[bool, str]:
         return False, "Add at least one new space to the configuration."
 
     # Check if it's a MultiGenieResult or similar
-    if hasattr(answer, 'results'):
+    if hasattr(answer, "results"):
         if len(answer.results) > 3:
             return True, f"Successfully queried {len(answer.results)} spaces!"
         return False, "New space not detected in results."
@@ -507,12 +499,11 @@ Example modifications:
         ],
         validator=_validate_modified_query,
         success_message="Excellent! You successfully filtered the query results.",
-        solution_code='''# Example solution - filter by customer segment
+        solution_code="""# Example solution - filter by customer segment
 question = "Show the top 10 customers by total orders from the AUTOMOBILE segment"
 result = genie.query(question)
-print(result.to_markdown_table())''',
+print(result.to_markdown_table())""",
     ),
-
     "add_tool": Challenge(
         id="add_tool",
         title="Define a Custom Tool",
@@ -590,16 +581,15 @@ based on configuration.
         ],
         validator=_validate_report_type_change,
         success_message="Perfect! You've successfully customized the report type.",
-        solution_code='''# Example solution - change to YTD Summary
+        solution_code="""# Example solution - change to YTD Summary
 report_type = "YTD Summary"
 # Or for custom:
 # report_type = "Custom Query"
 # custom_query = "Analyze customer churn patterns over the last 6 months"
 
 # Then re-run the pipeline...
-question = REPORT_QUESTIONS[report_type]''',
+question = REPORT_QUESTIONS[report_type]""",
     ),
-
     "add_genie_space": Challenge(
         id="add_genie_space",
         title="Add a New Genie Space",
@@ -626,7 +616,7 @@ Note: In mock mode, any space_id works. In live mode, you'd need a real Space ID
         ],
         validator=_validate_genie_space_added,
         success_message="Excellent! You've expanded the multi-agent system.",
-        solution_code='''# Example solution - add Finance space
+        solution_code="""# Example solution - add Finance space
 finance_space = GenieSpaceConfig(
     space_id="mock-finance-space",
     name="Finance",
@@ -643,6 +633,6 @@ orchestrator = MultiGenieOrchestrator(
 )
 
 # Query all spaces including the new one
-result = orchestrator.query_all("Analyze Q4 performance across all domains")''',
+result = orchestrator.query_all("Analyze Q4 performance across all domains")""",
     ),
 }

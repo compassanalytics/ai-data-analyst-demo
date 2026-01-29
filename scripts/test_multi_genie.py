@@ -21,8 +21,8 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.agents.multi_genie_orchestrator import (
-    MultiGenieOrchestrator,
     GenieSpaceConfig,
+    MultiGenieOrchestrator,
 )
 from src.config import Config
 
@@ -78,7 +78,7 @@ def load_configs_from_json(filepath: str) -> list[GenieSpaceConfig]:
     Returns:
         List of GenieSpaceConfig objects
     """
-    with open(filepath, "r") as f:
+    with open(filepath) as f:
         data = json.load(f)
 
     configs = []
@@ -113,35 +113,15 @@ Examples:
 
   # Adjust concurrency
   uv run python scripts/test_multi_genie.py --mock --concurrency 5 "Show summary"
-        """
+        """,
     )
+    parser.add_argument("query", help="Natural language query to run across spaces")
+    parser.add_argument("--mock", action="store_true", help="Use mock mode (no Databricks connection)")
     parser.add_argument(
-        "query",
-        help="Natural language query to run across spaces"
+        "--spaces", type=str, default=None, help="Comma-separated list of space names to query (default: all)"
     )
-    parser.add_argument(
-        "--mock",
-        action="store_true",
-        help="Use mock mode (no Databricks connection)"
-    )
-    parser.add_argument(
-        "--spaces",
-        type=str,
-        default=None,
-        help="Comma-separated list of space names to query (default: all)"
-    )
-    parser.add_argument(
-        "--concurrency",
-        type=int,
-        default=3,
-        help="Maximum parallel queries (default: 3)"
-    )
-    parser.add_argument(
-        "--config-json",
-        type=str,
-        default=None,
-        help="Path to JSON file with space configurations"
-    )
+    parser.add_argument("--concurrency", type=int, default=3, help="Maximum parallel queries (default: 3)")
+    parser.add_argument("--config-json", type=str, default=None, help="Path to JSON file with space configurations")
 
     args = parser.parse_args()
 

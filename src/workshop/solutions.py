@@ -13,7 +13,8 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from langchain_core.tools import tool
 
@@ -58,8 +59,7 @@ def exercise_1_solution() -> AgentRunner:
     agent = (
         AgentBuilder("Calculator Agent")
         .set_system_prompt(
-            "You are a helpful math assistant. Use the calculator tool "
-            "for any mathematical calculations."
+            "You are a helpful math assistant. Use the calculator tool for any mathematical calculations."
         )
         .add_tool(
             name="calculator",
@@ -115,8 +115,7 @@ def exercise_2_solution() -> AgentRunner:
     agent = (
         AgentBuilder("Assistant Agent")
         .set_system_prompt(
-            "You are a helpful assistant that can do math calculations "
-            "and answer questions about dates and times."
+            "You are a helpful assistant that can do math calculations and answer questions about dates and times."
         )
         # Add calculator tool
         .add_tool(
@@ -240,6 +239,7 @@ def exercise_4_solution() -> AgentRunner:
         >>> result = agent.query("Convert 100 miles to kilometers")
         >>> print(result)  # Shows: 100 miles = 160.934 kilometers
     """
+
     # Custom tool: Unit converter
     @tool
     def unit_converter(query: str) -> str:
@@ -297,10 +297,7 @@ def exercise_4_solution() -> AgentRunner:
             result = (value * 9 / 5) + 32
             return f"{value}°C = {result:.1f}°F"
 
-        return (
-            "Unsupported conversion. Try: miles/km, feet/meters, "
-            "pounds/kg, or fahrenheit/celsius."
-        )
+        return "Unsupported conversion. Try: miles/km, feet/meters, pounds/kg, or fahrenheit/celsius."
 
     agent = (
         AgentBuilder("Complete Assistant")
@@ -331,14 +328,22 @@ def exercise_4_solution() -> AgentRunner:
         )
         # Set up routing rules with priorities
         .add_routing_rule(
-            keywords=["convert", "miles", "kilometers", "feet", "meters",
-                     "pounds", "kilograms", "fahrenheit", "celsius"],
+            keywords=[
+                "convert",
+                "miles",
+                "kilometers",
+                "feet",
+                "meters",
+                "pounds",
+                "kilograms",
+                "fahrenheit",
+                "celsius",
+            ],
             tool_name="unit_converter",
             priority=3,
         )
         .add_routing_rule(
-            keywords=["today", "tomorrow", "yesterday", "date", "time",
-                     "christmas", "new year"],
+            keywords=["today", "tomorrow", "yesterday", "date", "time", "christmas", "new year"],
             tool_name="date_helper",
             priority=2,
         )
@@ -348,8 +353,7 @@ def exercise_4_solution() -> AgentRunner:
             priority=1,
         )
         .add_routing_rule(
-            keywords=["search", "find", "look up", "weather", "news", "who is",
-                     "what is"],
+            keywords=["search", "find", "look up", "weather", "news", "who is", "what is"],
             tool_name="web_search",
             priority=0,  # Lowest priority - fallback
         )
@@ -415,7 +419,7 @@ def test_all_solutions() -> dict[str, bool]:
         # Second query - should work
         result = agent.query("What is today's date?")
         results["exercise_3"] = len(result) > 0
-        print(f"  Multi-query test passed")
+        print("  Multi-query test passed")
         print(f"  Pass: {results['exercise_3']}")
     except Exception as e:
         results["exercise_3"] = False

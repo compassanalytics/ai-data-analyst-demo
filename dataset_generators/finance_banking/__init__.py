@@ -49,22 +49,22 @@ from typing import Dict, Optional
 
 import pandas as pd
 
-from .utils import set_random_seed
 from .accounts import generate_accounts_domain
 from .organization import generate_operations_domain
 from .transactions import generate_transaction_facts
+from .utils import set_random_seed
 
 __all__ = [
-    'set_random_seed',
-    'generate_finance_domain',
-    'generate_finance_super_table',
+    "set_random_seed",
+    "generate_finance_domain",
+    "generate_finance_super_table",
 ]
 
 
 def generate_finance_domain(
     scale: float = 1.0,
-    output_dir: Optional[str] = None,
-) -> Dict[str, pd.DataFrame]:
+    output_dir: str | None = None,
+) -> dict[str, pd.DataFrame]:
     """
     Generate all finance banking domain tables.
 
@@ -97,11 +97,11 @@ def generate_finance_domain(
     print("-" * 50)
     facts_data = generate_transaction_facts(
         scale=scale,
-        dim_date=all_tables['dim_date'],
-        dim_account=all_tables['dim_account'],
-        dim_customer=all_tables['dim_customer'],
-        dim_branch=all_tables['dim_branch'],
-        dim_employee=all_tables['dim_employee'],
+        dim_date=all_tables["dim_date"],
+        dim_account=all_tables["dim_account"],
+        dim_customer=all_tables["dim_customer"],
+        dim_branch=all_tables["dim_branch"],
+        dim_employee=all_tables["dim_employee"],
     )
     all_tables.update(facts_data)
 
@@ -110,7 +110,7 @@ def generate_finance_domain(
         os.makedirs(output_dir, exist_ok=True)
         print(f"\nSaving tables to {output_dir}...")
         for table_name, df in all_tables.items():
-            path = os.path.join(output_dir, f'{table_name}.parquet')
+            path = os.path.join(output_dir, f"{table_name}.parquet")
             df.to_parquet(path, index=False)
             print(f"  Saved {table_name}.parquet ({len(df):,} rows)")
 
@@ -131,4 +131,5 @@ def generate_finance_super_table(n_rows: int = 500000) -> pd.DataFrame:
         DataFrame with anti-patterns embedded
     """
     from .dirty_generator import generate_finance_super_table as _generate
+
     return _generate(n_rows=n_rows)

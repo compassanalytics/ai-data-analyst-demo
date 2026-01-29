@@ -50,7 +50,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from infra.genie_space_manager import GenieSpaceConfig, GenieSpaceManager
 
-
 # Space configurations
 SPACES = {
     "sales": {
@@ -196,10 +195,10 @@ def deploy_space(
         Tuple of (space_id, success). space_id is None if failed.
     """
     config_path = PROJECT_ROOT / space_info["config_file"]
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Deploying: {space_info['name']}")
     print(f"Config: {config_path}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     if not config_path.exists():
         print(f"ERROR: Config file not found: {config_path}")
@@ -231,7 +230,7 @@ def deploy_space(
             except Exception as e:
                 error_str = str(e)
                 if "404" in error_str or "NOT_FOUND" in error_str:
-                    print(f"Space not found (404). Registry may be stale.")
+                    print("Space not found (404). Registry may be stale.")
                     print("Attempting to create new space instead...")
                     # Fall through to create
                     existing_space_id = None

@@ -21,7 +21,7 @@ from __future__ import annotations
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -94,36 +94,53 @@ class CrypticCodesPattern(AntiPattern):
     )
     severity: int = 5
 
-    code_mappings: Dict[str, Dict[str, str]] = field(default_factory=lambda: {
-        'category': {'Beer': 'BER', 'Cider': 'CID', 'Ready-to-Drink': 'RTD', 'Non-Alcoholic': 'NAB'},
-        'segment': {'Enterprise': 'ENT', 'Mid-Market': 'MID', 'Small Business': 'SMB', 'Independent': 'IND'},
-        'subcategory': {
-            'Lager': 'LGR', 'Ale': 'ALE', 'IPA': 'IPA', 'Stout': 'STT', 'Pilsner': 'PLS',
-            'Apple': 'APL', 'Pear': 'PER', 'Mixed Fruit': 'MXF',
-            'Vodka Soda': 'VOD', 'Rum Punch': 'RUM', 'Tequila Mix': 'TEQ',
-            'NA Beer': 'NAB', 'Sparkling Water': 'SPA', 'Energy Drink': 'NRG'
-        },
-        'region': {
-            'Northeast': 'NE', 'Southeast': 'SE', 'Midwest': 'MW',
-            'Southwest': 'SW', 'West': 'W'
-        },
-        'channel': {'On-Premise': 'ON', 'Off-Premise': 'OFF', 'E-Commerce': 'EC'},
-        'brand': {
-            'Northern Brew': 'NB', 'Mountain Gold': 'MG', 'Craft Select': 'CS',
-            'Heritage Lager': 'HL', 'Orchard Fresh': 'OF', 'Valley Cider': 'VC',
-            'Social Hour': 'SH', 'Party Starter': 'PS', 'Zero Proof': 'ZP',
-            'Pure Fizz': 'PF', 'Boost': 'BO'
-        },
-        'container_type': {'Can': 'C', 'Bottle': 'B', 'Draft': 'D'},
-        'pack_size': {'Single': '1PK', '6-Pack': '6PK', '12-Pack': '12PK', '24-Pack': '24PK', 'Keg': 'KEG'},
-        'store_type': {
-            'Distribution Center': 'DC', 'Regional Warehouse': 'RW', 'Local Depot': 'LD'
-        },
-        'promotion_type': {
-            'Price Discount': 'PD', 'Buy One Get One': 'BOGO', 'Bundle Deal': 'BDL',
-            'Loyalty Reward': 'LR', 'Seasonal Special': 'SS'
+    code_mappings: dict[str, dict[str, str]] = field(
+        default_factory=lambda: {
+            "category": {"Beer": "BER", "Cider": "CID", "Ready-to-Drink": "RTD", "Non-Alcoholic": "NAB"},
+            "segment": {"Enterprise": "ENT", "Mid-Market": "MID", "Small Business": "SMB", "Independent": "IND"},
+            "subcategory": {
+                "Lager": "LGR",
+                "Ale": "ALE",
+                "IPA": "IPA",
+                "Stout": "STT",
+                "Pilsner": "PLS",
+                "Apple": "APL",
+                "Pear": "PER",
+                "Mixed Fruit": "MXF",
+                "Vodka Soda": "VOD",
+                "Rum Punch": "RUM",
+                "Tequila Mix": "TEQ",
+                "NA Beer": "NAB",
+                "Sparkling Water": "SPA",
+                "Energy Drink": "NRG",
+            },
+            "region": {"Northeast": "NE", "Southeast": "SE", "Midwest": "MW", "Southwest": "SW", "West": "W"},
+            "channel": {"On-Premise": "ON", "Off-Premise": "OFF", "E-Commerce": "EC"},
+            "brand": {
+                "Northern Brew": "NB",
+                "Mountain Gold": "MG",
+                "Craft Select": "CS",
+                "Heritage Lager": "HL",
+                "Orchard Fresh": "OF",
+                "Valley Cider": "VC",
+                "Social Hour": "SH",
+                "Party Starter": "PS",
+                "Zero Proof": "ZP",
+                "Pure Fizz": "PF",
+                "Boost": "BO",
+            },
+            "container_type": {"Can": "C", "Bottle": "B", "Draft": "D"},
+            "pack_size": {"Single": "1PK", "6-Pack": "6PK", "12-Pack": "12PK", "24-Pack": "24PK", "Keg": "KEG"},
+            "store_type": {"Distribution Center": "DC", "Regional Warehouse": "RW", "Local Depot": "LD"},
+            "promotion_type": {
+                "Price Discount": "PD",
+                "Buy One Get One": "BOGO",
+                "Bundle Deal": "BDL",
+                "Loyalty Reward": "LR",
+                "Seasonal Special": "SS",
+            },
         }
-    })
+    )
 
     def apply(self, df: pd.DataFrame, intensity: float = 1.0) -> pd.DataFrame:
         """Apply cryptic code transformations to categorical columns."""
@@ -134,9 +151,7 @@ class CrypticCodesPattern(AntiPattern):
                 # At lower intensity, only convert some values
                 if intensity < 1.0:
                     mask = np.random.random(len(df)) < intensity
-                    df.loc[mask, col] = df.loc[mask, col].map(
-                        lambda x: mapping.get(x, x)
-                    )
+                    df.loc[mask, col] = df.loc[mask, col].map(lambda x: mapping.get(x, x))
                 else:
                     df[col] = df[col].map(lambda x: mapping.get(x, x))
 
@@ -161,8 +176,7 @@ class InconsistentCasePattern(AntiPattern):
         "Sales team added 'SaleDate', engineering used 'sale_date'."
     )
     fix_reference: str = (
-        "Star schema enforces consistent snake_case naming throughout: "
-        "customer_key, product_name, net_amount."
+        "Star schema enforces consistent snake_case naming throughout: customer_key, product_name, net_amount."
     )
     severity: int = 4
 
@@ -177,21 +191,21 @@ class InconsistentCasePattern(AntiPattern):
         rename_map = {}
         for col in cols_to_transform:
             # Randomly pick a transformation
-            transform = random.choice(['upper', 'camel', 'camel_upper', 'abbrev_upper'])
+            transform = random.choice(["upper", "camel", "camel_upper", "abbrev_upper"])
 
-            if transform == 'upper':
+            if transform == "upper":
                 rename_map[col] = col.upper()
-            elif transform == 'camel':
+            elif transform == "camel":
                 # snake_case to camelCase
-                parts = col.split('_')
-                rename_map[col] = parts[0] + ''.join(p.title() for p in parts[1:])
-            elif transform == 'camel_upper':
+                parts = col.split("_")
+                rename_map[col] = parts[0] + "".join(p.title() for p in parts[1:])
+            elif transform == "camel_upper":
                 # snake_case to PascalCase
-                rename_map[col] = ''.join(p.title() for p in col.split('_'))
-            elif transform == 'abbrev_upper':
+                rename_map[col] = "".join(p.title() for p in col.split("_"))
+            elif transform == "abbrev_upper":
                 # Abbreviate and uppercase
-                parts = col.split('_')
-                rename_map[col] = ''.join(p[:3].upper() for p in parts)
+                parts = col.split("_")
+                rename_map[col] = "".join(p[:3].upper() for p in parts)
 
         return df.rename(columns=rename_map)
 
@@ -219,24 +233,50 @@ class AbbreviationsPattern(AntiPattern):
     )
     severity: int = 4
 
-    abbreviation_map: Dict[str, str] = field(default_factory=lambda: {
-        'quantity': 'qty', 'quantity_sold': 'qty_sld', 'units_sold': 'unit_sld',
-        'amount': 'amt', 'net_amount': 'net_amt', 'gross_amount': 'gross_amt',
-        'discount_amount': 'disc_amt', 'cost_amount': 'cst_amt',
-        'profit_amount': 'pft_amt',
-        'percentage': 'pct', 'discount_percentage': 'disc_pct',
-        'product': 'prd', 'product_name': 'prd_nm', 'product_key': 'prd_key',
-        'customer': 'cust', 'customer_name': 'cust_nm', 'customer_key': 'cust_key',
-        'segment': 'seg', 'customer_segment': 'cust_seg',
-        'region': 'rgn', 'region_code': 'rgn_cd',
-        'store': 'str', 'store_key': 'str_key', 'store_name': 'str_nm',
-        'date': 'dt', 'date_key': 'dt_key', 'full_date': 'fll_dt',
-        'promotion': 'promo', 'promotion_key': 'promo_key',
-        'price': 'px', 'unit_price': 'unit_px',
-        'cost': 'cst', 'unit_cost': 'unit_cst',
-        'year': 'yr', 'month': 'mth', 'day': 'dy', 'quarter': 'qtr',
-        'week': 'wk', 'number': 'num', 'code': 'cd',
-    })
+    abbreviation_map: dict[str, str] = field(
+        default_factory=lambda: {
+            "quantity": "qty",
+            "quantity_sold": "qty_sld",
+            "units_sold": "unit_sld",
+            "amount": "amt",
+            "net_amount": "net_amt",
+            "gross_amount": "gross_amt",
+            "discount_amount": "disc_amt",
+            "cost_amount": "cst_amt",
+            "profit_amount": "pft_amt",
+            "percentage": "pct",
+            "discount_percentage": "disc_pct",
+            "product": "prd",
+            "product_name": "prd_nm",
+            "product_key": "prd_key",
+            "customer": "cust",
+            "customer_name": "cust_nm",
+            "customer_key": "cust_key",
+            "segment": "seg",
+            "customer_segment": "cust_seg",
+            "region": "rgn",
+            "region_code": "rgn_cd",
+            "store": "str",
+            "store_key": "str_key",
+            "store_name": "str_nm",
+            "date": "dt",
+            "date_key": "dt_key",
+            "full_date": "fll_dt",
+            "promotion": "promo",
+            "promotion_key": "promo_key",
+            "price": "px",
+            "unit_price": "unit_px",
+            "cost": "cst",
+            "unit_cost": "unit_cst",
+            "year": "yr",
+            "month": "mth",
+            "day": "dy",
+            "quarter": "qtr",
+            "week": "wk",
+            "number": "num",
+            "code": "cd",
+        }
+    )
 
     def apply(self, df: pd.DataFrame, intensity: float = 1.0) -> pd.DataFrame:
         """Abbreviate column names based on intensity."""
@@ -266,8 +306,7 @@ class AmbiguousNamesPattern(AntiPattern):
         "what 'val' represents or what 'flg1' indicates."
     )
     real_world_example: str = (
-        "Table has: flg1, flg2, flg3, cd1, code_2, type, status_cd, attr1, attr2, "
-        "val, amt, cnt - none documented."
+        "Table has: flg1, flg2, flg3, cd1, code_2, type, status_cd, attr1, attr2, val, amt, cnt - none documented."
     )
     fix_reference: str = (
         "Star schema uses specific names: is_seasonal (not flg1), "
@@ -283,18 +322,18 @@ class AmbiguousNamesPattern(AntiPattern):
         n_cols = max(1, int(5 * intensity))  # Up to 5 ambiguous columns
 
         ambiguous_cols = [
-            ('flg1', lambda: random.choice([0, 1])),
-            ('flg2', lambda: random.choice(['Y', 'N'])),
-            ('flg3', lambda: str(random.choice([True, False]))),
-            ('cd1', lambda: random.choice(['A', 'B', 'C', 'D'])),
-            ('code_2', lambda: random.randint(1, 10)),
-            ('type', lambda: random.choice([1, 2, 3])),
-            ('status_cd', lambda: random.choice([1, 2, 3, 4, 5])),
-            ('attr1', lambda: random.choice(['X', 'Y', 'Z'])),
-            ('attr2', lambda: round(random.uniform(0, 100), 2)),
-            ('val', lambda: round(random.uniform(0, 1000), 2)),
-            ('amt', lambda: round(random.uniform(0, 500), 2)),
-            ('cnt', lambda: random.randint(1, 100)),
+            ("flg1", lambda: random.choice([0, 1])),
+            ("flg2", lambda: random.choice(["Y", "N"])),
+            ("flg3", lambda: str(random.choice([True, False]))),
+            ("cd1", lambda: random.choice(["A", "B", "C", "D"])),
+            ("code_2", lambda: random.randint(1, 10)),
+            ("type", lambda: random.choice([1, 2, 3])),
+            ("status_cd", lambda: random.choice([1, 2, 3, 4, 5])),
+            ("attr1", lambda: random.choice(["X", "Y", "Z"])),
+            ("attr2", lambda: round(random.uniform(0, 100), 2)),
+            ("val", lambda: round(random.uniform(0, 1000), 2)),
+            ("amt", lambda: round(random.uniform(0, 500), 2)),
+            ("cnt", lambda: random.randint(1, 100)),
         ]
 
         for col_name, gen_fn in ambiguous_cols[:n_cols]:
@@ -327,8 +366,7 @@ class DuplicateColumnsPattern(AntiPattern):
         "REVENUE, REV. Cost stored as: cost_amt, total_cost, COGS."
     )
     fix_reference: str = (
-        "Star schema has exactly one column: fact_sales.net_amount. "
-        "No synonyms, no duplicates, single source of truth."
+        "Star schema has exactly one column: fact_sales.net_amount. No synonyms, no duplicates, single source of truth."
     )
     severity: int = 5
 
@@ -338,14 +376,14 @@ class DuplicateColumnsPattern(AntiPattern):
 
         # Mapping of source columns to their duplicates
         duplicate_specs = {
-            'net_amount': ['net_amt', 'net_sales', 'NET', 'net_revenue', 'revenue', 'REVENUE', 'REV'],
-            'gross_amount': ['gross_amt', 'gross_sales', 'GROSS', 'gross_revenue'],
-            'cost_amount': ['cost_amt', 'total_cost', 'COGS'],
-            'profit_amount': ['profit', 'profit_amt', 'PROFIT', 'gross_profit', 'margin', 'GP'],
-            'quantity_sold': ['qty', 'quantity', 'QTY_SOLD', 'units_sold', 'unit_sold'],
-            'unit_price': ['UP', 'px', 'price', 'UNIT_PX'],
-            'unit_cost': ['UC', 'cost_per_unit', 'COGS_UNIT'],
-            'discount_amount': ['disc_amt', 'discount_amount', 'DISC_$'],
+            "net_amount": ["net_amt", "net_sales", "NET", "net_revenue", "revenue", "REVENUE", "REV"],
+            "gross_amount": ["gross_amt", "gross_sales", "GROSS", "gross_revenue"],
+            "cost_amount": ["cost_amt", "total_cost", "COGS"],
+            "profit_amount": ["profit", "profit_amt", "PROFIT", "gross_profit", "margin", "GP"],
+            "quantity_sold": ["qty", "quantity", "QTY_SOLD", "units_sold", "unit_sold"],
+            "unit_price": ["UP", "px", "price", "UNIT_PX"],
+            "unit_cost": ["UC", "cost_per_unit", "COGS_UNIT"],
+            "discount_amount": ["disc_amt", "discount_amount", "DISC_$"],
         }
 
         for source_col, duplicates in duplicate_specs.items():
@@ -378,10 +416,7 @@ class DuplicateIdsPattern(AntiPattern):
         "Transaction identified by: txn_id (int), transaction_id (int), "
         "sale_id (int), order_number (ORD-00000001), OrderNum (ORD-00000001)."
     )
-    fix_reference: str = (
-        "Star schema uses single surrogate key: sale_key. "
-        "Natural key stored once as sale_id."
-    )
+    fix_reference: str = "Star schema uses single surrogate key: sale_key. Natural key stored once as sale_id."
     severity: int = 4
 
     def apply(self, df: pd.DataFrame, intensity: float = 1.0) -> pd.DataFrame:
@@ -389,27 +424,27 @@ class DuplicateIdsPattern(AntiPattern):
         df = df.copy()
 
         id_duplicates = {
-            'sale_key': [
-                ('txn_id', lambda x: x),
-                ('transaction_id', lambda x: x),
-                ('sale_id', lambda x: x),
-                ('order_number', lambda x: f'ORD-{x:08d}'),
-                ('OrderNum', lambda x: f'ORD-{x:08d}'),
+            "sale_key": [
+                ("txn_id", lambda x: x),
+                ("transaction_id", lambda x: x),
+                ("sale_id", lambda x: x),
+                ("order_number", lambda x: f"ORD-{x:08d}"),
+                ("OrderNum", lambda x: f"ORD-{x:08d}"),
             ],
-            'product_key': [
-                ('prod_id', lambda x: x),
-                ('PRDCD', lambda x: f'SKU-{x}'),
-                ('product_code', lambda x: f'SKU-{x}'),
+            "product_key": [
+                ("prod_id", lambda x: x),
+                ("PRDCD", lambda x: f"SKU-{x}"),
+                ("product_code", lambda x: f"SKU-{x}"),
             ],
-            'customer_key': [
-                ('cust_id', lambda x: x),
-                ('customer_id', lambda x: f'CUST-{x:05d}'),
-                ('CUSTID', lambda x: x),
+            "customer_key": [
+                ("cust_id", lambda x: x),
+                ("customer_id", lambda x: f"CUST-{x:05d}"),
+                ("CUSTID", lambda x: x),
             ],
-            'store_key': [
-                ('loc_id', lambda x: x),
-                ('store_id', lambda x: x),
-                ('dc_code', lambda x: f'DC-{x:03d}'),
+            "store_key": [
+                ("loc_id", lambda x: x),
+                ("store_id", lambda x: x),
+                ("dc_code", lambda x: f"DC-{x:03d}"),
             ],
         }
 
@@ -454,21 +489,23 @@ class CalculatedStoredPattern(AntiPattern):
         df = df.copy()
 
         # Check if we have the necessary base columns
-        has_qty = 'quantity_sold' in df.columns or 'qty' in df.columns
-        has_price = 'unit_price' in df.columns
-        has_net = 'net_amount' in df.columns
-        has_cost = 'cost_amount' in df.columns
+        has_qty = "quantity_sold" in df.columns or "qty" in df.columns
+        has_price = "unit_price" in df.columns
+        has_net = "net_amount" in df.columns
+        has_cost = "cost_amount" in df.columns
 
         if has_qty and has_price:
-            qty_col = 'quantity_sold' if 'quantity_sold' in df.columns else 'qty'
+            qty_col = "quantity_sold" if "quantity_sold" in df.columns else "qty"
 
             # Add margin percentage calculations
-            if has_net and has_cost and 'margin_pct' not in df.columns:
+            if has_net and has_cost and "margin_pct" not in df.columns:
                 # Introduce slight rounding variations based on intensity
                 if intensity > 0.5:
-                    df['margin_pct'] = ((df['net_amount'] - df['cost_amount']) / df['net_amount'] * 100).round(2)
-                    df['gm_%'] = ((df['net_amount'] - df['cost_amount']) / df['net_amount'] * 100).round(1)  # Different precision
-                    df['profit_margin'] = ((df['net_amount'] - df['cost_amount']) / df['net_amount'] * 100).round(2)
+                    df["margin_pct"] = ((df["net_amount"] - df["cost_amount"]) / df["net_amount"] * 100).round(2)
+                    df["gm_%"] = ((df["net_amount"] - df["cost_amount"]) / df["net_amount"] * 100).round(
+                        1
+                    )  # Different precision
+                    df["profit_margin"] = ((df["net_amount"] - df["cost_amount"]) / df["net_amount"] * 100).round(2)
 
         return df
 
@@ -496,8 +533,7 @@ class MixedBooleansPattern(AntiPattern):
         "active: 1, 0, 'A', 'I'. status: 'ACTIVE', 'INACTIVE', 'A', 'I', 'D'."
     )
     fix_reference: str = (
-        "Star schema uses native boolean type: is_seasonal BOOLEAN. "
-        "Consistent values: true/false only."
+        "Star schema uses native boolean type: is_seasonal BOOLEAN. Consistent values: true/false only."
     )
     severity: int = 4
 
@@ -505,31 +541,34 @@ class MixedBooleansPattern(AntiPattern):
         """Transform boolean columns to use mixed representations."""
         df = df.copy()
 
-        bool_columns = [col for col in df.columns if df[col].dtype == bool or
-                       col.startswith('is_') or col.startswith('has_')]
+        bool_columns = [
+            col for col in df.columns if df[col].dtype == bool or col.startswith("is_") or col.startswith("has_")
+        ]
 
-        bool_representations = [0, 1, 'Y', 'N', 'True', 'False', True, False]
+        bool_representations = [0, 1, "Y", "N", "True", "False", True, False]
 
         for col in bool_columns:
             if random.random() < intensity:
                 # Convert to mixed representations
                 df[col] = df[col].apply(
-                    lambda x: random.choice(bool_representations) if random.random() < intensity
-                    else ('Y' if x else 'N')
+                    lambda x: random.choice(bool_representations)
+                    if random.random() < intensity
+                    else ("Y" if x else "N")
                 )
                 # Convert to string to ensure type mixing
                 df[col] = df[col].astype(str)
 
         # Add explicit mixed boolean columns
-        if intensity > 0.3 and 'seasonal_flg' not in df.columns:
-            df['seasonal_flg'] = [random.choice(['Y', 'N']) for _ in range(len(df))]
+        if intensity > 0.3 and "seasonal_flg" not in df.columns:
+            df["seasonal_flg"] = [random.choice(["Y", "N"]) for _ in range(len(df))]
 
-        if intensity > 0.5 and 'active' not in df.columns:
-            df['active'] = [str(random.choice([1, 0, 'A', 'I'])) for _ in range(len(df))]
+        if intensity > 0.5 and "active" not in df.columns:
+            df["active"] = [str(random.choice([1, 0, "A", "I"])) for _ in range(len(df))]
 
-        if intensity > 0.7 and 'status' not in df.columns:
-            df['status'] = [random.choice(['ACTIVE', 'INACTIVE', 'DISCONTINUED', 'A', 'I', 'D'])
-                          for _ in range(len(df))]
+        if intensity > 0.7 and "status" not in df.columns:
+            df["status"] = [
+                random.choice(["ACTIVE", "INACTIVE", "DISCONTINUED", "A", "I", "D"]) for _ in range(len(df))
+            ]
 
         return df
 
@@ -562,49 +601,49 @@ class InconsistentDatesPattern(AntiPattern):
         df = df.copy()
 
         # Find date columns
-        date_cols = [col for col in df.columns if 'date' in col.lower() or col == 'full_date']
+        date_cols = [col for col in df.columns if "date" in col.lower() or col == "full_date"]
 
         for col in date_cols:
-            if df[col].dtype == 'object' or pd.api.types.is_datetime64_any_dtype(df[col]):
+            if df[col].dtype == "object" or pd.api.types.is_datetime64_any_dtype(df[col]):
                 try:
                     dates = pd.to_datetime(df[col])
                 except (ValueError, TypeError):
                     continue
 
                 # Add various format variations based on intensity
-                if intensity > 0.2 and f'{col}_us' not in df.columns:
-                    df[f'{col}_us'] = dates.dt.strftime('%m/%d/%Y')  # US format
+                if intensity > 0.2 and f"{col}_us" not in df.columns:
+                    df[f"{col}_us"] = dates.dt.strftime("%m/%d/%Y")  # US format
 
-                if intensity > 0.4 and f'{col}_int' not in df.columns:
-                    df[f'{col}_int'] = dates.dt.strftime('%Y%m%d')  # Integer-like
+                if intensity > 0.4 and f"{col}_int" not in df.columns:
+                    df[f"{col}_int"] = dates.dt.strftime("%Y%m%d")  # Integer-like
 
-                if intensity > 0.6 and f'{col}_iso' not in df.columns:
-                    df[f'{col}_iso'] = dates.apply(lambda x: x.isoformat() if pd.notna(x) else None)
+                if intensity > 0.6 and f"{col}_iso" not in df.columns:
+                    df[f"{col}_iso"] = dates.apply(lambda x: x.isoformat() if pd.notna(x) else None)
 
-                if intensity > 0.8 and f'{col}_dmy' not in df.columns:
-                    df[f'{col}_dmy'] = dates.dt.strftime('%d-%b-%Y')  # DD-Mon-YYYY
+                if intensity > 0.8 and f"{col}_dmy" not in df.columns:
+                    df[f"{col}_dmy"] = dates.dt.strftime("%d-%b-%Y")  # DD-Mon-YYYY
 
         # Add decomposed date columns at high intensity
         if intensity > 0.5:
             for col in date_cols[:1]:  # Just the first date column
                 try:
                     dates = pd.to_datetime(df[col])
-                    if 'yr' not in df.columns:
-                        df['yr'] = dates.dt.year
-                    if 'mth' not in df.columns:
-                        df['mth'] = dates.dt.month
-                    if 'mn' not in df.columns:
-                        df['mn'] = dates.dt.month  # Duplicate!
-                    if 'dy' not in df.columns:
-                        df['dy'] = dates.dt.day
-                    if 'dow' not in df.columns:
-                        df['dow'] = dates.dt.dayofweek
-                    if 'wk' not in df.columns:
-                        df['wk'] = dates.dt.isocalendar().week
-                    if 'qtr' not in df.columns:
-                        df['qtr'] = dates.dt.quarter
-                    if 'Q' not in df.columns:
-                        df['Q'] = dates.dt.quarter.apply(lambda x: f'Q{x}')
+                    if "yr" not in df.columns:
+                        df["yr"] = dates.dt.year
+                    if "mth" not in df.columns:
+                        df["mth"] = dates.dt.month
+                    if "mn" not in df.columns:
+                        df["mn"] = dates.dt.month  # Duplicate!
+                    if "dy" not in df.columns:
+                        df["dy"] = dates.dt.day
+                    if "dow" not in df.columns:
+                        df["dow"] = dates.dt.dayofweek
+                    if "wk" not in df.columns:
+                        df["wk"] = dates.dt.isocalendar().week
+                    if "qtr" not in df.columns:
+                        df["qtr"] = dates.dt.quarter
+                    if "Q" not in df.columns:
+                        df["Q"] = dates.dt.quarter.apply(lambda x: f"Q{x}")
                 except (ValueError, TypeError):
                     pass
 
@@ -634,9 +673,9 @@ class NullVariationsPattern(AntiPattern):
     )
     severity: int = 4
 
-    null_representations: List[Any] = field(default_factory=lambda: [
-        None, '', 'N/A', 'NA', 'NULL', 'null', '-', '--', 'UNKNOWN', 'UNK'
-    ])
+    null_representations: list[Any] = field(
+        default_factory=lambda: [None, "", "N/A", "NA", "NULL", "null", "-", "--", "UNKNOWN", "UNK"]
+    )
 
     def apply(self, df: pd.DataFrame, intensity: float = 1.0) -> pd.DataFrame:
         """Introduce varied null representations."""
@@ -644,7 +683,7 @@ class NullVariationsPattern(AntiPattern):
 
         # Find columns with actual nulls - only apply string nulls to object/string columns
         null_cols = [col for col in df.columns if df[col].isna().any()]
-        object_cols = df.select_dtypes(include=['object', 'string']).columns
+        object_cols = df.select_dtypes(include=["object", "string"]).columns
 
         for col in null_cols:
             if col in object_cols and random.random() < intensity:
@@ -659,7 +698,7 @@ class NullVariationsPattern(AntiPattern):
         # Introduce nulls as specific values in numeric columns
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         for col in numeric_cols:
-            if 'key' not in col.lower() and 'id' not in col.lower():
+            if "key" not in col.lower() and "id" not in col.lower():
                 if random.random() < intensity * 0.5:
                     try:
                         # Mark some values as "missing" using -1, 0, or -999
@@ -731,8 +770,7 @@ class ConflictingValuesPattern(AntiPattern):
         "prod_id: 1042, product_code: SKU-1047 (mismatch!)."
     )
     fix_reference: str = (
-        "Star schema has single source of truth: dim_customer.credit_limit. "
-        "No duplicate columns means no conflicts."
+        "Star schema has single source of truth: dim_customer.credit_limit. No duplicate columns means no conflicts."
     )
     severity: int = 5
 
@@ -742,11 +780,29 @@ class ConflictingValuesPattern(AntiPattern):
 
         # Pairs of columns where values might conflict
         conflict_specs = [
-            ('credit_limit', 'cr_lmt', lambda x: x * random.choice([0.9, 0.95, 1.0, 1.05, 1.1])),
-            ('payment_terms_days', 'pmt_terms', lambda x: x + random.choice([-5, 0, 0, 0, 5])),
-            ('product_name', 'prd_nm', lambda x: f'Product {random.randint(1, 150)}'),  # Often mismatches!
-            ('region', 'region_name', lambda x: {'Northeast': 'NE', 'Southeast': 'SE', 'Midwest': 'MW', 'Southwest': 'SW', 'West': 'W'}.get(x, x)),
-            ('city', 'cty', lambda x: {'New York': 'NYC', 'Boston': 'BOS', 'Miami': 'MIA', 'Chicago': 'CHI', 'Dallas': 'DAL', 'Los Angeles': 'LAX', 'Seattle': 'SEA'}.get(x, x[:3].upper())),
+            ("credit_limit", "cr_lmt", lambda x: x * random.choice([0.9, 0.95, 1.0, 1.05, 1.1])),
+            ("payment_terms_days", "pmt_terms", lambda x: x + random.choice([-5, 0, 0, 0, 5])),
+            ("product_name", "prd_nm", lambda x: f"Product {random.randint(1, 150)}"),  # Often mismatches!
+            (
+                "region",
+                "region_name",
+                lambda x: {"Northeast": "NE", "Southeast": "SE", "Midwest": "MW", "Southwest": "SW", "West": "W"}.get(
+                    x, x
+                ),
+            ),
+            (
+                "city",
+                "cty",
+                lambda x: {
+                    "New York": "NYC",
+                    "Boston": "BOS",
+                    "Miami": "MIA",
+                    "Chicago": "CHI",
+                    "Dallas": "DAL",
+                    "Los Angeles": "LAX",
+                    "Seattle": "SEA",
+                }.get(x, x[:3].upper()),
+            ),
         ]
 
         for source_col, conflict_col, transform in conflict_specs:
@@ -776,8 +832,7 @@ class OrphanKeysPattern(AntiPattern):
         "to 1200. Customer merged, old customer_key orphaned."
     )
     fix_reference: str = (
-        "Star schema enforces referential integrity. "
-        "ETL processes validate all foreign keys before loading."
+        "Star schema enforces referential integrity. ETL processes validate all foreign keys before loading."
     )
     severity: int = 4
 
@@ -785,7 +840,7 @@ class OrphanKeysPattern(AntiPattern):
         """Introduce orphan key references."""
         df = df.copy()
 
-        key_columns = [col for col in df.columns if col.endswith('_key')]
+        key_columns = [col for col in df.columns if col.endswith("_key")]
 
         for col in key_columns:
             if random.random() < intensity:
@@ -795,7 +850,7 @@ class OrphanKeysPattern(AntiPattern):
                         continue
 
                     # Get max existing key
-                    max_key = pd.to_numeric(df[col], errors='coerce').max()
+                    max_key = pd.to_numeric(df[col], errors="coerce").max()
                     if pd.isna(max_key):
                         continue
 
@@ -836,8 +891,7 @@ class NoDescriptionsPattern(AntiPattern):
         "Genie cannot understand what gm_% means without documentation."
     )
     fix_reference: str = (
-        "Star schema includes rich metadata: column descriptions, "
-        "business definitions, example values, valid ranges."
+        "Star schema includes rich metadata: column descriptions, business definitions, example values, valid ranges."
     )
     severity: int = 3
 
@@ -874,14 +928,14 @@ class UndocumentedCodesPattern(AntiPattern):
         """Add undocumented status code columns."""
         df = df.copy()
 
-        if intensity > 0.3 and 'status_cd' not in df.columns:
-            df['status_cd'] = [random.choice([1, 2, 3, 4, 5]) for _ in range(len(df))]
+        if intensity > 0.3 and "status_cd" not in df.columns:
+            df["status_cd"] = [random.choice([1, 2, 3, 4, 5]) for _ in range(len(df))]
 
-        if intensity > 0.5 and 'priority_cd' not in df.columns:
-            df['priority_cd'] = [random.choice([1, 2, 3]) for _ in range(len(df))]
+        if intensity > 0.5 and "priority_cd" not in df.columns:
+            df["priority_cd"] = [random.choice([1, 2, 3]) for _ in range(len(df))]
 
-        if intensity > 0.7 and 'approval_cd' not in df.columns:
-            df['approval_cd'] = [random.choice(['A', 'P', 'R', 'H']) for _ in range(len(df))]
+        if intensity > 0.7 and "approval_cd" not in df.columns:
+            df["approval_cd"] = [random.choice(["A", "P", "R", "H"]) for _ in range(len(df))]
 
         return df
 
@@ -914,19 +968,19 @@ class HiddenLogicPattern(AntiPattern):
         df = df.copy()
 
         # Find date columns to add fiscal calculations
-        date_cols = [col for col in df.columns if 'date' in col.lower()]
+        date_cols = [col for col in df.columns if "date" in col.lower()]
 
         if date_cols and intensity > 0.3:
             try:
                 dates = pd.to_datetime(df[date_cols[0]])
 
                 # Add fiscal year (Feb start) without documentation
-                if 'fy' not in df.columns:
-                    df['fy'] = dates.apply(lambda d: d.year if d.month >= 2 else d.year - 1)
+                if "fy" not in df.columns:
+                    df["fy"] = dates.apply(lambda d: d.year if d.month >= 2 else d.year - 1)
 
                 # Add fiscal quarter without documentation
-                if 'fq' not in df.columns:
-                    df['fq'] = dates.apply(lambda d: ((d.month - 2) % 12) // 3 + 1)
+                if "fq" not in df.columns:
+                    df["fq"] = dates.apply(lambda d: ((d.month - 2) % 12) // 3 + 1)
 
             except (ValueError, TypeError):
                 pass
@@ -948,7 +1002,7 @@ class AntiPatternRegistry:
 
     def __init__(self) -> None:
         """Initialize the registry with all built-in patterns."""
-        self._patterns: Dict[str, AntiPattern] = {}
+        self._patterns: dict[str, AntiPattern] = {}
         self._register_all_patterns()
 
     def _register_all_patterns(self) -> None:
@@ -1006,7 +1060,7 @@ class AntiPatternRegistry:
             raise KeyError(f"Pattern '{pattern_id}' not found. Available: {list(self._patterns.keys())}")
         return self._patterns[pattern_id]
 
-    def get_by_category(self, category: str) -> List[AntiPattern]:
+    def get_by_category(self, category: str) -> list[AntiPattern]:
         """
         Get all patterns in a category.
 
@@ -1018,7 +1072,7 @@ class AntiPatternRegistry:
         """
         return [p for p in self._patterns.values() if p.category == category]
 
-    def get_all(self) -> List[AntiPattern]:
+    def get_all(self) -> list[AntiPattern]:
         """
         Get all registered patterns.
 
@@ -1027,7 +1081,7 @@ class AntiPatternRegistry:
         """
         return list(self._patterns.values())
 
-    def get_active_patterns(self, cleanliness: int) -> List[str]:
+    def get_active_patterns(self, cleanliness: int) -> list[str]:
         """
         Get pattern IDs that should be active at given cleanliness level.
 
@@ -1087,8 +1141,8 @@ class AntiPatternRegistry:
         self,
         df: pd.DataFrame,
         cleanliness: int,
-        categories: Optional[List[str]] = None,
-        exclude_patterns: Optional[List[str]] = None,
+        categories: list[str] | None = None,
+        exclude_patterns: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         Apply anti-patterns based on cleanliness level.
@@ -1150,14 +1204,14 @@ class AntiPatternRegistry:
         lines.append("-" * 60)
 
         # Group by category
-        by_category: Dict[str, List[AntiPattern]] = {}
+        by_category: dict[str, list[AntiPattern]] = {}
         for pattern_id in active_ids:
             pattern = self._patterns[pattern_id]
             if pattern.category not in by_category:
                 by_category[pattern.category] = []
             by_category[pattern.category].append(pattern)
 
-        for category in ['naming', 'redundancy', 'type', 'structural', 'metadata']:
+        for category in ["naming", "redundancy", "type", "structural", "metadata"]:
             if category in by_category:
                 lines.append(f"\n{category.upper()}:")
                 for pattern in by_category[category]:
@@ -1169,7 +1223,7 @@ class AntiPatternRegistry:
 
 
 # Module-level singleton for convenience
-_registry: Optional[AntiPatternRegistry] = None
+_registry: AntiPatternRegistry | None = None
 
 
 def get_registry() -> AntiPatternRegistry:

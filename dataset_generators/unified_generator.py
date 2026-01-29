@@ -28,10 +28,9 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Literal
 
 import pandas as pd
-
 from typing_extensions import TypedDict
 
 from .base import (
@@ -49,7 +48,7 @@ from .base import (
 class GeneratedDataset(TypedDict):
     """Output contract for the unified generator."""
 
-    tables: Dict[str, pd.DataFrame]
+    tables: dict[str, pd.DataFrame]
     """Dictionary mapping table names to DataFrames."""
 
     format: Literal["star", "super", "hybrid"]
@@ -58,13 +57,13 @@ class GeneratedDataset(TypedDict):
     cleanliness: int
     """Cleanliness level (0-100) used to generate this dataset."""
 
-    active_patterns: List[str]
+    active_patterns: list[str]
     """List of anti-pattern IDs that were applied."""
 
-    active_traps: List[str]
+    active_traps: list[str]
     """List of trap column IDs that were applied."""
 
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
     """Additional metadata about the generation."""
 
 
@@ -85,7 +84,7 @@ class StarSchemaGenerator(BaseDataGenerator):
         """
         super().__init__(config)
 
-    def generate(self) -> Dict[str, pd.DataFrame]:
+    def generate(self) -> dict[str, pd.DataFrame]:
         """
         Generate complete star schema dataset.
 
@@ -124,7 +123,7 @@ class StarSchemaGenerator(BaseDataGenerator):
         }
 
 
-def _flatten_to_super_table(tables: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+def _flatten_to_super_table(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """
     Flatten star schema tables into a single denormalized table.
 
@@ -169,9 +168,9 @@ def _flatten_to_super_table(tables: Dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 
 def _apply_light_patterns(
-    tables: Dict[str, pd.DataFrame],
+    tables: dict[str, pd.DataFrame],
     cleanliness: int,
-) -> Dict[str, pd.DataFrame]:
+) -> dict[str, pd.DataFrame]:
     """
     Apply light anti-patterns (naming, metadata) to star schema tables.
 
@@ -239,10 +238,10 @@ def _apply_light_patterns(
 def generate_dataset(
     cleanliness: int = 100,
     seed: int = 42,
-    output_dir: Optional[str] = None,
+    output_dir: str | None = None,
     include_test_queries: bool = False,
-    config: Optional[GeneratorConfig] = None,
-) -> Tuple[GeneratedDataset, Optional[List[TestQuery]]]:
+    config: GeneratorConfig | None = None,
+) -> tuple[GeneratedDataset, list[TestQuery] | None]:
     """
     Generate dataset with specified cleanliness level (0-100).
 
@@ -306,8 +305,8 @@ def generate_dataset(
         # Pure star schema - return as-is
         output_format: Literal["star", "super", "hybrid"] = "star"
         tables = clean_tables
-        active_patterns: List[str] = []
-        active_traps: List[str] = []
+        active_patterns: list[str] = []
+        active_traps: list[str] = []
 
     elif cleanliness <= 0:
         # Full super table - delegate to existing super_table_generator for schema parity
@@ -349,9 +348,7 @@ def generate_dataset(
         tables = _apply_light_patterns(clean_tables, cleanliness)
 
         active_patterns = [
-            p
-            for p in registry.get_active_patterns(cleanliness)
-            if registry.get(p).category in ["naming", "metadata"]
+            p for p in registry.get_active_patterns(cleanliness) if registry.get(p).category in ["naming", "metadata"]
         ]
         active_traps = []  # No traps in hybrid mode
 
@@ -381,12 +378,10 @@ def generate_dataset(
         _save_datasets(result, output_dir)
 
     # Generate test queries if requested
-    test_queries: Optional[List[TestQuery]] = None
+    test_queries: list[TestQuery] | None = None
     if include_test_queries:
         query_generator = get_query_generator()
-        test_queries = query_generator.get_for_cleanliness(
-            cleanliness, active_patterns
-        )
+        test_queries = query_generator.get_for_cleanliness(cleanliness, active_patterns)
 
     return result, test_queries
 
@@ -395,7 +390,7 @@ def generate_at_level(
     level: CleanlinessLevel,
     seed: int = 42,
     **kwargs: Any,
-) -> Tuple[GeneratedDataset, Optional[List[TestQuery]]]:
+) -> tuple[GeneratedDataset, list[TestQuery] | None]:
     """
     Generate dataset at a preset cleanliness level.
 
@@ -421,7 +416,7 @@ def generate_at_level(
 def generate_star_schema_clean(
     seed: int = 42,
     **kwargs: Any,
-) -> Dict[str, pd.DataFrame]:
+) -> dict[str, pd.DataFrame]:
     """
     Convenience: Generate pristine star schema.
 

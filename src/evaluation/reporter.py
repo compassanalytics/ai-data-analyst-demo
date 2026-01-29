@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.evaluation.evaluator import EvaluationResults
@@ -137,8 +137,8 @@ class EvaluationReporter:
 
     def _get_render_context(
         self,
-        results: "EvaluationResults",
-        title: Optional[str] = None,
+        results: EvaluationResults,
+        title: str | None = None,
         max_detailed_results: int = 50,
     ) -> dict:
         """Build the template rendering context.
@@ -164,8 +164,8 @@ class EvaluationReporter:
 
     def generate_markdown(
         self,
-        results: "EvaluationResults",
-        title: Optional[str] = None,
+        results: EvaluationResults,
+        title: str | None = None,
         max_detailed_results: int = 50,
     ) -> str:
         """Generate a Markdown report from evaluation results.
@@ -183,8 +183,8 @@ class EvaluationReporter:
 
     def generate_html(
         self,
-        results: "EvaluationResults",
-        title: Optional[str] = None,
+        results: EvaluationResults,
+        title: str | None = None,
         max_detailed_results: int = 50,
     ) -> str:
         """Generate an HTML dashboard from evaluation results.
@@ -202,7 +202,7 @@ class EvaluationReporter:
 
     def generate_json(
         self,
-        results: "EvaluationResults",
+        results: EvaluationResults,
         pretty: bool = True,
     ) -> str:
         """Generate a JSON export of evaluation results.
@@ -223,11 +223,11 @@ class EvaluationReporter:
 
     def save_reports(
         self,
-        results: "EvaluationResults",
+        results: EvaluationResults,
         output_dir: str,
-        formats: Optional[list[str]] = None,
+        formats: list[str] | None = None,
         filename_prefix: str = "evaluation",
-        title: Optional[str] = None,
+        title: str | None = None,
         max_detailed_results: int = 50,
     ) -> dict[str, Path]:
         """Save reports in multiple formats to files.

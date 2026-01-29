@@ -11,19 +11,45 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
-
 # Common metric-related keywords for inference
-METRIC_KEYWORDS = frozenset({
-    "amount", "price", "cost", "revenue", "sales", "total", "sum",
-    "count", "quantity", "qty", "balance", "profit", "margin",
-    "rate", "ratio", "percentage", "percent", "avg", "average",
-    "min", "max", "value", "fee", "discount", "tax", "weight",
-    "score", "rating", "duration", "size", "volume",
-})
+METRIC_KEYWORDS = frozenset(
+    {
+        "amount",
+        "price",
+        "cost",
+        "revenue",
+        "sales",
+        "total",
+        "sum",
+        "count",
+        "quantity",
+        "qty",
+        "balance",
+        "profit",
+        "margin",
+        "rate",
+        "ratio",
+        "percentage",
+        "percent",
+        "avg",
+        "average",
+        "min",
+        "max",
+        "value",
+        "fee",
+        "discount",
+        "tax",
+        "weight",
+        "score",
+        "rating",
+        "duration",
+        "size",
+        "volume",
+    }
+)
 
 # Common key column patterns
 KEY_PATTERNS = (
@@ -48,8 +74,8 @@ class ColumnInfo:
     """
 
     name: str
-    data_type: Optional[str] = None
-    description: Optional[str] = None
+    data_type: str | None = None
+    description: str | None = None
     is_key: bool = False
     is_metric: bool = False
 
@@ -68,7 +94,7 @@ class TableInfo:
     name: str
     full_identifier: str
     columns: list[ColumnInfo] = field(default_factory=list)
-    description: Optional[str] = None
+    description: str | None = None
 
 
 @dataclass
@@ -174,9 +200,7 @@ class DomainContext:
             sections.append("## Relationships\n")
             for rel in self.relationships:
                 join_desc = ", ".join(rel.join_keys)
-                sections.append(
-                    f"- {rel.left_table} <-> {rel.right_table} ON ({join_desc})"
-                )
+                sections.append(f"- {rel.left_table} <-> {rel.right_table} ON ({join_desc})")
             sections.append("")
 
         # Business rules section
@@ -229,7 +253,7 @@ class SchemaParser:
             schema_path: Path to the YAML schema configuration file
         """
         self.schema_path = Path(schema_path)
-        self._raw_config: Optional[dict] = None
+        self._raw_config: dict | None = None
 
     def parse(self) -> DomainContext:
         """Parse schema and extract domain context.
@@ -280,7 +304,7 @@ class SchemaParser:
         if not self.schema_path.exists():
             raise FileNotFoundError(f"Schema file not found: {self.schema_path}")
 
-        with open(self.schema_path, "r", encoding="utf-8") as f:
+        with open(self.schema_path, encoding="utf-8") as f:
             content = f.read()
 
         # Substitute environment variables
@@ -425,7 +449,7 @@ class SchemaParser:
 
         return table_columns
 
-    def _get_table_description(self, table_name: str) -> Optional[str]:
+    def _get_table_description(self, table_name: str) -> str | None:
         """Extract table description from instructions.
 
         Args:
@@ -530,9 +554,7 @@ class SchemaParser:
             header_match = re.match(r"^([^:]+):\s*$", line_stripped)
             if header_match:
                 section_name = header_match.group(1).lower()
-                in_rules_section = any(
-                    header in section_name for header in section_headers
-                )
+                in_rules_section = any(header in section_name for header in section_headers)
                 continue
 
             # Empty line resets section context (simple heuristic)
@@ -594,9 +616,7 @@ class SchemaParser:
 
         return examples
 
-    def _infer_metrics(
-        self, tables: list[TableInfo], instructions: str
-    ) -> list[str]:
+    def _infer_metrics(self, tables: list[TableInfo], instructions: str) -> list[str]:
         """Infer metric names from tables and instructions.
 
         Args:
@@ -622,10 +642,7 @@ class SchemaParser:
                 metric_name = match.group(1).strip()
                 metric_def = match.group(2).strip()
                 # Only include if it looks like a metric definition
-                if any(
-                    keyword in metric_def.lower()
-                    for keyword in ["sum", "count", "avg", "average", "/", "*", "+"]
-                ):
+                if any(keyword in metric_def.lower() for keyword in ["sum", "count", "avg", "average", "/", "*", "+"]):
                     metrics.append(f"{metric_name} = {metric_def}")
 
         return metrics
@@ -644,7 +661,7 @@ class SchemaParser:
 
         return hashlib.md5(content).hexdigest()
 
-    def get_raw_config(self) -> Optional[dict]:
+    def get_raw_config(self) -> dict | None:
         """Get the raw parsed configuration.
 
         Returns:

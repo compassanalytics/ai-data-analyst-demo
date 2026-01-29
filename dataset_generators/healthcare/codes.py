@@ -7,13 +7,12 @@ Includes both real ICD-10/CPT codes for the clean star schema and synthetic code
 for the dirty super table.
 """
 
-from typing import List, Tuple, Dict
 
 # =============================================================================
 # ICD-10 CODES - CLEAN VERSION (Real codes for star schema)
 # =============================================================================
 
-ICD10_CODES_CLEAN: List[Tuple[str, str, str]] = [
+ICD10_CODES_CLEAN: list[tuple[str, str, str]] = [
     # Diabetes (E11.x - Type 2 Diabetes Mellitus)
     ("E11.9", "Type 2 diabetes mellitus without complications", "Diabetes"),
     ("E11.65", "Type 2 diabetes mellitus with hyperglycemia", "Diabetes"),
@@ -21,21 +20,18 @@ ICD10_CODES_CLEAN: List[Tuple[str, str, str]] = [
     ("E11.22", "Type 2 diabetes mellitus with diabetic CKD", "Diabetes"),
     ("E11.40", "Type 2 diabetes mellitus with diabetic neuropathy", "Diabetes"),
     ("E11.51", "Type 2 diabetes mellitus with diabetic peripheral angiopathy", "Diabetes"),
-
     # Hypertension (I10.x - Essential Hypertension)
     ("I10", "Essential (primary) hypertension", "Cardiovascular"),
     ("I11.0", "Hypertensive heart disease with heart failure", "Cardiovascular"),
     ("I11.9", "Hypertensive heart disease without heart failure", "Cardiovascular"),
     ("I12.9", "Hypertensive chronic kidney disease", "Cardiovascular"),
     ("I13.0", "Hypertensive heart and CKD with heart failure", "Cardiovascular"),
-
     # Heart disease (I25.x - Chronic Ischemic Heart Disease)
     ("I25.10", "Atherosclerotic heart disease of native coronary artery", "Cardiovascular"),
     ("I25.5", "Ischemic cardiomyopathy", "Cardiovascular"),
     ("I25.9", "Chronic ischemic heart disease, unspecified", "Cardiovascular"),
     ("I50.9", "Heart failure, unspecified", "Cardiovascular"),
     ("I48.91", "Unspecified atrial fibrillation", "Cardiovascular"),
-
     # Respiratory (J06.x, J18.x)
     ("J06.9", "Acute upper respiratory infection, unspecified", "Respiratory"),
     ("J18.9", "Pneumonia, unspecified organism", "Respiratory"),
@@ -43,7 +39,6 @@ ICD10_CODES_CLEAN: List[Tuple[str, str, str]] = [
     ("J44.9", "COPD, unspecified", "Respiratory"),
     ("J45.20", "Mild intermittent asthma, uncomplicated", "Respiratory"),
     ("J45.40", "Moderate persistent asthma, uncomplicated", "Respiratory"),
-
     # Mental health (F32.x - Depression, F41.x - Anxiety)
     ("F32.0", "Major depressive disorder, single episode, mild", "Mental Health"),
     ("F32.1", "Major depressive disorder, single episode, moderate", "Mental Health"),
@@ -51,7 +46,6 @@ ICD10_CODES_CLEAN: List[Tuple[str, str, str]] = [
     ("F41.0", "Panic disorder", "Mental Health"),
     ("F41.1", "Generalized anxiety disorder", "Mental Health"),
     ("F41.9", "Anxiety disorder, unspecified", "Mental Health"),
-
     # Musculoskeletal (M54.x - Back Pain)
     ("M54.5", "Low back pain", "Musculoskeletal"),
     ("M54.2", "Cervicalgia", "Musculoskeletal"),
@@ -60,7 +54,6 @@ ICD10_CODES_CLEAN: List[Tuple[str, str, str]] = [
     ("M25.50", "Pain in unspecified joint", "Musculoskeletal"),
     ("M17.11", "Primary osteoarthritis, right knee", "Musculoskeletal"),
     ("M17.12", "Primary osteoarthritis, left knee", "Musculoskeletal"),
-
     # Symptoms (R10.x - Abdominal Pain, other R codes)
     ("R10.9", "Unspecified abdominal pain", "Symptoms"),
     ("R10.11", "Right upper quadrant pain", "Symptoms"),
@@ -69,7 +62,6 @@ ICD10_CODES_CLEAN: List[Tuple[str, str, str]] = [
     ("R05", "Cough", "Symptoms"),
     ("R50.9", "Fever, unspecified", "Symptoms"),
     ("R53.83", "Other fatigue", "Symptoms"),
-
     # Additional common diagnoses
     ("K21.0", "Gastroesophageal reflux disease with esophagitis", "Gastrointestinal"),
     ("N39.0", "Urinary tract infection, site not specified", "Genitourinary"),
@@ -81,7 +73,7 @@ ICD10_CODES_CLEAN: List[Tuple[str, str, str]] = [
 # ICD CODES - DIRTY VERSION (Synthetic/fictional codes for super table)
 # =============================================================================
 
-ICD_CODES_DIRTY: List[Tuple[str, str]] = [
+ICD_CODES_DIRTY: list[tuple[str, str]] = [
     # Synthetic codes - NOT real ICD codes
     ("DX-001", "Synthetic Diagnosis Type A"),
     ("DX-002", "Synthetic Diagnosis Type B"),
@@ -117,7 +109,7 @@ ICD_CODES_DIRTY: List[Tuple[str, str]] = [
 # CPT CODES (Procedure Codes)
 # =============================================================================
 
-CPT_CODES: List[Tuple[str, str, str]] = [
+CPT_CODES: list[tuple[str, str, str]] = [
     # Evaluation & Management (E&M)
     ("99213", "Office visit, established patient, low complexity", "E&M"),
     ("99214", "Office visit, established patient, moderate complexity", "E&M"),
@@ -125,7 +117,6 @@ CPT_CODES: List[Tuple[str, str, str]] = [
     ("99203", "Office visit, new patient, low complexity", "E&M"),
     ("99204", "Office visit, new patient, moderate complexity", "E&M"),
     ("99205", "Office visit, new patient, high complexity", "E&M"),
-
     # Hospital Care
     ("99221", "Initial hospital care, straightforward", "Hospital"),
     ("99222", "Initial hospital care, moderate complexity", "Hospital"),
@@ -135,14 +126,12 @@ CPT_CODES: List[Tuple[str, str, str]] = [
     ("99233", "Subsequent hospital care, high complexity", "Hospital"),
     ("99238", "Hospital discharge day management, 30 min or less", "Hospital"),
     ("99239", "Hospital discharge day management, more than 30 min", "Hospital"),
-
     # Emergency Department
     ("99281", "ED visit, self-limited problem", "Emergency"),
     ("99282", "ED visit, low severity", "Emergency"),
     ("99283", "ED visit, moderate severity", "Emergency"),
     ("99284", "ED visit, high severity", "Emergency"),
     ("99285", "ED visit, high severity with threat to life", "Emergency"),
-
     # Laboratory
     ("80053", "Comprehensive metabolic panel", "Laboratory"),
     ("85025", "Complete blood count with differential", "Laboratory"),
@@ -151,7 +140,6 @@ CPT_CODES: List[Tuple[str, str, str]] = [
     ("80061", "Lipid panel", "Laboratory"),
     ("84443", "Thyroid stimulating hormone (TSH)", "Laboratory"),
     ("81001", "Urinalysis with microscopy", "Laboratory"),
-
     # Imaging
     ("71046", "Chest X-ray, 2 views", "Imaging"),
     ("74176", "CT abdomen and pelvis without contrast", "Imaging"),
@@ -159,7 +147,6 @@ CPT_CODES: List[Tuple[str, str, str]] = [
     ("70553", "MRI brain with and without contrast", "Imaging"),
     ("93306", "Echocardiography, complete", "Imaging"),
     ("73030", "Shoulder X-ray, complete", "Imaging"),
-
     # Procedures
     ("93000", "Electrocardiogram, routine", "Cardiology"),
     ("94010", "Spirometry", "Pulmonology"),
@@ -170,7 +157,7 @@ CPT_CODES: List[Tuple[str, str, str]] = [
 # SPECIALTIES (Provider Specialties with weights)
 # =============================================================================
 
-SPECIALTIES: List[Tuple[str, float]] = [
+SPECIALTIES: list[tuple[str, float]] = [
     ("Primary Care", 0.25),
     ("Internal Medicine", 0.15),
     ("Emergency Medicine", 0.10),
@@ -193,7 +180,7 @@ SPECIALTIES: List[Tuple[str, float]] = [
 # PAYER TYPES (Insurance Payers with weights and plan types)
 # =============================================================================
 
-PAYER_TYPES: List[Tuple[str, float, List[str]]] = [
+PAYER_TYPES: list[tuple[str, float, list[str]]] = [
     ("Medicare", 0.30, ["Medicare Advantage", "Medicare FFS", "Medicare Supplement"]),
     ("Medicaid", 0.15, ["Medicaid Managed Care", "Medicaid FFS"]),
     ("Blue Cross Blue Shield", 0.15, ["BCBS PPO", "BCBS HMO", "BCBS EPO"]),
@@ -209,7 +196,7 @@ PAYER_TYPES: List[Tuple[str, float, List[str]]] = [
 # ENCOUNTER TYPES (Encounter types with weights)
 # =============================================================================
 
-ENCOUNTER_TYPES: List[Tuple[str, float]] = [
+ENCOUNTER_TYPES: list[tuple[str, float]] = [
     ("Outpatient", 0.60),
     ("Inpatient", 0.15),
     ("Emergency", 0.12),
@@ -221,7 +208,7 @@ ENCOUNTER_TYPES: List[Tuple[str, float]] = [
 # FACILITY NAMES (Fictional hospital names)
 # =============================================================================
 
-FACILITY_NAMES: List[str] = [
+FACILITY_NAMES: list[str] = [
     "Mercy General Hospital",
     "St. Mary's Medical Center",
     "Community Health Regional",
@@ -246,7 +233,7 @@ FACILITY_NAMES: List[str] = [
 # MEDICATIONS (Medications by category)
 # =============================================================================
 
-MEDICATIONS: Dict[str, List[Tuple[str, str, str]]] = {
+MEDICATIONS: dict[str, list[tuple[str, str, str]]] = {
     "Diabetes": [
         ("Metformin", "500mg", "Tablet"),
         ("Metformin", "1000mg", "Tablet"),
@@ -336,7 +323,7 @@ MEDICATIONS: Dict[str, List[Tuple[str, str, str]]] = {
 # PROVIDER CREDENTIALS
 # =============================================================================
 
-PROVIDER_CREDENTIALS: List[str] = [
+PROVIDER_CREDENTIALS: list[str] = [
     "MD",
     "DO",
     "NP",
@@ -350,7 +337,7 @@ PROVIDER_CREDENTIALS: List[str] = [
 # CLAIM STATUS CODES
 # =============================================================================
 
-CLAIM_STATUS: List[Tuple[str, float]] = [
+CLAIM_STATUS: list[tuple[str, float]] = [
     ("Paid", 0.70),
     ("Pending", 0.12),
     ("Denied", 0.08),

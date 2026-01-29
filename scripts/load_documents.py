@@ -29,10 +29,11 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.config import Config
-
 # Default configuration (can be overridden by environment variables)
 import os
+
+from src.config import Config
+
 DEFAULT_DOCS_DIR = Path(__file__).parent.parent / "data" / "documents"
 DEFAULT_CATALOG = os.getenv("VS_CATALOG", "workspace")
 DEFAULT_SCHEMA = os.getenv("VS_SCHEMA", "rag_demo")
@@ -124,16 +125,20 @@ def chunk_document(
     chunks = []
     for i, text in enumerate(texts):
         chunk_id = generate_chunk_id(text, source, i)
-        chunks.append({
-            "id": chunk_id,
-            "content": text.strip(),
-            "source": source,
-            "metadata": json.dumps({
-                "position": i,
-                "total_chunks": len(texts),
-                "char_count": len(text),
-            }),
-        })
+        chunks.append(
+            {
+                "id": chunk_id,
+                "content": text.strip(),
+                "source": source,
+                "metadata": json.dumps(
+                    {
+                        "position": i,
+                        "total_chunks": len(texts),
+                        "char_count": len(text),
+                    }
+                ),
+            }
+        )
 
     return chunks
 
@@ -160,7 +165,7 @@ def simple_chunk(content: str, chunk_size: int, overlap: int) -> list[str]:
         if end < len(content):
             last_para = chunk.rfind("\n\n")
             if last_para > chunk_size // 2:
-                chunk = content[start:start + last_para]
+                chunk = content[start : start + last_para]
                 end = start + last_para
 
         chunks.append(chunk)
@@ -196,8 +201,7 @@ def load_chunks_to_delta(
     if dry_run:
         print(f"   [DRY RUN] Would insert {len(chunks)} rows")
         for i, chunk in enumerate(chunks[:3]):
-            print(f"   Sample {i+1}: id={chunk['id']}, source={chunk['source']}, "
-                  f"content={chunk['content'][:50]}...")
+            print(f"   Sample {i + 1}: id={chunk['id']}, source={chunk['source']}, content={chunk['content'][:50]}...")
         if len(chunks) > 3:
             print(f"   ... and {len(chunks) - 3} more")
         return True
@@ -211,7 +215,7 @@ def load_chunks_to_delta(
         )
 
         # Clear existing data (optional - could use MERGE instead)
-        print(f"   ⏳ Clearing existing data...")
+        print("   ⏳ Clearing existing data...")
         client.statement_execution.execute_statement(
             warehouse_id=config.warehouse_id,
             statement=f"TRUNCATE TABLE {full_name}",
@@ -221,7 +225,7 @@ def load_chunks_to_delta(
         # Insert chunks in batches
         batch_size = 100
         for i in range(0, len(chunks), batch_size):
-            batch = chunks[i:i + batch_size]
+            batch = chunks[i : i + batch_size]
 
             # Build VALUES clause
             values_list = []
@@ -231,13 +235,11 @@ def load_chunks_to_delta(
                 source_escaped = chunk["source"].replace("'", "''")
                 metadata_escaped = chunk["metadata"].replace("'", "''")
 
-                values_list.append(
-                    f"('{chunk['id']}', '{content_escaped}', '{source_escaped}', '{metadata_escaped}')"
-                )
+                values_list.append(f"('{chunk['id']}', '{content_escaped}', '{source_escaped}', '{metadata_escaped}')")
 
             sql = f"""
             INSERT INTO {full_name} (id, content, source, metadata)
-            VALUES {', '.join(values_list)}
+            VALUES {", ".join(values_list)}
             """
 
             client.statement_execution.execute_statement(
@@ -246,7 +248,7 @@ def load_chunks_to_delta(
                 wait_timeout="50s",
             )
 
-            print(f"   ... Inserted batch {i//batch_size + 1}/{(len(chunks)-1)//batch_size + 1}")
+            print(f"   ... Inserted batch {i // batch_size + 1}/{(len(chunks) - 1) // batch_size + 1}")
 
         print(f"   ✅ Loaded {len(chunks)} chunks successfully")
         return True
@@ -293,11 +295,11 @@ def sync_vector_search_index(
         )
 
         # Trigger sync
-        print(f"   ⏳ Triggering sync...")
+        print("   ⏳ Triggering sync...")
         index.sync()
 
-        print(f"   ✅ Sync triggered. Embeddings will be generated automatically.")
-        print(f"   ℹ️  Check sync status in Databricks UI or wait a few minutes.")
+        print("   ✅ Sync triggered. Embeddings will be generated automatically.")
+        print("   ℹ️  Check sync status in Databricks UI or wait a few minutes.")
         return True
 
     except Exception as e:
@@ -380,14 +382,14 @@ def main():
             print("❌ WAREHOUSE_ID is required for SQL operations")
             sys.exit(1)
 
-    print(f"\n📋 Configuration:")
+    print("\n📋 Configuration:")
     print(f"   Documents: {args.docs_dir}")
     print(f"   Target: {args.catalog}.{args.schema}.{args.table}")
     print(f"   Chunk size: {args.chunk_size} chars")
     print(f"   Chunk overlap: {args.chunk_overlap} chars")
 
     if args.dry_run:
-        print(f"\n🔍 DRY RUN MODE - No changes will be made\n")
+        print("\n🔍 DRY RUN MODE - No changes will be made\n")
 
     # Step 1: Read documents
     print(f"\n📖 Reading documents from {args.docs_dir}...")
@@ -400,7 +402,7 @@ def main():
     print(f"   Found {len(documents)} documents")
 
     # Step 2: Chunk documents
-    print(f"\n✂️  Chunking documents...")
+    print("\n✂️  Chunking documents...")
     all_chunks = []
 
     for filename, content in documents:
@@ -447,13 +449,15 @@ def main():
         print(f"\n   Loaded: {len(all_chunks)} chunks from {len(documents)} documents")
 
         if not args.sync:
-            print(f"\n   Next: Sync the index to generate embeddings:")
-            print(f"   uv run python scripts/load_documents.py --sync")
+            print("\n   Next: Sync the index to generate embeddings:")
+            print("   uv run python scripts/load_documents.py --sync")
         else:
-            print(f"\n   Index sync triggered. Wait a few minutes for embeddings.")
+            print("\n   Index sync triggered. Wait a few minutes for embeddings.")
 
-        print(f"\n   Test with:")
-        print(f"   uv run python -c \"from src.agents.rag_agent import RAGAgent; from src.config import Config; r = RAGAgent(Config.from_env()); print(r.query('What is the refund policy?').answer)\"")
+        print("\n   Test with:")
+        print(
+            "   uv run python -c \"from src.agents.rag_agent import RAGAgent; from src.config import Config; r = RAGAgent(Config.from_env()); print(r.query('What is the refund policy?').answer)\""
+        )
 
 
 if __name__ == "__main__":

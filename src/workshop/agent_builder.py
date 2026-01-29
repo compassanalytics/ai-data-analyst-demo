@@ -28,11 +28,12 @@ from __future__ import annotations
 
 import operator
 import uuid
-from dataclasses import dataclass, field
-from typing import Annotated, Any, Callable, Literal, Sequence, TypedDict
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from typing import Annotated, Any, Literal, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
-from langchain_core.tools import StructuredTool, tool
+from langchain_core.tools import StructuredTool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
@@ -236,7 +237,7 @@ class AgentBuilder:
         self._max_iterations: int = 5
         self._graph: StateGraph | None = None
 
-    def set_system_prompt(self, prompt: str) -> "AgentBuilder":
+    def set_system_prompt(self, prompt: str) -> AgentBuilder:
         """Set the system prompt for the agent.
 
         The system prompt provides instructions and context for the LLM,
@@ -260,7 +261,7 @@ class AgentBuilder:
         description: str,
         function: Callable,
         args_schema: Any | None = None,
-    ) -> "AgentBuilder":
+    ) -> AgentBuilder:
         """Add a tool to the agent.
 
         Tools are functions the agent can call to perform actions or
@@ -298,7 +299,7 @@ class AgentBuilder:
         keywords: list[str],
         tool_name: str,
         priority: int = 0,
-    ) -> "AgentBuilder":
+    ) -> AgentBuilder:
         """Add a routing rule for mock mode.
 
         Routing rules enable keyword-based tool selection without
@@ -325,7 +326,7 @@ class AgentBuilder:
         self._routing_rules.sort(key=lambda r: r.priority, reverse=True)
         return self
 
-    def enable_memory(self, thread_id: str = "default") -> "AgentBuilder":
+    def enable_memory(self, thread_id: str = "default") -> AgentBuilder:
         """Enable conversation memory/persistence.
 
         When memory is enabled, the agent maintains conversation history
@@ -344,7 +345,7 @@ class AgentBuilder:
         self._thread_id = thread_id
         return self
 
-    def set_max_iterations(self, max_iterations: int) -> "AgentBuilder":
+    def set_max_iterations(self, max_iterations: int) -> AgentBuilder:
         """Set the maximum number of agent iterations.
 
         This safety limit prevents infinite loops in the agent graph.
@@ -401,8 +402,7 @@ class AgentBuilder:
                     llm_with_tools = llm
             except ImportError:
                 raise ImportError(
-                    "databricks-langchain is required for real mode. "
-                    "Install with: pip install databricks-langchain"
+                    "databricks-langchain is required for real mode. Install with: pip install databricks-langchain"
                 )
 
         def mock_route_query(question: str) -> tuple[str | None, dict[str, Any]]:
@@ -428,11 +428,7 @@ class AgentBuilder:
             if iteration >= max_iterations:
                 print(f"[AgentBuilder] Max iterations ({max_iterations}) reached")
                 return {
-                    "messages": [
-                        AIMessage(
-                            content="I've reached my iteration limit. Here's what I found so far."
-                        )
-                    ],
+                    "messages": [AIMessage(content="I've reached my iteration limit. Here's what I found so far.")],
                     "next_step": "end",
                     "iteration_count": iteration,
                 }
@@ -509,9 +505,7 @@ class AgentBuilder:
                 if system_prompt:
                     from langchain_core.messages import SystemMessage
 
-                    invoke_messages = [SystemMessage(content=system_prompt)] + list(
-                        messages
-                    )
+                    invoke_messages = [SystemMessage(content=system_prompt)] + list(messages)
 
                 response = llm_with_tools.invoke(invoke_messages)
 

@@ -43,13 +43,13 @@ FAILURE SCENARIOS DEMONSTRATED:
 
 import os
 import random
-from datetime import datetime, timedelta
 import uuid
+from datetime import datetime, timedelta
 
 import pandas as pd
 from faker import Faker
 
-fake = Faker('en_US')
+fake = Faker("en_US")
 
 # Failure scenario documentation
 FINANCE_FAILURE_SCENARIOS = """
@@ -112,40 +112,40 @@ def generate_finance_super_table(n_rows: int = 500000) -> pd.DataFrame:
     records = []
 
     # Pre-generate some reference data for consistency
-    regions = ['Northeast', 'Southeast', 'Midwest', 'Southwest', 'West']
-    region_codes = ['NE', 'SE', 'MW', 'SW', 'W']
+    regions = ["Northeast", "Southeast", "Midwest", "Southwest", "West"]
+    region_codes = ["NE", "SE", "MW", "SW", "W"]
 
-    segments = ['Retail', 'Mass Affluent', 'High Net Worth', 'Private Banking', 'Institutional']
-    segment_codes = ['R', 'MA', 'HNW', 'PB', 'INST']
+    segments = ["Retail", "Mass Affluent", "High Net Worth", "Private Banking", "Institutional"]
+    segment_codes = ["R", "MA", "HNW", "PB", "INST"]
 
-    risk_names = ['Low', 'Medium', 'Medium-High', 'High']
-    risk_codes = ['L', 'M', 'MH', 'H']
+    risk_names = ["Low", "Medium", "Medium-High", "High"]
+    risk_codes = ["L", "M", "MH", "H"]
 
-    kyc_names = ['Verified', 'Pending', 'Expired', 'Enhanced Due Diligence']
-    kyc_codes = ['V', 'P', 'X', 'EDD']
+    kyc_names = ["Verified", "Pending", "Expired", "Enhanced Due Diligence"]
+    kyc_codes = ["V", "P", "X", "EDD"]
 
     tx_types = [
-        ('DEP', 'Deposit', 1),
-        ('WD', 'Withdrawal', 2),
-        ('TRF', 'Transfer', 3),
-        ('PYM', 'Payment', 4),
-        ('FEE', 'Fee', 5),
-        ('INT', 'Interest', 6),
+        ("DEP", "Deposit", 1),
+        ("WD", "Withdrawal", 2),
+        ("TRF", "Transfer", 3),
+        ("PYM", "Payment", 4),
+        ("FEE", "Fee", 5),
+        ("INT", "Interest", 6),
     ]
 
-    channels = ['Online Banking', 'Mobile App', 'ATM', 'Branch', 'Wire', 'ACH']
+    channels = ["Online Banking", "Mobile App", "ATM", "Branch", "Wire", "ACH"]
     channel_nums = [1, 2, 3, 4, 5, 6]
 
     # Generate a pool of consistent IDs to reuse
     num_customers = min(n_rows // 10, 50000)
     num_accounts = min(n_rows // 5, 80000)
 
-    customer_ids = [f'CUST-{i:06d}' for i in range(1, num_customers + 1)]
+    customer_ids = [f"CUST-{i:06d}" for i in range(1, num_customers + 1)]
     customer_nums = list(range(1, num_customers + 1))
-    party_ids = [f'PTY-{i:08d}' for i in range(100000, 100000 + num_customers)]
-    client_ids = [f'CLT-{i:07d}' for i in range(1, num_customers + 1)]
+    party_ids = [f"PTY-{i:08d}" for i in range(100000, 100000 + num_customers)]
+    client_ids = [f"CLT-{i:07d}" for i in range(1, num_customers + 1)]
 
-    account_nums = [''.join([str(random.randint(0, 9)) for _ in range(10)]) for _ in range(num_accounts)]
+    account_nums = ["".join([str(random.randint(0, 9)) for _ in range(10)]) for _ in range(num_accounts)]
 
     for i in range(n_rows):
         # Generate base transaction date
@@ -170,14 +170,14 @@ def generate_finance_super_table(n_rows: int = 500000) -> pd.DataFrame:
         is_usd = random.random() < 0.75
         if is_usd:
             fx_rate = 1.0
-            ccy = 'USD'
-            ccy_name = 'US Dollar'
+            ccy = "USD"
+            ccy_name = "US Dollar"
             iso_code = 840
         else:
             fx_rate = round(random.uniform(0.7, 1.5), 4)
-            ccy = random.choice(['EUR', 'GBP', 'CAD', 'CHF'])
-            ccy_names = {'EUR': 'Euro', 'GBP': 'British Pound', 'CAD': 'Canadian Dollar', 'CHF': 'Swiss Franc'}
-            iso_codes = {'EUR': 978, 'GBP': 826, 'CAD': 124, 'CHF': 756}
+            ccy = random.choice(["EUR", "GBP", "CAD", "CHF"])
+            ccy_names = {"EUR": "Euro", "GBP": "British Pound", "CAD": "Canadian Dollar", "CHF": "Swiss Franc"}
+            iso_codes = {"EUR": 978, "GBP": 826, "CAD": 124, "CHF": 756}
             ccy_name = ccy_names[ccy]
             iso_code = iso_codes[ccy]
 
@@ -205,127 +205,114 @@ def generate_finance_super_table(n_rows: int = 500000) -> pd.DataFrame:
         ref_num = str(uuid.uuid4()).upper()[:12]
 
         # Boolean value - intentionally mixed formats
-        bool_formats = [0, 1, 'Y', 'N', True, False, 'Yes', 'No']
-        is_pending_val = random.choice(bool_formats) if random.random() < 0.1 else random.choice([0, False, 'N', 'No'])
+        bool_formats = [0, 1, "Y", "N", True, False, "Yes", "No"]
+        is_pending_val = random.choice(bool_formats) if random.random() < 0.1 else random.choice([0, False, "N", "No"])
 
         record = {
             # Transaction IDs (6 variations)
-            'txn_id': f'TXN-{i+1:010d}',
-            'transaction_id': i + 1,
-            'trans_id': f'T{i+1:012d}',
-            'TXN_KEY': i + 1,
-            'ref_num': ref_num,
-            'reference_number': ref_num,
-
+            "txn_id": f"TXN-{i + 1:010d}",
+            "transaction_id": i + 1,
+            "trans_id": f"T{i + 1:012d}",
+            "TXN_KEY": i + 1,
+            "ref_num": ref_num,
+            "reference_number": ref_num,
             # Account numbers (6 variations)
-            'acct_num': account_nums[acct_idx],
-            'account_number': account_nums[acct_idx],
-            'ACCTNO': account_nums[acct_idx],
-            'account_id': acct_idx + 1,
-            'acct_id': f'ACCT-{acct_idx+1:08d}',
-            'acct': account_nums[acct_idx][-4:],  # Last 4 only!
-
+            "acct_num": account_nums[acct_idx],
+            "account_number": account_nums[acct_idx],
+            "ACCTNO": account_nums[acct_idx],
+            "account_id": acct_idx + 1,
+            "acct_id": f"ACCT-{acct_idx + 1:08d}",
+            "acct": account_nums[acct_idx][-4:],  # Last 4 only!
             # Customer IDs (6 variations)
-            'cust_id': customer_ids[cust_idx],
-            'customer_id': customer_nums[cust_idx],
-            'CUSTID': customer_ids[cust_idx].replace('-', ''),
-            'party_id': party_ids[cust_idx],
-            'client_id': client_ids[cust_idx],
-            'tax_id': f'XXX-XX-{random.randint(1000, 9999)}',  # Masked
-
+            "cust_id": customer_ids[cust_idx],
+            "customer_id": customer_nums[cust_idx],
+            "CUSTID": customer_ids[cust_idx].replace("-", ""),
+            "party_id": party_ids[cust_idx],
+            "client_id": client_ids[cust_idx],
+            "tax_id": f"XXX-XX-{random.randint(1000, 9999)}",  # Masked
             # Dates (10+ columns with different formats)
-            'trans_date': tx_date.date(),
-            'transaction_date': tx_date.strftime('%m/%d/%Y'),
-            'posting_date': tx_date.strftime('%Y-%m-%d'),
-            'value_date': tx_date.date(),
-            'effective_date': int(tx_date.strftime('%Y%m%d')),
-            'settle_dt': tx_date.strftime('%d-%b-%Y').upper(),
-            'dt': tx_date.date(),
-            'yr': tx_date.year,
-            'mth': tx_date.month,
-            'dy': tx_date.day,
-
+            "trans_date": tx_date.date(),
+            "transaction_date": tx_date.strftime("%m/%d/%Y"),
+            "posting_date": tx_date.strftime("%Y-%m-%d"),
+            "value_date": tx_date.date(),
+            "effective_date": int(tx_date.strftime("%Y%m%d")),
+            "settle_dt": tx_date.strftime("%d-%b-%Y").upper(),
+            "dt": tx_date.date(),
+            "yr": tx_date.year,
+            "mth": tx_date.month,
+            "dy": tx_date.day,
             # Transaction types (4+ variations)
-            'trans_type': tx_code,
-            'transaction_type': tx_name,
-            'TXN_TYPE': tx_code,
-            'type_cd': tx_code[0],
-            'type': tx_num,
-
+            "trans_type": tx_code,
+            "transaction_type": tx_name,
+            "TXN_TYPE": tx_code,
+            "type_cd": tx_code[0],
+            "type": tx_num,
             # Amounts (8 variations)
-            'amt': amount,
-            'amount': amount,
-            'AMT': amount,
-            'amount_usd': amount_usd,
-            'amount_local': amount,
-            'local_amt': amount,
-            'trans_amt': amount,
-            'TRANS_AMT': amount,
-
+            "amt": amount,
+            "amount": amount,
+            "AMT": amount,
+            "amount_usd": amount_usd,
+            "amount_local": amount,
+            "local_amt": amount,
+            "trans_amt": amount,
+            "TRANS_AMT": amount,
             # Currency (6 variations)
-            'ccy': ccy,
-            'currency': ccy_name,
-            'currency_code': ccy,
-            'CCY_CD': iso_code,
-            'fx_rate': fx_rate,
-            'exchange_rate': fx_rate,
-
+            "ccy": ccy,
+            "currency": ccy_name,
+            "currency_code": ccy,
+            "CCY_CD": iso_code,
+            "fx_rate": fx_rate,
+            "exchange_rate": fx_rate,
             # Balances (12 variations)
-            'balance': round(balance, 2),
-            'bal': round(balance, 2),
-            'BAL': round(balance, 2),
-            'current_balance': round(balance, 2),
-            'curr_bal': round(balance, 2),
-            'available_balance': round(balance - hold, 2),
-            'avail_bal': round(balance - hold, 2),
-            'ledger_balance': round(balance * random.uniform(0.98, 1.02), 2),
-            'ldgr_bal': round(balance * random.uniform(0.98, 1.02), 2),
-            'memo_balance': round(balance * random.uniform(0.95, 1.05), 2),
-            'hold_amount': round(hold, 2),
-            'hold_amt': round(hold, 2),
-
+            "balance": round(balance, 2),
+            "bal": round(balance, 2),
+            "BAL": round(balance, 2),
+            "current_balance": round(balance, 2),
+            "curr_bal": round(balance, 2),
+            "available_balance": round(balance - hold, 2),
+            "avail_bal": round(balance - hold, 2),
+            "ledger_balance": round(balance * random.uniform(0.98, 1.02), 2),
+            "ldgr_bal": round(balance * random.uniform(0.98, 1.02), 2),
+            "memo_balance": round(balance * random.uniform(0.95, 1.05), 2),
+            "hold_amount": round(hold, 2),
+            "hold_amt": round(hold, 2),
             # Segment/Risk (8 variations)
-            'seg': segment_codes[seg_idx],
-            'segment': segments[seg_idx],
-            'SEGMENT_CD': segment_codes[seg_idx],
-            'cust_seg': segments[seg_idx] if random.random() < 0.5 else segment_codes[seg_idx],
-            'risk_rating': risk_codes[risk_idx],
-            'risk': risk_names[risk_idx],
-            'kyc_status': kyc_codes[kyc_idx],
-            'kyc': kyc_names[kyc_idx],
-
+            "seg": segment_codes[seg_idx],
+            "segment": segments[seg_idx],
+            "SEGMENT_CD": segment_codes[seg_idx],
+            "cust_seg": segments[seg_idx] if random.random() < 0.5 else segment_codes[seg_idx],
+            "risk_rating": risk_codes[risk_idx],
+            "risk": risk_names[risk_idx],
+            "kyc_status": kyc_codes[kyc_idx],
+            "kyc": kyc_names[kyc_idx],
             # Branch (6 variations)
-            'branch_id': random.randint(1, 50),
-            'branch_cd': f'BR-{random.randint(1, 50):04d}',
-            'BRANCH': f'BR{random.randint(1, 50):04d}',
-            'br': random.randint(1, 50),
-            'region': region_codes[region_idx],
-            'region_name': regions[region_idx],
-
+            "branch_id": random.randint(1, 50),
+            "branch_cd": f"BR-{random.randint(1, 50):04d}",
+            "BRANCH": f"BR{random.randint(1, 50):04d}",
+            "br": random.randint(1, 50),
+            "region": region_codes[region_idx],
+            "region_name": regions[region_idx],
             # Channel (3 variations)
-            'channel': channels[channel_idx],
-            'channel_name': channels[channel_idx],
-            'chnl': channel_nums[channel_idx],
-
+            "channel": channels[channel_idx],
+            "channel_name": channels[channel_idx],
+            "chnl": channel_nums[channel_idx],
             # Status flags (6 variations with mixed formats)
-            'status': random.choice(['A', 'C', 'P', 'D']),
-            'status_desc': random.choice(['Active', 'Completed', 'Pending', 'Declined']),
-            'is_pending': is_pending_val,
-            'is_reversed': random.choice(bool_formats) if random.random() < 0.02 else 0,
-            'flg1': random.choice([0, 1, None]),
-            'flg2': random.choice(['Y', 'N', None, '']),
-
+            "status": random.choice(["A", "C", "P", "D"]),
+            "status_desc": random.choice(["Active", "Completed", "Pending", "Declined"]),
+            "is_pending": is_pending_val,
+            "is_reversed": random.choice(bool_formats) if random.random() < 0.02 else 0,
+            "flg1": random.choice([0, 1, None]),
+            "flg2": random.choice(["Y", "N", None, ""]),
             # Mystery columns (no documentation)
-            'cd1': random.choice(['A', 'B', 'C', 'X', 'Z', None]),
-            'cd2': random.randint(0, 99) if random.random() < 0.8 else None,
-            'val': round(random.uniform(0, 100), 2) if random.random() < 0.7 else None,
-            'cnt': random.randint(1, 10) if random.random() < 0.5 else None,
-            'attr1': fake.word() if random.random() < 0.3 else None,
-
+            "cd1": random.choice(["A", "B", "C", "X", "Z", None]),
+            "cd2": random.randint(0, 99) if random.random() < 0.8 else None,
+            "val": round(random.uniform(0, 100), 2) if random.random() < 0.7 else None,
+            "cnt": random.randint(1, 10) if random.random() < 0.5 else None,
+            "attr1": fake.word() if random.random() < 0.3 else None,
             # Timestamps
-            'created_at': tx_datetime,
-            'modified_dt': (tx_datetime + timedelta(hours=random.randint(0, 48))).strftime('%Y-%m-%d %H:%M:%S'),
-            'etl_ts': datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f'),
+            "created_at": tx_datetime,
+            "modified_dt": (tx_datetime + timedelta(hours=random.randint(0, 48))).strftime("%Y-%m-%d %H:%M:%S"),
+            "etl_ts": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f"),
         }
 
         records.append(record)
@@ -354,12 +341,12 @@ def save_finance_super_table(
 
     # Convert mixed-type columns to string for parquet compatibility
     # This preserves the anti-pattern (mixed formats) while allowing serialization
-    mixed_type_columns = ['is_pending', 'is_reversed', 'flg1', 'flg2']
+    mixed_type_columns = ["is_pending", "is_reversed", "flg1", "flg2"]
     for col in mixed_type_columns:
         if col in df.columns:
             df[col] = df[col].astype(str)
 
-    output_path = os.path.join(output_dir, 'finance_super_table.parquet')
+    output_path = os.path.join(output_dir, "finance_super_table.parquet")
     df.to_parquet(output_path, index=False)
     print(f"    Saved {output_path} ({len(df):,} rows, {len(df.columns)} columns)")
 

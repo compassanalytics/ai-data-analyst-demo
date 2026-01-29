@@ -11,7 +11,7 @@ import logging
 import re
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from src.config import Config
 
@@ -275,7 +275,7 @@ class PlannerAgent:
         """
         space_descriptions = []
         for config in self.space_configs:
-            desc = f'- **{config.name}**: {config.domain or "General data queries"}'
+            desc = f"- **{config.name}**: {config.domain or 'General data queries'}"
             space_descriptions.append(desc)
 
         spaces_text = "\n".join(space_descriptions)

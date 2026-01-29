@@ -5,12 +5,12 @@ enabling infrastructure-as-code workflows for AI/BI configuration.
 """
 
 from infra.genie_space_manager import (
+    ExampleSQL,
     GenieSpaceConfig,
     GenieSpaceManager,
     JoinSpec,
     SampleQuestion,
     TableSource,
-    ExampleSQL,
 )
 
 __all__ = [

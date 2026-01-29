@@ -158,15 +158,10 @@ def create_catalog_and_schemas(
         print(f"  ⚠ Could not create catalog (may already exist or need permissions): {e}")
 
     # Create staging volume schema and volume for uploads
-    print(f"\nCreating staging schema and volume...")
+    print("\nCreating staging schema and volume...")
     try:
         execute_sql(client, warehouse_id, f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.staging", dry_run)
-        execute_sql(
-            client,
-            warehouse_id,
-            f"CREATE VOLUME IF NOT EXISTS {CATALOG}.staging.uploads",
-            dry_run
-        )
+        execute_sql(client, warehouse_id, f"CREATE VOLUME IF NOT EXISTS {CATALOG}.staging.uploads", dry_run)
         print(f"  ✓ Staging volume {CATALOG}.staging.uploads ready")
     except Exception as e:
         print(f"  ⚠ Could not create staging volume: {e}")
@@ -203,7 +198,7 @@ def load_domain_tables(
     tables = DOMAINS[domain]["tables"]
     results = {}
 
-    print(f"\n" + "=" * 60)
+    print("\n" + "=" * 60)
     print(f"Loading {domain.upper()} Domain Tables")
     print(f"Schema: {CATALOG}.{schema}")
     print("=" * 60)

@@ -28,12 +28,13 @@ class CleanlinessLevel(IntEnum):
     Higher values indicate cleaner data with fewer issues.
     Lower values introduce more anti-patterns, inconsistencies, and traps.
     """
-    PRISTINE = 100      # Perfect star schema, no issues
-    MOSTLY_CLEAN = 85   # Minor naming inconsistencies
-    MODERATE = 70       # Some denormalization, mixed naming
-    MESSY = 50          # Significant issues, partial denormalization
-    CHAOTIC = 25        # Heavy anti-patterns, trap columns
-    NIGHTMARE = 0       # Everything wrong, maximum confusion
+
+    PRISTINE = 100  # Perfect star schema, no issues
+    MOSTLY_CLEAN = 85  # Minor naming inconsistencies
+    MODERATE = 70  # Some denormalization, mixed naming
+    MESSY = 50  # Significant issues, partial denormalization
+    CHAOTIC = 25  # Heavy anti-patterns, trap columns
+    NIGHTMARE = 0  # Everything wrong, maximum confusion
 
 
 def scale_count(base: int, scale: float) -> int:

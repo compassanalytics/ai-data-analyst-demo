@@ -6,22 +6,21 @@ in parallel, with support for retries, timeouts, and progress tracking.
 
 from __future__ import annotations
 
-import time
 import random
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
+import time
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
-from src.config import Config
 from src.agents.genie_agent import GenieDataAgent, GenieResult
-from src.utils.errors import AgentError, classify_error, ErrorCategory
+from src.config import Config
 from src.utils.cache import QueryCache, get_query_cache
 from src.utils.circuit_breaker import (
-    CircuitBreaker,
-    CircuitBreakerConfig,
     CircuitBreakerRegistry,
     CircuitOpenError,
 )
+from src.utils.errors import AgentError, ErrorCategory, classify_error
 
 
 @dataclass
@@ -75,8 +74,8 @@ class ResultMetadata:
     query_time_seconds: float
     success: bool
     retries_used: int = 0
-    error_category: Optional[ErrorCategory] = None
-    error_retryable: Optional[bool] = None
+    error_category: ErrorCategory | None = None
+    error_retryable: bool | None = None
     cached: bool = False
 
 
@@ -116,7 +115,7 @@ class MultiGenieResult:
         """Check if at least one query succeeded."""
         return any(r.success for r in self.results.values())
 
-    def get_by_name(self, name: str) -> Optional[GenieResult]:
+    def get_by_name(self, name: str) -> GenieResult | None:
         """Get result by space name.
 
         Args:
@@ -167,11 +166,7 @@ class MultiGenieResult:
         Returns:
             Dictionary of retryable AgentError objects keyed by space name
         """
-        return {
-            name: error
-            for name, error in self.classified_errors.items()
-            if error.retryable
-        }
+        return {name: error for name, error in self.classified_errors.items() if error.retryable}
 
     def to_combined_markdown(self, max_rows_per_space: int = 5) -> str:
         """Combine all results into a single markdown document.
@@ -230,11 +225,11 @@ class MultiGenieOrchestrator:
     def __init__(
         self,
         space_configs: list[GenieSpaceConfig],
-        base_config: Optional[Config] = None,
+        base_config: Config | None = None,
         max_concurrency: int = 3,
-        progress_callback: Optional[Callable[[str, str], None]] = None,
-        circuit_breaker_registry: Optional[CircuitBreakerRegistry] = None,
-        cache: Optional[QueryCache] = None,
+        progress_callback: Callable[[str, str], None] | None = None,
+        circuit_breaker_registry: CircuitBreakerRegistry | None = None,
+        cache: QueryCache | None = None,
     ):
         """Initialize the Multi-Genie Orchestrator.
 
@@ -309,7 +304,7 @@ class MultiGenieOrchestrator:
         self,
         space_config: GenieSpaceConfig,
         question: str,
-    ) -> tuple[GenieResult, float, int, Optional[AgentError]]:
+    ) -> tuple[GenieResult, float, int, AgentError | None]:
         """Query a single space with retry logic.
 
         Args:
@@ -323,8 +318,8 @@ class MultiGenieOrchestrator:
         timeout_deadline = start_time + space_config.timeout_seconds
         agent = self._get_agent(space_config)
         retries_used = 0
-        last_result: Optional[GenieResult] = None
-        last_classified_error: Optional[AgentError] = None
+        last_result: GenieResult | None = None
+        last_classified_error: AgentError | None = None
 
         for attempt in range(space_config.retry_count + 1):
             # Check if we've exceeded the overall timeout
@@ -336,20 +331,22 @@ class MultiGenieOrchestrator:
                     TimeoutError(f"Timeout after {elapsed:.2f}s"),
                     context={"space_name": space_config.name, "space_id": space_config.space_id},
                 )
-                return GenieResult(
-                    success=False,
-                    error=f"Timeout after {elapsed:.2f}s",
-                    error_details=timeout_error,
-                ), elapsed, retries_used, timeout_error
+                return (
+                    GenieResult(
+                        success=False,
+                        error=f"Timeout after {elapsed:.2f}s",
+                        error_details=timeout_error,
+                    ),
+                    elapsed,
+                    retries_used,
+                    timeout_error,
+                )
 
             self._notify_progress(space_config.name, f"Querying (attempt {attempt + 1})")
 
             try:
                 # Use the remaining time as the query timeout
-                effective_timeout = min(
-                    int(remaining_time),
-                    space_config.timeout_seconds
-                )
+                effective_timeout = min(int(remaining_time), space_config.timeout_seconds)
                 result = agent.query(
                     question,
                     timeout_seconds=effective_timeout,
@@ -397,7 +394,7 @@ class MultiGenieOrchestrator:
             if attempt < space_config.retry_count:
                 retries_used += 1
                 # Exponential backoff with jitter: base * 2^attempt + jitter
-                base_delay = space_config.retry_delay * (2 ** attempt)
+                base_delay = space_config.retry_delay * (2**attempt)
                 jitter = random.uniform(0, space_config.retry_delay * 0.5)
                 delay = min(base_delay + jitter, remaining_time)
 
@@ -428,8 +425,8 @@ class MultiGenieOrchestrator:
     def query_spaces(
         self,
         question: str,
-        space_names: Optional[list[str]] = None,
-        space_ids: Optional[list[str]] = None,
+        space_names: list[str] | None = None,
+        space_ids: list[str] | None = None,
     ) -> MultiGenieResult:
         """Query specific spaces by name or ID.
 
@@ -656,7 +653,7 @@ class MultiGenieOrchestrator:
             }
         return {}
 
-    def invalidate_cache(self, space_name: Optional[str] = None) -> int:
+    def invalidate_cache(self, space_name: str | None = None) -> int:
         """Invalidate cache entries.
 
         Args:

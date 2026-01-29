@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from src.config import Config
 
@@ -28,7 +28,7 @@ class ReportConfig:
         max_table_rows: Maximum rows to display in tables
     """
 
-    title: Optional[str] = None
+    title: str | None = None
     include_timestamp: bool = True
     max_table_rows: int = 10
 
@@ -52,7 +52,7 @@ class ReportWriter:
     def __init__(
         self,
         config: Config,
-        report_config: Optional[ReportConfig] = None,
+        report_config: ReportConfig | None = None,
     ) -> None:
         """Initialize the ReportWriter.
 
@@ -155,8 +155,8 @@ class ReportWriter:
 
     def _get_render_context(
         self,
-        result: "SynthesisResult",
-        title: Optional[str] = None,
+        result: SynthesisResult,
+        title: str | None = None,
     ) -> dict:
         """Build the template rendering context.
 
@@ -171,17 +171,15 @@ class ReportWriter:
             "result": result,
             "title": title or self.report_config.title,
             "generated_at": (
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                if self.report_config.include_timestamp
-                else ""
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S") if self.report_config.include_timestamp else ""
             ),
             "config": self.report_config,
         }
 
     def generate_markdown(
         self,
-        result: "SynthesisResult",
-        title: Optional[str] = None,
+        result: SynthesisResult,
+        title: str | None = None,
     ) -> str:
         """Generate a Markdown report from a SynthesisResult.
 
@@ -197,8 +195,8 @@ class ReportWriter:
 
     def generate_html(
         self,
-        result: "SynthesisResult",
-        title: Optional[str] = None,
+        result: SynthesisResult,
+        title: str | None = None,
     ) -> str:
         """Generate an HTML dashboard from a SynthesisResult.
 
@@ -214,10 +212,10 @@ class ReportWriter:
 
     def save_report(
         self,
-        result: "SynthesisResult",
+        result: SynthesisResult,
         output_dir: str,
         filename_prefix: str = "report",
-        title: Optional[str] = None,
+        title: str | None = None,
     ) -> tuple[Path, Path]:
         """Save both Markdown and HTML reports to files.
 

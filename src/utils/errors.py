@@ -7,7 +7,7 @@ errors in the agent system, with support for retry decisions and user-friendly m
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class ErrorCategory(Enum):
@@ -62,8 +62,8 @@ class AgentError(Exception):
         self,
         message: str,
         category: ErrorCategory = ErrorCategory.UNKNOWN,
-        original_error: Optional[Exception] = None,
-        context: Optional[dict[str, Any]] = None,
+        original_error: Exception | None = None,
+        context: dict[str, Any] | None = None,
     ):
         """Initialize an AgentError.
 
@@ -104,10 +104,7 @@ class AgentError(Exception):
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}("
-            f"message={self.message!r}, "
-            f"category={self.category}, "
-            f"retryable={self.retryable})"
+            f"{self.__class__.__name__}(message={self.message!r}, category={self.category}, retryable={self.retryable})"
         )
 
 
@@ -117,8 +114,8 @@ class AgentTimeoutError(AgentError):
     def __init__(
         self,
         message: str = "Operation timed out",
-        original_error: Optional[Exception] = None,
-        context: Optional[dict[str, Any]] = None,
+        original_error: Exception | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(
             message=message,
@@ -134,8 +131,8 @@ class RateLimitError(AgentError):
     def __init__(
         self,
         message: str = "Rate limit exceeded",
-        original_error: Optional[Exception] = None,
-        context: Optional[dict[str, Any]] = None,
+        original_error: Exception | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(
             message=message,
@@ -151,8 +148,8 @@ class AuthenticationError(AgentError):
     def __init__(
         self,
         message: str = "Authentication failed",
-        original_error: Optional[Exception] = None,
-        context: Optional[dict[str, Any]] = None,
+        original_error: Exception | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(
             message=message,
@@ -168,8 +165,8 @@ class ParseError(AgentError):
     def __init__(
         self,
         message: str = "Failed to parse response",
-        original_error: Optional[Exception] = None,
-        context: Optional[dict[str, Any]] = None,
+        original_error: Exception | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(
             message=message,
@@ -185,8 +182,8 @@ class SpaceUnavailableError(AgentError):
     def __init__(
         self,
         message: str = "Genie Space unavailable",
-        original_error: Optional[Exception] = None,
-        context: Optional[dict[str, Any]] = None,
+        original_error: Exception | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(
             message=message,
@@ -202,8 +199,8 @@ class NetworkError(AgentError):
     def __init__(
         self,
         message: str = "Network error",
-        original_error: Optional[Exception] = None,
-        context: Optional[dict[str, Any]] = None,
+        original_error: Exception | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(
             message=message,
@@ -219,8 +216,8 @@ class ValidationError(AgentError):
     def __init__(
         self,
         message: str = "Validation failed",
-        original_error: Optional[Exception] = None,
-        context: Optional[dict[str, Any]] = None,
+        original_error: Exception | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(
             message=message,
@@ -232,7 +229,7 @@ class ValidationError(AgentError):
 
 def classify_error(
     error: Exception,
-    context: Optional[dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
 ) -> AgentError:
     """Classify an exception into an appropriate AgentError subclass.
 
@@ -272,7 +269,10 @@ def classify_error(
         )
 
     # Authentication/Authorization detection (HTTP 401, 403)
-    if any(keyword in error_str for keyword in ["401", "403", "unauthorized", "forbidden", "authentication", "permission denied"]):
+    if any(
+        keyword in error_str
+        for keyword in ["401", "403", "unauthorized", "forbidden", "authentication", "permission denied"]
+    ):
         return AuthenticationError(
             message=str(error),
             original_error=error,
@@ -280,10 +280,20 @@ def classify_error(
         )
 
     # Network error detection
-    if any(keyword in error_str for keyword in [
-        "connection", "network", "socket", "dns", "resolve",
-        "unreachable", "refused", "reset", "broken pipe",
-    ]) or any(keyword in error_type for keyword in ["connection", "socket", "network"]):
+    if any(
+        keyword in error_str
+        for keyword in [
+            "connection",
+            "network",
+            "socket",
+            "dns",
+            "resolve",
+            "unreachable",
+            "refused",
+            "reset",
+            "broken pipe",
+        ]
+    ) or any(keyword in error_type for keyword in ["connection", "socket", "network"]):
         return NetworkError(
             message=str(error),
             original_error=error,
@@ -291,7 +301,21 @@ def classify_error(
         )
 
     # Space unavailable detection (HTTP 503, 502, 504, circuit open)
-    if any(keyword in error_str for keyword in ["503", "502", "504", "service unavailable", "bad gateway", "gateway timeout", "space not found", "space unavailable", "circuit open", "circuit is open"]):
+    if any(
+        keyword in error_str
+        for keyword in [
+            "503",
+            "502",
+            "504",
+            "service unavailable",
+            "bad gateway",
+            "gateway timeout",
+            "space not found",
+            "space unavailable",
+            "circuit open",
+            "circuit is open",
+        ]
+    ):
         return SpaceUnavailableError(
             message=str(error),
             original_error=error,
@@ -299,8 +323,9 @@ def classify_error(
         )
 
     # Parse error detection
-    if any(keyword in error_str for keyword in ["parse", "json", "decode", "unexpected token", "malformed"]) or \
-       any(keyword in error_type for keyword in ["json", "parse", "decode"]):
+    if any(keyword in error_str for keyword in ["parse", "json", "decode", "unexpected token", "malformed"]) or any(
+        keyword in error_type for keyword in ["json", "parse", "decode"]
+    ):
         return ParseError(
             message=str(error),
             original_error=error,
@@ -308,8 +333,10 @@ def classify_error(
         )
 
     # Validation error detection
-    if any(keyword in error_str for keyword in ["validation", "invalid", "required", "missing"]) or \
-       "validation" in error_type:
+    if (
+        any(keyword in error_str for keyword in ["validation", "invalid", "required", "missing"])
+        or "validation" in error_type
+    ):
         return ValidationError(
             message=str(error),
             original_error=error,

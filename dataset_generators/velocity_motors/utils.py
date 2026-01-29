@@ -7,23 +7,22 @@ Provides shared utilities for generating consistent, realistic automotive data.
 
 import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
 from faker import Faker
 
 # Initialize faker with US locale
-fake = Faker('en_US')
+fake = Faker("en_US")
 
 
 # NULLABLE_FIELDS allowlist - fields that can safely be NULLed
-NULLABLE_FIELDS: Dict[str, Set[str]] = {
-    'customers': {'email', 'phone', 'street_address', 'company_name'},
-    'interactions': {'notes', 'duration_minutes'},
-    'service_orders': {'notes', 'customer_rating'},
-    'leads': {'phone', 'last_contact_date'},
-    'salespersons': {'email'},
+NULLABLE_FIELDS: dict[str, set[str]] = {
+    "customers": {"email", "phone", "street_address", "company_name"},
+    "interactions": {"notes", "duration_minutes"},
+    "service_orders": {"notes", "customer_rating"},
+    "leads": {"phone", "last_contact_date"},
+    "salespersons": {"email"},
 }
 
 
@@ -41,12 +40,12 @@ def set_random_seed(seed: int) -> None:
 
 # Valid WMI (World Manufacturer Identifier) codes for common makes
 WMI_CODES = {
-    '1FA': 'Ford',
-    '2T1': 'Toyota',
-    '1HG': 'Honda',
-    '3GN': 'Chevrolet',
-    'WBA': 'BMW',
-    'WDD': 'Mercedes-Benz',
+    "1FA": "Ford",
+    "2T1": "Toyota",
+    "1HG": "Honda",
+    "3GN": "Chevrolet",
+    "WBA": "BMW",
+    "WDD": "Mercedes-Benz",
 }
 
 
@@ -68,152 +67,146 @@ def generate_vin() -> str:
     wmi = random.choice(list(WMI_CODES.keys()))
 
     # Valid VIN characters (no I, O, Q to avoid confusion)
-    vin_chars = '0123456789ABCDEFGHJKLMNPRSTUVWXYZ'
+    vin_chars = "0123456789ABCDEFGHJKLMNPRSTUVWXYZ"
 
     # Vehicle descriptor section (positions 4-9)
-    vds = ''.join(random.choices(vin_chars, k=6))
+    vds = "".join(random.choices(vin_chars, k=6))
 
     # Model year code (position 10) - simplified
-    year_codes = 'ABCDEFGHJKLMNPRSTVWXY123456789'
+    year_codes = "ABCDEFGHJKLMNPRSTVWXY123456789"
     year_code = random.choice(year_codes)
 
     # Plant code (position 11)
     plant_code = random.choice(vin_chars)
 
     # Sequential number (positions 12-17)
-    seq_num = ''.join(random.choices('0123456789', k=6))
+    seq_num = "".join(random.choices("0123456789", k=6))
 
     return f"{wmi}{vds}{year_code}{plant_code}{seq_num}"
 
 
 # Vehicle makes with their models and available trims
-VEHICLE_MAKES_MODELS: Dict[str, List[Tuple[str, List[str]]]] = {
-    'Ford': [
-        ('F-150', ['XL', 'XLT', 'Lariat', 'King Ranch', 'Platinum', 'Limited']),
-        ('Mustang', ['EcoBoost', 'GT', 'Mach 1', 'Shelby GT500']),
-        ('Explorer', ['Base', 'XLT', 'Limited', 'ST', 'Platinum']),
-        ('Escape', ['S', 'SE', 'SEL', 'Titanium']),
-        ('Bronco', ['Base', 'Big Bend', 'Outer Banks', 'Badlands', 'Wildtrak']),
+VEHICLE_MAKES_MODELS: dict[str, list[tuple[str, list[str]]]] = {
+    "Ford": [
+        ("F-150", ["XL", "XLT", "Lariat", "King Ranch", "Platinum", "Limited"]),
+        ("Mustang", ["EcoBoost", "GT", "Mach 1", "Shelby GT500"]),
+        ("Explorer", ["Base", "XLT", "Limited", "ST", "Platinum"]),
+        ("Escape", ["S", "SE", "SEL", "Titanium"]),
+        ("Bronco", ["Base", "Big Bend", "Outer Banks", "Badlands", "Wildtrak"]),
     ],
-    'Toyota': [
-        ('Camry', ['LE', 'SE', 'XLE', 'XSE', 'TRD']),
-        ('Corolla', ['L', 'LE', 'SE', 'XLE', 'XSE']),
-        ('RAV4', ['LE', 'XLE', 'XLE Premium', 'Adventure', 'Limited', 'TRD Off-Road']),
-        ('Tacoma', ['SR', 'SR5', 'TRD Sport', 'TRD Off-Road', 'Limited', 'TRD Pro']),
-        ('Highlander', ['L', 'LE', 'XLE', 'Limited', 'Platinum']),
+    "Toyota": [
+        ("Camry", ["LE", "SE", "XLE", "XSE", "TRD"]),
+        ("Corolla", ["L", "LE", "SE", "XLE", "XSE"]),
+        ("RAV4", ["LE", "XLE", "XLE Premium", "Adventure", "Limited", "TRD Off-Road"]),
+        ("Tacoma", ["SR", "SR5", "TRD Sport", "TRD Off-Road", "Limited", "TRD Pro"]),
+        ("Highlander", ["L", "LE", "XLE", "Limited", "Platinum"]),
     ],
-    'Honda': [
-        ('Civic', ['LX', 'Sport', 'EX', 'Touring', 'Si', 'Type R']),
-        ('Accord', ['LX', 'Sport', 'EX-L', 'Sport 2.0T', 'Touring']),
-        ('CR-V', ['LX', 'EX', 'EX-L', 'Touring']),
-        ('Pilot', ['LX', 'EX', 'EX-L', 'Touring', 'Elite', 'TrailSport']),
-        ('HR-V', ['LX', 'Sport', 'EX-L']),
+    "Honda": [
+        ("Civic", ["LX", "Sport", "EX", "Touring", "Si", "Type R"]),
+        ("Accord", ["LX", "Sport", "EX-L", "Sport 2.0T", "Touring"]),
+        ("CR-V", ["LX", "EX", "EX-L", "Touring"]),
+        ("Pilot", ["LX", "EX", "EX-L", "Touring", "Elite", "TrailSport"]),
+        ("HR-V", ["LX", "Sport", "EX-L"]),
     ],
-    'Chevrolet': [
-        ('Silverado', ['WT', 'Custom', 'LT', 'RST', 'LTZ', 'High Country']),
-        ('Equinox', ['LS', 'LT', 'RS', 'Premier']),
-        ('Tahoe', ['LS', 'LT', 'Z71', 'Premier', 'High Country']),
-        ('Camaro', ['1LS', '1LT', '2LT', '1SS', '2SS', 'ZL1']),
-        ('Colorado', ['WT', 'LT', 'Z71', 'ZR2']),
+    "Chevrolet": [
+        ("Silverado", ["WT", "Custom", "LT", "RST", "LTZ", "High Country"]),
+        ("Equinox", ["LS", "LT", "RS", "Premier"]),
+        ("Tahoe", ["LS", "LT", "Z71", "Premier", "High Country"]),
+        ("Camaro", ["1LS", "1LT", "2LT", "1SS", "2SS", "ZL1"]),
+        ("Colorado", ["WT", "LT", "Z71", "ZR2"]),
     ],
-    'BMW': [
-        ('3 Series', ['330i', '330i xDrive', 'M340i', 'M340i xDrive']),
-        ('5 Series', ['530i', '530i xDrive', '540i', '540i xDrive', 'M550i xDrive']),
-        ('X3', ['sDrive30i', 'xDrive30i', 'M40i']),
-        ('X5', ['sDrive40i', 'xDrive40i', 'xDrive45e', 'M50i']),
-        ('7 Series', ['740i', '740i xDrive', '760i xDrive']),
+    "BMW": [
+        ("3 Series", ["330i", "330i xDrive", "M340i", "M340i xDrive"]),
+        ("5 Series", ["530i", "530i xDrive", "540i", "540i xDrive", "M550i xDrive"]),
+        ("X3", ["sDrive30i", "xDrive30i", "M40i"]),
+        ("X5", ["sDrive40i", "xDrive40i", "xDrive45e", "M50i"]),
+        ("7 Series", ["740i", "740i xDrive", "760i xDrive"]),
     ],
-    'Mercedes-Benz': [
-        ('C-Class', ['C 300', 'C 300 4MATIC', 'AMG C 43', 'AMG C 63']),
-        ('E-Class', ['E 350', 'E 350 4MATIC', 'E 450', 'AMG E 53', 'AMG E 63 S']),
-        ('GLC', ['GLC 300', 'GLC 300 4MATIC', 'AMG GLC 43', 'AMG GLC 63']),
-        ('GLE', ['GLE 350', 'GLE 350 4MATIC', 'GLE 450', 'AMG GLE 53', 'AMG GLE 63 S']),
-        ('S-Class', ['S 500', 'S 500 4MATIC', 'S 580', 'S 580 4MATIC', 'AMG S 63']),
+    "Mercedes-Benz": [
+        ("C-Class", ["C 300", "C 300 4MATIC", "AMG C 43", "AMG C 63"]),
+        ("E-Class", ["E 350", "E 350 4MATIC", "E 450", "AMG E 53", "AMG E 63 S"]),
+        ("GLC", ["GLC 300", "GLC 300 4MATIC", "AMG GLC 43", "AMG GLC 63"]),
+        ("GLE", ["GLE 350", "GLE 350 4MATIC", "GLE 450", "AMG GLE 53", "AMG GLE 63 S"]),
+        ("S-Class", ["S 500", "S 500 4MATIC", "S 580", "S 580 4MATIC", "AMG S 63"]),
     ],
 }
 
 
 # Extended vehicle makes with models and trims (for lower cleanliness levels)
-VEHICLE_MAKES_MODELS_EXTENDED: Dict[str, Dict[str, List[str]]] = {
-    'Nissan': {
-        'models': ['Altima', 'Sentra', 'Maxima', 'Rogue', 'Murano', 'Pathfinder', 'Armada', 'Frontier', 'Titan'],
-        'trims': ['S', 'SV', 'SL', 'Platinum']
+VEHICLE_MAKES_MODELS_EXTENDED: dict[str, dict[str, list[str]]] = {
+    "Nissan": {
+        "models": ["Altima", "Sentra", "Maxima", "Rogue", "Murano", "Pathfinder", "Armada", "Frontier", "Titan"],
+        "trims": ["S", "SV", "SL", "Platinum"],
     },
-    'Hyundai': {
-        'models': ['Elantra', 'Sonata', 'Tucson', 'Santa Fe', 'Palisade', 'Kona', 'Venue'],
-        'trims': ['SE', 'SEL', 'Limited', 'Calligraphy']
+    "Hyundai": {
+        "models": ["Elantra", "Sonata", "Tucson", "Santa Fe", "Palisade", "Kona", "Venue"],
+        "trims": ["SE", "SEL", "Limited", "Calligraphy"],
     },
-    'Kia': {
-        'models': ['Forte', 'K5', 'Sportage', 'Sorento', 'Telluride', 'Seltos', 'Soul'],
-        'trims': ['LX', 'S', 'EX', 'SX']
+    "Kia": {
+        "models": ["Forte", "K5", "Sportage", "Sorento", "Telluride", "Seltos", "Soul"],
+        "trims": ["LX", "S", "EX", "SX"],
     },
-    'Subaru': {
-        'models': ['Impreza', 'Legacy', 'Outback', 'Forester', 'Crosstrek', 'Ascent', 'WRX'],
-        'trims': ['Base', 'Premium', 'Limited', 'Touring']
+    "Subaru": {
+        "models": ["Impreza", "Legacy", "Outback", "Forester", "Crosstrek", "Ascent", "WRX"],
+        "trims": ["Base", "Premium", "Limited", "Touring"],
     },
-    'Mazda': {
-        'models': ['Mazda3', 'Mazda6', 'CX-30', 'CX-5', 'CX-50', 'CX-9', 'MX-5 Miata'],
-        'trims': ['Base', 'Select', 'Preferred', 'Premium', 'Turbo']
+    "Mazda": {
+        "models": ["Mazda3", "Mazda6", "CX-30", "CX-5", "CX-50", "CX-9", "MX-5 Miata"],
+        "trims": ["Base", "Select", "Preferred", "Premium", "Turbo"],
     },
-    'Volkswagen': {
-        'models': ['Jetta', 'Passat', 'Tiguan', 'Atlas', 'Taos', 'ID.4', 'Golf GTI'],
-        'trims': ['S', 'SE', 'SEL', 'R-Line']
+    "Volkswagen": {
+        "models": ["Jetta", "Passat", "Tiguan", "Atlas", "Taos", "ID.4", "Golf GTI"],
+        "trims": ["S", "SE", "SEL", "R-Line"],
     },
-    'Audi': {
-        'models': ['A3', 'A4', 'A6', 'Q3', 'Q5', 'Q7', 'e-tron'],
-        'trims': ['Premium', 'Premium Plus', 'Prestige', 'S Line']
+    "Audi": {
+        "models": ["A3", "A4", "A6", "Q3", "Q5", "Q7", "e-tron"],
+        "trims": ["Premium", "Premium Plus", "Prestige", "S Line"],
     },
-    'Lexus': {
-        'models': ['ES', 'IS', 'LS', 'NX', 'RX', 'GX', 'LX'],
-        'trims': ['Base', 'Premium', 'Luxury', 'F Sport']
-    },
-    'Acura': {
-        'models': ['ILX', 'TLX', 'RDX', 'MDX', 'Integra'],
-        'trims': ['Base', 'Technology', 'A-Spec', 'Advance']
-    },
+    "Lexus": {"models": ["ES", "IS", "LS", "NX", "RX", "GX", "LX"], "trims": ["Base", "Premium", "Luxury", "F Sport"]},
+    "Acura": {"models": ["ILX", "TLX", "RDX", "MDX", "Integra"], "trims": ["Base", "Technology", "A-Spec", "Advance"]},
 }
 
 
 # MSRP ranges for extended makes (min, max) in dollars
-MSRP_RANGES_EXTENDED: Dict[str, Tuple[int, int]] = {
-    'Nissan': (22000, 65000),
-    'Hyundai': (20000, 55000),
-    'Kia': (19000, 52000),
-    'Subaru': (23000, 48000),
-    'Mazda': (24000, 42000),
-    'Volkswagen': (22000, 55000),
-    'Audi': (35000, 95000),
-    'Lexus': (40000, 110000),
-    'Acura': (32000, 75000),
+MSRP_RANGES_EXTENDED: dict[str, tuple[int, int]] = {
+    "Nissan": (22000, 65000),
+    "Hyundai": (20000, 55000),
+    "Kia": (19000, 52000),
+    "Subaru": (23000, 48000),
+    "Mazda": (24000, 42000),
+    "Volkswagen": (22000, 55000),
+    "Audi": (35000, 95000),
+    "Lexus": (40000, 110000),
+    "Acura": (32000, 75000),
 }
 
 
 # MSRP ranges by make (min, max) in dollars
-MSRP_RANGES: Dict[str, Tuple[int, int]] = {
-    'Ford': (28000, 85000),
-    'Toyota': (22000, 70000),
-    'Honda': (24000, 55000),
-    'Chevrolet': (26000, 90000),
-    'BMW': (45000, 150000),
-    'Mercedes-Benz': (48000, 180000),
+MSRP_RANGES: dict[str, tuple[int, int]] = {
+    "Ford": (28000, 85000),
+    "Toyota": (22000, 70000),
+    "Honda": (24000, 55000),
+    "Chevrolet": (26000, 90000),
+    "BMW": (45000, 150000),
+    "Mercedes-Benz": (48000, 180000),
 }
 
 
 # Common vehicle colors with their popularity weights
 VEHICLE_COLORS = [
-    ('White', 0.23),
-    ('Black', 0.22),
-    ('Gray', 0.18),
-    ('Silver', 0.15),
-    ('Blue', 0.10),
-    ('Red', 0.08),
-    ('Green', 0.02),
-    ('Brown', 0.01),
-    ('Orange', 0.01),
+    ("White", 0.23),
+    ("Black", 0.22),
+    ("Gray", 0.18),
+    ("Silver", 0.15),
+    ("Blue", 0.10),
+    ("Red", 0.08),
+    ("Green", 0.02),
+    ("Brown", 0.01),
+    ("Orange", 0.01),
 ]
 
 
-def generate_vehicle_data(use_extended: bool = False) -> Dict:
+def generate_vehicle_data(use_extended: bool = False) -> dict:
     """
     Generate a complete vehicle data dictionary with realistic attributes.
 
@@ -230,8 +223,8 @@ def generate_vehicle_data(use_extended: bool = False) -> Dict:
     if use_extended_make:
         make = random.choice(list(VEHICLE_MAKES_MODELS_EXTENDED.keys()))
         make_data = VEHICLE_MAKES_MODELS_EXTENDED[make]
-        model = random.choice(make_data['models'])
-        trim = random.choice(make_data['trims'])
+        model = random.choice(make_data["models"])
+        trim = random.choice(make_data["trims"])
         min_msrp, max_msrp = MSRP_RANGES_EXTENDED[make]
     else:
         make = random.choice(list(VEHICLE_MAKES_MODELS.keys()))
@@ -240,9 +233,22 @@ def generate_vehicle_data(use_extended: bool = False) -> Dict:
         min_msrp, max_msrp = MSRP_RANGES[make]
 
     # Luxury trims tend to be more expensive
-    if any(x in trim.lower() for x in ['platinum', 'limited', 'touring', 'high country', 'amg', 'shelby', 'prestige', 'calligraphy', 'f sport']):
+    if any(
+        x in trim.lower()
+        for x in [
+            "platinum",
+            "limited",
+            "touring",
+            "high country",
+            "amg",
+            "shelby",
+            "prestige",
+            "calligraphy",
+            "f sport",
+        ]
+    ):
         msrp = random.randint(int(max_msrp * 0.7), max_msrp)
-    elif any(x in trim.lower() for x in ['lx', 'l', 'base', 'wt', 'ls', 'xl', 's', 'se']):
+    elif any(x in trim.lower() for x in ["lx", "l", "base", "wt", "ls", "xl", "s", "se"]):
         msrp = random.randint(min_msrp, int(min_msrp * 1.3))
     else:
         msrp = random.randint(int(min_msrp * 1.1), int(max_msrp * 0.8))
@@ -258,52 +264,104 @@ def generate_vehicle_data(use_extended: bool = False) -> Dict:
     color = random.choices(colors, weights=weights)[0]
 
     return {
-        'make': make,
-        'model': model,
-        'year': year,
-        'trim': trim,
-        'color': color,
-        'msrp': msrp,
-        'vin': generate_vin(),
+        "make": make,
+        "model": model,
+        "year": year,
+        "trim": trim,
+        "color": color,
+        "msrp": msrp,
+        "vin": generate_vin(),
     }
 
 
 # Part categories with prefix and part names
-PART_CATEGORIES: Dict[str, List[str]] = {
-    'ENG': [
-        'Oil Filter', 'Air Filter', 'Spark Plug', 'Timing Belt', 'Water Pump',
-        'Fuel Pump', 'Alternator', 'Starter Motor', 'Radiator', 'Thermostat',
-        'Engine Mount', 'Valve Cover Gasket', 'Head Gasket', 'Crankshaft Seal',
+PART_CATEGORIES: dict[str, list[str]] = {
+    "ENG": [
+        "Oil Filter",
+        "Air Filter",
+        "Spark Plug",
+        "Timing Belt",
+        "Water Pump",
+        "Fuel Pump",
+        "Alternator",
+        "Starter Motor",
+        "Radiator",
+        "Thermostat",
+        "Engine Mount",
+        "Valve Cover Gasket",
+        "Head Gasket",
+        "Crankshaft Seal",
     ],
-    'BRK': [
-        'Brake Pad Set - Front', 'Brake Pad Set - Rear', 'Brake Rotor - Front',
-        'Brake Rotor - Rear', 'Brake Caliper', 'Brake Line', 'Brake Fluid',
-        'Brake Master Cylinder', 'ABS Sensor', 'Parking Brake Cable',
+    "BRK": [
+        "Brake Pad Set - Front",
+        "Brake Pad Set - Rear",
+        "Brake Rotor - Front",
+        "Brake Rotor - Rear",
+        "Brake Caliper",
+        "Brake Line",
+        "Brake Fluid",
+        "Brake Master Cylinder",
+        "ABS Sensor",
+        "Parking Brake Cable",
     ],
-    'ELE': [
-        'Battery', 'Headlight Assembly', 'Taillight Assembly', 'Fuse Box',
-        'Ignition Coil', 'Oxygen Sensor', 'Mass Air Flow Sensor', 'Wiring Harness',
-        'Instrument Cluster', 'Power Window Motor', 'Door Lock Actuator',
+    "ELE": [
+        "Battery",
+        "Headlight Assembly",
+        "Taillight Assembly",
+        "Fuse Box",
+        "Ignition Coil",
+        "Oxygen Sensor",
+        "Mass Air Flow Sensor",
+        "Wiring Harness",
+        "Instrument Cluster",
+        "Power Window Motor",
+        "Door Lock Actuator",
     ],
-    'BOD': [
-        'Front Bumper', 'Rear Bumper', 'Hood', 'Fender', 'Door Panel',
-        'Side Mirror', 'Windshield', 'Rear Window', 'Grille', 'Spoiler',
-        'Roof Rack', 'Running Board', 'Mud Flap', 'Wheel Well Liner',
+    "BOD": [
+        "Front Bumper",
+        "Rear Bumper",
+        "Hood",
+        "Fender",
+        "Door Panel",
+        "Side Mirror",
+        "Windshield",
+        "Rear Window",
+        "Grille",
+        "Spoiler",
+        "Roof Rack",
+        "Running Board",
+        "Mud Flap",
+        "Wheel Well Liner",
     ],
-    'SUS': [
-        'Shock Absorber - Front', 'Shock Absorber - Rear', 'Strut Assembly',
-        'Control Arm', 'Ball Joint', 'Tie Rod End', 'Sway Bar Link',
-        'Wheel Bearing', 'CV Axle', 'Steering Rack', 'Power Steering Pump',
+    "SUS": [
+        "Shock Absorber - Front",
+        "Shock Absorber - Rear",
+        "Strut Assembly",
+        "Control Arm",
+        "Ball Joint",
+        "Tie Rod End",
+        "Sway Bar Link",
+        "Wheel Bearing",
+        "CV Axle",
+        "Steering Rack",
+        "Power Steering Pump",
     ],
-    'TRN': [
-        'Transmission Fluid', 'Clutch Kit', 'Flywheel', 'Torque Converter',
-        'Transmission Mount', 'Shift Cable', 'Differential Fluid',
-        'Drive Shaft', 'U-Joint', 'Transfer Case',
+    "TRN": [
+        "Transmission Fluid",
+        "Clutch Kit",
+        "Flywheel",
+        "Torque Converter",
+        "Transmission Mount",
+        "Shift Cable",
+        "Differential Fluid",
+        "Drive Shaft",
+        "U-Joint",
+        "Transfer Case",
     ],
 }
 
 
-def generate_part_number() -> Tuple[str, str, str]:
+def generate_part_number() -> tuple[str, str, str]:
     """
     Generate a realistic part number with category and name.
 
@@ -317,23 +375,23 @@ def generate_part_number() -> Tuple[str, str, str]:
 
     # Generate part number: CAT-####[A-C]
     num = random.randint(1000, 9999)
-    suffix = random.choice('ABC')
+    suffix = random.choice("ABC")
     part_number = f"{category}-{num}{suffix}"
 
     return part_number, category, part_name
 
 
 # Seasonal multipliers for date generation (1.0 = baseline)
-SEASONAL_MULTIPLIERS: Dict[int, float] = {
-    1: 0.85,   # January - post-holiday slowdown
-    2: 0.90,   # February
-    3: 1.00,   # March - tax refunds start
-    4: 1.05,   # April - tax refund spending
-    5: 1.05,   # May
-    6: 1.00,   # June
-    7: 0.95,   # July - summer slowdown
-    8: 0.90,   # August
-    9: 0.95,   # September - back to school
+SEASONAL_MULTIPLIERS: dict[int, float] = {
+    1: 0.85,  # January - post-holiday slowdown
+    2: 0.90,  # February
+    3: 1.00,  # March - tax refunds start
+    4: 1.05,  # April - tax refund spending
+    5: 1.05,  # May
+    6: 1.00,  # June
+    7: 0.95,  # July - summer slowdown
+    8: 0.90,  # August
+    9: 0.95,  # September - back to school
     10: 1.00,  # October
     11: 1.20,  # November - holiday sales begin (Q4 spike)
     12: 1.20,  # December - holiday season (Q4 spike)
@@ -344,7 +402,7 @@ def generate_dates_with_seasonality(
     n: int,
     start_date: datetime,
     end_date: datetime,
-) -> List[datetime]:
+) -> list[datetime]:
     """
     Generate dates with seasonal weighting (Q4 has higher volume).
 
@@ -391,7 +449,7 @@ def generate_dates_with_seasonality(
     return result
 
 
-def generate_customer_address() -> Dict:
+def generate_customer_address() -> dict:
     """
     Generate a realistic US customer address using Faker.
 
@@ -399,15 +457,15 @@ def generate_customer_address() -> Dict:
         Dictionary with street, city, state, zip_code, country
     """
     return {
-        'street': fake.street_address(),
-        'city': fake.city(),
-        'state': fake.state_abbr(),
-        'zip_code': fake.zipcode(),
-        'country': 'USA',
+        "street": fake.street_address(),
+        "city": fake.city(),
+        "state": fake.state_abbr(),
+        "zip_code": fake.zipcode(),
+        "country": "USA",
     }
 
 
-def generate_person_name() -> Tuple[str, str]:
+def generate_person_name() -> tuple[str, str]:
     """
     Generate a realistic person name.
 
@@ -428,7 +486,7 @@ def generate_email(first_name: str, last_name: str) -> str:
     Returns:
         Email address string
     """
-    domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'aol.com']
+    domains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "aol.com"]
 
     # Various email formats
     formats = [
@@ -462,12 +520,36 @@ def scale_count(base: int, scale: float) -> int:
 
 # US States with population-based weights for realistic distribution
 US_STATES_WEIGHTED = [
-    ('CA', 0.12), ('TX', 0.09), ('FL', 0.07), ('NY', 0.06), ('PA', 0.04),
-    ('IL', 0.04), ('OH', 0.04), ('GA', 0.03), ('NC', 0.03), ('MI', 0.03),
-    ('NJ', 0.03), ('VA', 0.03), ('WA', 0.02), ('AZ', 0.02), ('MA', 0.02),
-    ('TN', 0.02), ('IN', 0.02), ('MO', 0.02), ('MD', 0.02), ('WI', 0.02),
-    ('CO', 0.02), ('MN', 0.02), ('SC', 0.02), ('AL', 0.01), ('LA', 0.01),
-    ('KY', 0.01), ('OR', 0.01), ('OK', 0.01), ('CT', 0.01), ('UT', 0.01),
+    ("CA", 0.12),
+    ("TX", 0.09),
+    ("FL", 0.07),
+    ("NY", 0.06),
+    ("PA", 0.04),
+    ("IL", 0.04),
+    ("OH", 0.04),
+    ("GA", 0.03),
+    ("NC", 0.03),
+    ("MI", 0.03),
+    ("NJ", 0.03),
+    ("VA", 0.03),
+    ("WA", 0.02),
+    ("AZ", 0.02),
+    ("MA", 0.02),
+    ("TN", 0.02),
+    ("IN", 0.02),
+    ("MO", 0.02),
+    ("MD", 0.02),
+    ("WI", 0.02),
+    ("CO", 0.02),
+    ("MN", 0.02),
+    ("SC", 0.02),
+    ("AL", 0.01),
+    ("LA", 0.01),
+    ("KY", 0.01),
+    ("OR", 0.01),
+    ("OK", 0.01),
+    ("CT", 0.01),
+    ("UT", 0.01),
 ]
 
 
@@ -483,21 +565,16 @@ def get_weighted_state() -> str:
 
 
 # Extended service types: (type_name, min_labor, max_labor, parts_ratio)
-SERVICE_TYPES_EXTENDED: List[Tuple[str, int, int, float]] = [
-    ('Detailing', 100, 500, 0.05),
-    ('State Inspection', 25, 75, 0.02),
-    ('Windshield Repair', 50, 400, 0.60),
-    ('Key Programming', 75, 300, 0.40),
-    ('Suspension Work', 200, 1500, 0.45),
+SERVICE_TYPES_EXTENDED: list[tuple[str, int, int, float]] = [
+    ("Detailing", 100, 500, 0.05),
+    ("State Inspection", 25, 75, 0.02),
+    ("Windshield Repair", 50, 400, 0.60),
+    ("Key Programming", 75, 300, 0.40),
+    ("Suspension Work", 200, 1500, 0.45),
 ]
 
 
-def inject_nulls(
-    df: pd.DataFrame,
-    column: str,
-    rate: float,
-    seed: Optional[int] = None
-) -> pd.DataFrame:
+def inject_nulls(df: pd.DataFrame, column: str, rate: float, seed: int | None = None) -> pd.DataFrame:
     """
     Inject NULL values into a column at specified rate.
 
@@ -536,12 +613,12 @@ def apply_case_inconsistency(value: str, intensity: float, rng: np.random.Genera
     if not isinstance(value, str) or rng.random() > intensity:
         return value
 
-    variation = rng.choice(['lower', 'upper', 'title', 'original'])
-    if variation == 'lower':
+    variation = rng.choice(["lower", "upper", "title", "original"])
+    if variation == "lower":
         return value.lower()
-    elif variation == 'upper':
+    elif variation == "upper":
         return value.upper()
-    elif variation == 'title':
+    elif variation == "title":
         return value.title()
     return value
 

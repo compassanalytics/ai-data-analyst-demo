@@ -15,9 +15,6 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
-from typing import Any
-
-import pytest
 
 from src.benchmark import (
     BenchmarkComparison,
@@ -27,7 +24,9 @@ from src.benchmark import (
     BenchmarkRun,
     ColumnInfo,
     DomainContext,
+    EvaluationMode,
     GenerationSource,
+    LLMJudgeEvaluator,
     LLMQueryGenerator,
     RelationshipInfo,
     SchemaParser,
@@ -37,8 +36,8 @@ from src.benchmark import (
 from src.config import Config
 from src.evaluation.models import (
     AccuracyScore,
-    ComplexityLevel,
     ComparisonDetails,
+    ComplexityLevel,
     EvaluationFailureType,
     EvaluationResult,
     EvaluationSummary,
@@ -46,7 +45,6 @@ from src.evaluation.models import (
     QueryType,
     TestQuery,
 )
-
 
 # =============================================================================
 # Test BenchmarkQuery Model
@@ -888,9 +886,7 @@ class TestBenchmarkReporter:
 
     def test_generate_markdown(self) -> None:
         """Test markdown report generation."""
-        markdown = self.reporter.generate_markdown(
-            self.comparison, title="Test Benchmark Report"
-        )
+        markdown = self.reporter.generate_markdown(self.comparison, title="Test Benchmark Report")
 
         assert "# Test Benchmark Report" in markdown
         assert "Baseline" in markdown
@@ -900,9 +896,7 @@ class TestBenchmarkReporter:
 
     def test_generate_html(self) -> None:
         """Test HTML report generation."""
-        html = self.reporter.generate_html(
-            self.comparison, title="Test Benchmark Dashboard"
-        )
+        html = self.reporter.generate_html(self.comparison, title="Test Benchmark Dashboard")
 
         assert "<html" in html
         assert "Test Benchmark Dashboard" in html
@@ -972,3 +966,230 @@ class TestEnumValues:
         assert Severity.MEDIUM.value == "medium"
         assert Severity.HIGH.value == "high"
         assert Severity.CRITICAL.value == "critical"
+
+    def test_evaluation_mode_values(self) -> None:
+        """Test EvaluationMode enum values."""
+        assert EvaluationMode.STRING_MATCH.value == "string_match"
+        assert EvaluationMode.LLM_JUDGE.value == "llm_judge"
+
+
+# =============================================================================
+# Test LLM Judge Evaluator (Mock Mode)
+# =============================================================================
+
+
+class TestLLMJudgeEvaluator:
+    """Tests for LLMJudgeEvaluator in mock mode."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.config = Config(genie_space_id="test_space", mock_mode=True)
+        self.judge = LLMJudgeEvaluator(self.config)
+
+    def test_mock_evaluate_semantic_match(self) -> None:
+        """Test mock evaluation with semantically equivalent columns."""
+        accuracy, failure_type, comparison = self.judge.evaluate(
+            question="What is total revenue?",
+            expected_columns=["revenue"],
+            expected_tables=["sales"],
+            sql="SELECT SUM(total_revenue) FROM sales",
+            actual_columns=["total_revenue"],
+        )
+
+        # Mock uses substring containment - "revenue" is in "total_revenue"
+        assert accuracy == AccuracyScore.CORRECT
+        assert failure_type == EvaluationFailureType.NONE
+        assert "[Mock LLM Judge]" in comparison.comparison_notes
+
+    def test_mock_evaluate_exact_match(self) -> None:
+        """Test mock evaluation with exact column match."""
+        accuracy, failure_type, comparison = self.judge.evaluate(
+            question="What is revenue by region?",
+            expected_columns=["region", "revenue"],
+            expected_tables=["sales"],
+            sql="SELECT region, SUM(revenue) FROM sales GROUP BY region",
+            actual_columns=["region", "revenue"],
+        )
+
+        assert accuracy == AccuracyScore.CORRECT
+        assert failure_type == EvaluationFailureType.NONE
+
+    def test_mock_evaluate_partial_match(self) -> None:
+        """Test mock evaluation with partial column match."""
+        accuracy, failure_type, comparison = self.judge.evaluate(
+            question="What are sales by product and region?",
+            expected_columns=["product", "region", "sales"],
+            expected_tables=["sales"],
+            sql="SELECT product, SUM(sales) FROM sales GROUP BY product",
+            actual_columns=["product", "sales"],
+        )
+
+        # 2/3 columns match = ~67% < 80% but >= 50% = PARTIAL
+        assert accuracy == AccuracyScore.PARTIAL
+        assert "region" in comparison.missing_columns
+
+    def test_mock_evaluate_wrong(self) -> None:
+        """Test mock evaluation with completely wrong columns."""
+        accuracy, failure_type, comparison = self.judge.evaluate(
+            question="What is total revenue?",
+            expected_columns=["revenue"],
+            expected_tables=["sales"],
+            sql="SELECT customer_name FROM customers",
+            actual_columns=["customer_name"],
+        )
+
+        # No column match = WRONG
+        assert accuracy == AccuracyScore.WRONG
+
+    def test_mock_evaluate_no_sql(self) -> None:
+        """Test mock evaluation when no SQL was generated."""
+        accuracy, failure_type, comparison = self.judge.evaluate(
+            question="What is total revenue?",
+            expected_columns=["revenue"],
+            expected_tables=["sales"],
+            sql=None,
+            actual_columns=[],
+        )
+
+        assert accuracy == AccuracyScore.FAILED
+        assert failure_type == EvaluationFailureType.NO_SQL_GENERATED
+        assert "No SQL was generated" in comparison.comparison_notes
+
+    def test_model_endpoint_property(self) -> None:
+        """Test model endpoint property returns correct value."""
+        assert self.judge.model_endpoint == self.config.model_endpoint
+
+        # Test with override
+        judge_with_override = LLMJudgeEvaluator(self.config, model_override="custom-model")
+        assert judge_with_override.model_endpoint == "custom-model"
+
+    def test_llm_lazy_loading_mock_mode(self) -> None:
+        """Test that LLM is not loaded in mock mode."""
+        # In mock mode, llm property should return None
+        assert self.judge.llm is None
+
+
+class TestBenchmarkEvaluatorWithLLMJudge:
+    """Tests for BenchmarkEvaluator with LLM judge enabled."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.config = Config(genie_space_id="test_space", mock_mode=True)
+        self.benchmark_queries = [
+            BenchmarkQuery(
+                id="bm_001",
+                question="What is total revenue?",
+                query_type=QueryType.AGGREGATION,
+                complexity=ComplexityLevel.SIMPLE,
+                failure_category=FailureCategory.AMBIGUOUS_COLUMNS,
+                expected_columns=["revenue"],
+                expected_tables=["sales"],
+            ),
+            BenchmarkQuery(
+                id="bm_002",
+                question="Show sales by region",
+                query_type=QueryType.AGGREGATION,
+                complexity=ComplexityLevel.MODERATE,
+                failure_category=FailureCategory.CRYPTIC_CODES,
+                expected_columns=["region", "sales"],
+                expected_tables=["sales"],
+            ),
+        ]
+
+    def test_evaluator_without_judge(self) -> None:
+        """Test evaluator defaults to string matching mode."""
+        evaluator = BenchmarkEvaluator(self.config)
+        assert evaluator.evaluation_mode == EvaluationMode.STRING_MATCH
+        assert evaluator._use_llm_judge is False
+
+    def test_evaluator_with_judge(self) -> None:
+        """Test evaluator with LLM judge enabled."""
+        evaluator = BenchmarkEvaluator(self.config, use_llm_judge=True)
+        assert evaluator.evaluation_mode == EvaluationMode.LLM_JUDGE
+        assert evaluator._use_llm_judge is True
+
+    def test_llm_judge_lazy_loading(self) -> None:
+        """Test that LLM judge is lazy-loaded."""
+        evaluator = BenchmarkEvaluator(self.config, use_llm_judge=True)
+
+        # Judge should not be loaded yet
+        assert evaluator._llm_judge is None
+
+        # Accessing property should load it
+        judge = evaluator.llm_judge
+        assert judge is not None
+        assert isinstance(judge, LLMJudgeEvaluator)
+
+    def test_run_benchmark_with_judge(self) -> None:
+        """Test running benchmark with LLM judge."""
+        evaluator = BenchmarkEvaluator(self.config, use_llm_judge=True)
+
+        run = evaluator.run_benchmark(
+            queries=self.benchmark_queries,
+            run_type="baseline",
+        )
+
+        assert isinstance(run, BenchmarkRun)
+        assert run.evaluation_mode == EvaluationMode.LLM_JUDGE
+        assert run.judge_model is None  # Uses default model
+        assert run.queries_evaluated == 2
+
+        # Results should have LLM judge notes in comparison
+        for result in run.results:
+            assert "[Mock LLM Judge]" in result.comparison.comparison_notes
+
+    def test_run_benchmark_with_judge_model_override(self) -> None:
+        """Test running benchmark with custom judge model."""
+        evaluator = BenchmarkEvaluator(
+            self.config,
+            use_llm_judge=True,
+            judge_model="custom-judge-model",
+        )
+
+        run = evaluator.run_benchmark(
+            queries=self.benchmark_queries,
+            run_type="baseline",
+        )
+
+        assert run.evaluation_mode == EvaluationMode.LLM_JUDGE
+        assert run.judge_model == "custom-judge-model"
+
+    def test_benchmark_run_evaluation_mode_serialization(self) -> None:
+        """Test that evaluation mode is properly serialized."""
+        evaluator = BenchmarkEvaluator(self.config, use_llm_judge=True)
+
+        run = evaluator.run_benchmark(
+            queries=self.benchmark_queries,
+            run_type="baseline",
+        )
+
+        # Serialize and deserialize
+        data = run.to_dict()
+        restored = BenchmarkRun.from_dict(data)
+
+        assert restored.evaluation_mode == EvaluationMode.LLM_JUDGE
+        assert data["evaluation_mode"] == "llm_judge"
+
+    def test_benchmark_run_string_match_default(self) -> None:
+        """Test that default evaluation mode is string_match."""
+        evaluator = BenchmarkEvaluator(self.config)
+
+        run = evaluator.run_benchmark(
+            queries=self.benchmark_queries,
+            run_type="baseline",
+        )
+
+        assert run.evaluation_mode == EvaluationMode.STRING_MATCH
+        assert run.judge_model is None
+
+    def test_empty_queries_with_judge(self) -> None:
+        """Test handling empty query list with LLM judge enabled."""
+        evaluator = BenchmarkEvaluator(self.config, use_llm_judge=True)
+
+        run = evaluator.run_benchmark(
+            queries=[],
+            run_type="baseline",
+        )
+
+        assert run.queries_evaluated == 0
+        assert run.evaluation_mode == EvaluationMode.LLM_JUDGE

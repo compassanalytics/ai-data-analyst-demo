@@ -29,24 +29,22 @@ Why Genie will struggle:
 - Inconsistent naming makes pattern matching fail
 """
 
-from typing import Optional
-from datetime import datetime, timedelta
-import random
 import os
+import random
+from datetime import datetime, timedelta
 
 import pandas as pd
 
-from .utils import (
-    set_random_seed,
-    fake,
-)
 from .codes import (
+    FACILITY_NAMES,
     ICD_CODES_DIRTY,
     PAYER_TYPES,
-    FACILITY_NAMES,
     SPECIALTIES,
 )
-
+from .utils import (
+    fake,
+    set_random_seed,
+)
 
 # Failure scenarios for demonstration
 HEALTHCARE_FAILURE_SCENARIOS = """
@@ -136,7 +134,7 @@ WHY STAR SCHEMA FIXES THESE PROBLEMS:
 def generate_healthcare_super_table(
     n_rows: int = 50000,
     seed: int = 42,
-    output_dir: Optional[str] = None,
+    output_dir: str | None = None,
 ) -> pd.DataFrame:
     """
     Generate a horribly denormalized healthcare super table with 100+ columns.
@@ -157,7 +155,7 @@ def generate_healthcare_super_table(
     print(f"Generating Healthcare Super Table ({n_rows:,} rows)...")
 
     # Generate dates within last 3 years
-    dates = pd.date_range(start="2022-01-01", end="2025-12-31", freq='D').tolist()
+    dates = pd.date_range(start="2022-01-01", end="2025-12-31", freq="D").tolist()
 
     records = []
 
@@ -175,9 +173,14 @@ def generate_healthcare_super_table(
         alt_npi = f"2{random.randint(100000000, 999999999)}"  # DIFFERENT!
 
         # Select encounter type
-        enc_type = random.choice(['OP', 'IP', 'ED', 'OBS', 'TH'])
-        enc_type_full = {'OP': 'Outpatient', 'IP': 'Inpatient', 'ED': 'Emergency',
-                         'OBS': 'Observation', 'TH': 'Telehealth'}[enc_type]
+        enc_type = random.choice(["OP", "IP", "ED", "OBS", "TH"])
+        enc_type_full = {
+            "OP": "Outpatient",
+            "IP": "Inpatient",
+            "ED": "Emergency",
+            "OBS": "Observation",
+            "TH": "Telehealth",
+        }[enc_type]
 
         # Length of stay (calculated DIFFERENTLY in different columns!)
         base_los = random.randint(0, 14)
@@ -203,17 +206,17 @@ def generate_healthcare_super_table(
         payer = random.choice(PAYER_TYPES)
         payer_name = payer[0]
         payer_codes = {
-            'Medicare': ['MCD', 'MCR', 'MDCR', '01'],
-            'Medicaid': ['MCA', 'MCAD', '02'],
-            'Blue Cross Blue Shield': ['BCBS', 'BC', 'BX', '03'],
-            'United Healthcare': ['UHC', 'UNT', 'UNHC', '04'],
-            'Aetna': ['AET', 'AETN', '05'],
-            'Cigna': ['CIG', 'CGN', '06'],
-            'Humana': ['HUM', 'HMN', '07'],
-            'Self-Pay': ['SELF', 'SP', 'PAY', '99'],
-            'Workers Compensation': ['WC', 'WKRS', 'WCOMP', '08'],
+            "Medicare": ["MCD", "MCR", "MDCR", "01"],
+            "Medicaid": ["MCA", "MCAD", "02"],
+            "Blue Cross Blue Shield": ["BCBS", "BC", "BX", "03"],
+            "United Healthcare": ["UHC", "UNT", "UNHC", "04"],
+            "Aetna": ["AET", "AETN", "05"],
+            "Cigna": ["CIG", "CGN", "06"],
+            "Humana": ["HUM", "HMN", "07"],
+            "Self-Pay": ["SELF", "SP", "PAY", "99"],
+            "Workers Compensation": ["WC", "WKRS", "WCOMP", "08"],
         }
-        payer_abbrevs = payer_codes.get(payer_name, ['UNK', 'OTH', '00'])
+        payer_abbrevs = payer_codes.get(payer_name, ["UNK", "OTH", "00"])
 
         # Patient demographics
         first_name = fake.first_name()
@@ -224,179 +227,169 @@ def generate_healthcare_super_table(
         facility = random.choice(FACILITY_NAMES)
 
         # Boolean chaos values
-        bool_values = ['0', '1', 'Y', 'N', 'True', 'False', 'YES', 'NO', 'T', 'F', '']
+        bool_values = ["0", "1", "Y", "N", "True", "False", "YES", "NO", "T", "F", ""]
 
         record = {
             # =====================================================================
             # PATIENT IDs (10+ columns, CONFLICTING values!)
             # =====================================================================
-            'patient_id': str(base_patient_id),
-            'patientID': str(alt_patient_id),  # DIFFERENT!
-            'PAT_ID': str(base_patient_id),
-            'pat_id': str(random.randint(10000, 99999)),  # DIFFERENT!
-            'mrn': f"MRN-{base_patient_id}",
-            'MRN': f"MRN-{alt_patient_id}",  # DIFFERENT!
-            'member_id': f"MEM{random.randint(100000000, 999999999)}",
-            'MEMBER_ID': f"MBR{random.randint(100000000, 999999999)}",  # DIFFERENT!
-            'ssn': f"000-{random.randint(10, 99)}-{random.randint(1000, 9999)}",
-            'internal_patient_id': f"INT-{random.randint(1000000, 9999999)}",
-
+            "patient_id": str(base_patient_id),
+            "patientID": str(alt_patient_id),  # DIFFERENT!
+            "PAT_ID": str(base_patient_id),
+            "pat_id": str(random.randint(10000, 99999)),  # DIFFERENT!
+            "mrn": f"MRN-{base_patient_id}",
+            "MRN": f"MRN-{alt_patient_id}",  # DIFFERENT!
+            "member_id": f"MEM{random.randint(100000000, 999999999)}",
+            "MEMBER_ID": f"MBR{random.randint(100000000, 999999999)}",  # DIFFERENT!
+            "ssn": f"000-{random.randint(10, 99)}-{random.randint(1000, 9999)}",
+            "internal_patient_id": f"INT-{random.randint(1000000, 9999999)}",
             # =====================================================================
             # DATE columns (10+ columns, DIFFERENT formats!)
             # =====================================================================
-            'service_date': str(service_date.date()),
-            'ServiceDate': service_date.strftime('%m/%d/%Y'),
-            'svc_dt': service_date.strftime('%Y%m%d'),
-            'dos': service_date.strftime('%d-%b-%Y'),
-            'DATE_OF_SERVICE': service_date.isoformat(),
-            'admit_date': str(service_date.date()),
-            'admission_dt': service_date.strftime('%Y-%m-%d %H:%M:%S'),
-            'ADMIT_DT': service_date.strftime('%m-%d-%Y'),
-            'discharge_date': str((service_date + timedelta(days=base_los)).date()),
-            'disch_dt': (service_date + timedelta(days=alt_los)).strftime('%Y%m%d'),  # DIFFERENT!
-
+            "service_date": str(service_date.date()),
+            "ServiceDate": service_date.strftime("%m/%d/%Y"),
+            "svc_dt": service_date.strftime("%Y%m%d"),
+            "dos": service_date.strftime("%d-%b-%Y"),
+            "DATE_OF_SERVICE": service_date.isoformat(),
+            "admit_date": str(service_date.date()),
+            "admission_dt": service_date.strftime("%Y-%m-%d %H:%M:%S"),
+            "ADMIT_DT": service_date.strftime("%m-%d-%Y"),
+            "discharge_date": str((service_date + timedelta(days=base_los)).date()),
+            "disch_dt": (service_date + timedelta(days=alt_los)).strftime("%Y%m%d"),  # DIFFERENT!
             # =====================================================================
             # DIAGNOSIS columns (8+ columns, CONFLICTING!)
             # =====================================================================
-            'dx1': dx_code[0],
-            'dx2': dx_code_2[0],
-            'primary_dx': random.choice(ICD_CODES_DIRTY)[0],  # May differ from dx1!
-            'ICD_CODE': dx_code[0],
-            'diagnosis': dx_code[1],
-            'dx_code': random.choice(['DX-001', 'DX-002', 'SYN-DIAB-01', 'GEN-003']),  # Random!
-            'DX_CD': random.choice(ICD_CODES_DIRTY)[0],  # Different!
-            'diag_category': random.choice(['Category A', 'Category B', 'Category C']),
-
+            "dx1": dx_code[0],
+            "dx2": dx_code_2[0],
+            "primary_dx": random.choice(ICD_CODES_DIRTY)[0],  # May differ from dx1!
+            "ICD_CODE": dx_code[0],
+            "diagnosis": dx_code[1],
+            "dx_code": random.choice(["DX-001", "DX-002", "SYN-DIAB-01", "GEN-003"]),  # Random!
+            "DX_CD": random.choice(ICD_CODES_DIRTY)[0],  # Different!
+            "diag_category": random.choice(["Category A", "Category B", "Category C"]),
             # =====================================================================
             # PROVIDER columns (8+ columns, CONFLICTING!)
             # =====================================================================
-            'provider_id': str(base_provider_id),
-            'PROVIDER_ID': str(alt_provider_id),  # DIFFERENT!
-            'npi': base_npi,
-            'NPI': alt_npi,  # DIFFERENT!
-            'attending_npi': f"1{random.randint(100000000, 999999999)}",  # Another different one!
-            'provider_name': f"Dr. {last_name}",
-            'PROVIDER_NM': f"DR {alt_last_name}",  # DIFFERENT!
-            'specialty': random.choice([s[0] for s in SPECIALTIES]),
-
+            "provider_id": str(base_provider_id),
+            "PROVIDER_ID": str(alt_provider_id),  # DIFFERENT!
+            "npi": base_npi,
+            "NPI": alt_npi,  # DIFFERENT!
+            "attending_npi": f"1{random.randint(100000000, 999999999)}",  # Another different one!
+            "provider_name": f"Dr. {last_name}",
+            "PROVIDER_NM": f"DR {alt_last_name}",  # DIFFERENT!
+            "specialty": random.choice([s[0] for s in SPECIALTIES]),
             # =====================================================================
             # AMOUNT columns (15+ columns, CONFLICTING values!)
             # =====================================================================
-            'charge_amt': str(billed),
-            'CHARGES': str(billed_alt),  # DIFFERENT!
-            'billed': str(billed),
-            'billed_amt': str(billed_alt),  # DIFFERENT!
-            'total_charges': str(round(billed * random.uniform(0.9, 1.1), 2)),  # DIFFERENT!
-            'gross_charges': str(round(billed * random.uniform(0.85, 1.15), 2)),  # DIFFERENT!
-            'allowed_amt': str(allowed),
-            'ALLOWED': str(allowed_alt),  # DIFFERENT!
-            'paid_amt': str(paid),
-            'PAID': str(paid_alt),  # DIFFERENT!
-            'payment': str(round(paid * random.uniform(0.95, 1.05), 2)),  # DIFFERENT!
-            'reimb_amt': str(round(paid * random.uniform(0.90, 1.10), 2)),  # DIFFERENT!
-            'copay': str(round(random.uniform(10, 100), 2)),
-            'COPAY': str(round(random.uniform(15, 150), 2)),  # DIFFERENT!
-            'coinsurance': str(round(random.uniform(0, 500), 2)),
-            'deductible': str(round(random.uniform(0, 1000), 2)),
-
+            "charge_amt": str(billed),
+            "CHARGES": str(billed_alt),  # DIFFERENT!
+            "billed": str(billed),
+            "billed_amt": str(billed_alt),  # DIFFERENT!
+            "total_charges": str(round(billed * random.uniform(0.9, 1.1), 2)),  # DIFFERENT!
+            "gross_charges": str(round(billed * random.uniform(0.85, 1.15), 2)),  # DIFFERENT!
+            "allowed_amt": str(allowed),
+            "ALLOWED": str(allowed_alt),  # DIFFERENT!
+            "paid_amt": str(paid),
+            "PAID": str(paid_alt),  # DIFFERENT!
+            "payment": str(round(paid * random.uniform(0.95, 1.05), 2)),  # DIFFERENT!
+            "reimb_amt": str(round(paid * random.uniform(0.90, 1.10), 2)),  # DIFFERENT!
+            "copay": str(round(random.uniform(10, 100), 2)),
+            "COPAY": str(round(random.uniform(15, 150), 2)),  # DIFFERENT!
+            "coinsurance": str(round(random.uniform(0, 500), 2)),
+            "deductible": str(round(random.uniform(0, 1000), 2)),
             # =====================================================================
             # BOOLEAN chaos (5+ columns, mixed formats!)
             # =====================================================================
-            'is_admitted': str(random.choice(bool_values)),
-            'admitted_flg': str(random.choice(['Y', 'N', '1', '0'])),
-            'emergency_flag': str(random.choice(bool_values)),
-            'is_emergency': str(random.choice([0, 1, 'Y', 'N', True, False])),
-            'has_surgery': str(random.choice(bool_values)),
-
+            "is_admitted": str(random.choice(bool_values)),
+            "admitted_flg": str(random.choice(["Y", "N", "1", "0"])),
+            "emergency_flag": str(random.choice(bool_values)),
+            "is_emergency": str(random.choice([0, 1, "Y", "N", True, False])),
+            "has_surgery": str(random.choice(bool_values)),
             # =====================================================================
             # CRYPTIC codes (10+ columns, no documentation!)
             # =====================================================================
-            'ins_type': random.choice(payer_abbrevs),
-            'insurance_cd': random.choice(payer_abbrevs),
-            'payer_cd': random.choice(payer_abbrevs),
-            'PAYER': payer_name,
-            'payer_name': random.choice([payer_name, payer_abbrevs[0]]),  # Inconsistent!
-            'INS_NAME': random.choice([payer_name.upper(), payer_abbrevs[0]]),
-            'coverage_level': random.choice(['1', '2', '3', 'F', 'E', 'C']),
-            'enc_type': enc_type,
-            'encounter_type': enc_type_full,
-            'type_cd': str(random.randint(1, 5)),
-            'flg1': str(random.choice([0, 1])),
-            'flg2': random.choice(['Y', 'N']),
-            'cd1': random.choice(['A', 'B', 'C', 'D']),
-            'cd2': random.choice(['X', 'Y', 'Z']),
-            'val': str(round(random.uniform(0, 1000), 2)),
-            'amt': str(round(random.uniform(0, 500), 2)),
-            'cnt': str(random.randint(1, 100)),
-            'status_cd': random.choice(['A', 'B', 'C', 'P', 'D', 'X']),
-
+            "ins_type": random.choice(payer_abbrevs),
+            "insurance_cd": random.choice(payer_abbrevs),
+            "payer_cd": random.choice(payer_abbrevs),
+            "PAYER": payer_name,
+            "payer_name": random.choice([payer_name, payer_abbrevs[0]]),  # Inconsistent!
+            "INS_NAME": random.choice([payer_name.upper(), payer_abbrevs[0]]),
+            "coverage_level": random.choice(["1", "2", "3", "F", "E", "C"]),
+            "enc_type": enc_type,
+            "encounter_type": enc_type_full,
+            "type_cd": str(random.randint(1, 5)),
+            "flg1": str(random.choice([0, 1])),
+            "flg2": random.choice(["Y", "N"]),
+            "cd1": random.choice(["A", "B", "C", "D"]),
+            "cd2": random.choice(["X", "Y", "Z"]),
+            "val": str(round(random.uniform(0, 1000), 2)),
+            "amt": str(round(random.uniform(0, 500), 2)),
+            "cnt": str(random.randint(1, 100)),
+            "status_cd": random.choice(["A", "B", "C", "P", "D", "X"]),
             # =====================================================================
             # ENCOUNTER IDs (conflicting!)
             # =====================================================================
-            'enc_id': f"ENC-{i:08d}",
-            'encounter_id': str(i),
-            'ENCOUNTER_ID': f"E{i}",  # Different format!
-            'visit_id': f"V-{random.randint(1000000, 9999999)}",  # Different!
-
+            "enc_id": f"ENC-{i:08d}",
+            "encounter_id": str(i),
+            "ENCOUNTER_ID": f"E{i}",  # Different format!
+            "visit_id": f"V-{random.randint(1000000, 9999999)}",  # Different!
             # =====================================================================
             # LENGTH OF STAY (multiple calculations!)
             # =====================================================================
-            'los': str(base_los),
-            'LOS': str(alt_los),  # DIFFERENT!
-            'length_of_stay': str(base_los),
-            'stay_days': str(random.randint(0, 20)),  # DIFFERENT!
-            'days_in_hospital': str(alt_los + random.randint(-1, 2)),  # DIFFERENT!
-            'duration': str(random.randint(0, 21)),  # DIFFERENT!
-
+            "los": str(base_los),
+            "LOS": str(alt_los),  # DIFFERENT!
+            "length_of_stay": str(base_los),
+            "stay_days": str(random.randint(0, 20)),  # DIFFERENT!
+            "days_in_hospital": str(alt_los + random.randint(-1, 2)),  # DIFFERENT!
+            "duration": str(random.randint(0, 21)),  # DIFFERENT!
             # =====================================================================
             # PATIENT DEMOGRAPHICS (conflicting!)
             # =====================================================================
-            'patient_name': f"{first_name} {last_name}",
-            'PAT_NAME': f"{first_name} {alt_last_name}",  # DIFFERENT!
-            'first_name': first_name,
-            'last_name': last_name,
-            'LAST_NM': alt_last_name,  # DIFFERENT!
-            'dob': str((datetime.now() - timedelta(days=random.randint(6570, 36500))).date()),
-            'DOB': (datetime.now() - timedelta(days=random.randint(6570, 36500))).strftime('%m/%d/%Y'),  # Different date!
-            'gender': random.choice(['M', 'F', 'Male', 'Female', 'U', 'Unknown', '1', '2']),
-            'sex': random.choice(['M', 'F', 'MALE', 'FEMALE', 'O']),  # Different value!
-
+            "patient_name": f"{first_name} {last_name}",
+            "PAT_NAME": f"{first_name} {alt_last_name}",  # DIFFERENT!
+            "first_name": first_name,
+            "last_name": last_name,
+            "LAST_NM": alt_last_name,  # DIFFERENT!
+            "dob": str((datetime.now() - timedelta(days=random.randint(6570, 36500))).date()),
+            "DOB": (datetime.now() - timedelta(days=random.randint(6570, 36500))).strftime(
+                "%m/%d/%Y"
+            ),  # Different date!
+            "gender": random.choice(["M", "F", "Male", "Female", "U", "Unknown", "1", "2"]),
+            "sex": random.choice(["M", "F", "MALE", "FEMALE", "O"]),  # Different value!
             # =====================================================================
             # FACILITY (inconsistent)
             # =====================================================================
-            'facility': facility,
-            'FACILITY': facility.upper(),
-            'fac_cd': f"FAC-{random.randint(100, 999)}",
-            'location': random.choice(FACILITY_NAMES),  # May differ!
-            'LOC_CD': random.choice(['L01', 'L02', 'L03', 'L04', 'L05']),
-
+            "facility": facility,
+            "FACILITY": facility.upper(),
+            "fac_cd": f"FAC-{random.randint(100, 999)}",
+            "location": random.choice(FACILITY_NAMES),  # May differ!
+            "LOC_CD": random.choice(["L01", "L02", "L03", "L04", "L05"]),
             # =====================================================================
             # TIMESTAMPS (various formats)
             # =====================================================================
-            'created_at': (service_date + timedelta(hours=random.randint(0, 23))).isoformat(),
-            'modified_dt': service_date.strftime('%Y-%m-%d %H:%M:%S'),
-            'last_update': service_date.strftime('%m/%d/%y'),
-            'etl_timestamp': datetime.now().isoformat(),
-
+            "created_at": (service_date + timedelta(hours=random.randint(0, 23))).isoformat(),
+            "modified_dt": service_date.strftime("%Y-%m-%d %H:%M:%S"),
+            "last_update": service_date.strftime("%m/%d/%y"),
+            "etl_timestamp": datetime.now().isoformat(),
             # =====================================================================
             # MORE RANDOM FIELDS (to hit 100+ columns)
             # =====================================================================
-            'ref_num': f"REF{random.randint(100000, 999999)}",
-            'auth_num': f"AUTH{random.randint(10000, 99999)}",
-            'claim_id': f"CLM-{random.randint(1000000000, 9999999999)}",
-            'CLAIM_ID': f"C{random.randint(1000000, 9999999)}",  # DIFFERENT!
-            'invoice_num': f"INV-{random.randint(100000, 999999)}",
-            'account_num': f"ACCT-{random.randint(10000, 99999)}",
-            'bill_type': random.choice(['111', '121', '131', '141', '112']),
-            'rev_code': random.choice(['0100', '0120', '0250', '0300', '0450']),
-            'drg': random.choice(['470', '871', '291', '392', '065']),
-            'DRG_CD': random.choice(['470', '871', '291', '392', '065']),  # May differ!
-            'proc_cd': random.choice(['99213', '99214', '99215', '99221', '99281']),
-            'modifier': random.choice(['', '25', '59', 'GT', 'GY']),
-            'pos': random.choice(['11', '21', '22', '23', '81']),
-            'tos': random.choice(['1', '2', '3', '4', '5']),
-            'units': str(random.randint(1, 10)),
-            'UNITS': str(random.randint(1, 12)),  # DIFFERENT!
+            "ref_num": f"REF{random.randint(100000, 999999)}",
+            "auth_num": f"AUTH{random.randint(10000, 99999)}",
+            "claim_id": f"CLM-{random.randint(1000000000, 9999999999)}",
+            "CLAIM_ID": f"C{random.randint(1000000, 9999999)}",  # DIFFERENT!
+            "invoice_num": f"INV-{random.randint(100000, 999999)}",
+            "account_num": f"ACCT-{random.randint(10000, 99999)}",
+            "bill_type": random.choice(["111", "121", "131", "141", "112"]),
+            "rev_code": random.choice(["0100", "0120", "0250", "0300", "0450"]),
+            "drg": random.choice(["470", "871", "291", "392", "065"]),
+            "DRG_CD": random.choice(["470", "871", "291", "392", "065"]),  # May differ!
+            "proc_cd": random.choice(["99213", "99214", "99215", "99221", "99281"]),
+            "modifier": random.choice(["", "25", "59", "GT", "GY"]),
+            "pos": random.choice(["11", "21", "22", "23", "81"]),
+            "tos": random.choice(["1", "2", "3", "4", "5"]),
+            "units": str(random.randint(1, 10)),
+            "UNITS": str(random.randint(1, 12)),  # DIFFERENT!
         }
 
         records.append(record)
@@ -405,21 +398,21 @@ def generate_healthcare_super_table(
     df = pd.DataFrame(records)
 
     # Verify column count
-    print(f"\nSuper Table Generated:")
+    print("\nSuper Table Generated:")
     print(f"  Rows: {len(df):,}")
     print(f"  Columns: {len(df.columns)}")
 
-    print(f"\nColumn examples demonstrating chaos:")
-    print(f"  Patient IDs: patient_id, patientID, PAT_ID, pat_id, mrn, MRN, member_id, MEMBER_ID")
-    print(f"  Dates: service_date, ServiceDate, svc_dt, dos, DATE_OF_SERVICE, admit_date")
-    print(f"  Amounts: charge_amt, CHARGES, billed, billed_amt, paid_amt, PAID")
-    print(f"  Booleans: is_admitted (0/1/Y/N/True/False), admitted_flg, emergency_flag")
-    print(f"  LOS: los, LOS, length_of_stay, stay_days, days_in_hospital, duration")
+    print("\nColumn examples demonstrating chaos:")
+    print("  Patient IDs: patient_id, patientID, PAT_ID, pat_id, mrn, MRN, member_id, MEMBER_ID")
+    print("  Dates: service_date, ServiceDate, svc_dt, dos, DATE_OF_SERVICE, admit_date")
+    print("  Amounts: charge_amt, CHARGES, billed, billed_amt, paid_amt, PAID")
+    print("  Booleans: is_admitted (0/1/Y/N/True/False), admitted_flg, emergency_flag")
+    print("  LOS: los, LOS, length_of_stay, stay_days, days_in_hospital, duration")
 
     # Save to parquet if output directory specified
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
-        path = os.path.join(output_dir, 'healthcare_super_table.parquet')
+        path = os.path.join(output_dir, "healthcare_super_table.parquet")
         df.to_parquet(path, index=False)
         print(f"\n    Saved {path}")
 

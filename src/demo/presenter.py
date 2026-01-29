@@ -14,9 +14,9 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Optional
-
+from typing import Any
 
 # Environment variable for presenter mode
 PRESENTER_MODE_ENV_VAR = "WORKSHOP_PRESENTER_MODE"
@@ -45,7 +45,8 @@ def set_presenter_mode(enabled: bool) -> None:
 def _get_display():
     """Get IPython display function if available."""
     try:
-        from IPython.display import display, HTML
+        from IPython.display import HTML, display
+
         return display, HTML
     except ImportError:
         return None, None
@@ -61,8 +62,7 @@ def _escape_html(text: str) -> str:
         HTML-escaped text
     """
     return (
-        text
-        .replace("&", "&amp;")
+        text.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
@@ -91,7 +91,7 @@ def solution_cell(
     explanation_html = ""
     if explanation:
         explanation_escaped = _escape_html(explanation)
-        explanation_html = f'''
+        explanation_html = f"""
             <div style="
                 margin-bottom: 12px;
                 padding: 12px;
@@ -101,9 +101,9 @@ def solution_cell(
                 color: #0369a1;
                 line-height: 1.5;
             ">{explanation_escaped}</div>
-        '''
+        """
 
-    return f'''
+    return f"""
     <details style="
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         max-width: 800px;
@@ -138,7 +138,7 @@ def solution_cell(
             "><code>{code_escaped}</code></pre>
         </div>
     </details>
-    '''
+    """
 
 
 def display_solution(
@@ -174,9 +174,9 @@ def display_solution(
 
 # Marker type colors
 MARKER_COLORS = {
-    "action": "#3B82F6",   # Blue - main action
-    "pause": "#8B5CF6",    # Purple - pause/discussion
-    "optional": "#6B7280", # Gray - optional section
+    "action": "#3B82F6",  # Blue - main action
+    "pause": "#8B5CF6",  # Purple - pause/discussion
+    "optional": "#6B7280",  # Gray - optional section
 }
 
 
@@ -198,15 +198,15 @@ def demo_marker(
     color = MARKER_COLORS.get(marker_type, MARKER_COLORS["action"])
 
     type_icons = {
-        "action": "&#9654;",   # Play triangle
-        "pause": "&#9208;",    # Pause symbol
-        "optional": "&#9998;", # Pencil/edit
+        "action": "&#9654;",  # Play triangle
+        "pause": "&#9208;",  # Pause symbol
+        "optional": "&#9998;",  # Pencil/edit
     }
     icon = type_icons.get(marker_type, type_icons["action"])
 
     type_label = marker_type.upper()
 
-    return f'''
+    return f"""
     <div style="
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         display: inline-flex;
@@ -236,7 +236,7 @@ def demo_marker(
             font-weight: 600;
         ">{duration_minutes} min</span>
     </div>
-    '''
+    """
 
 
 def display_demo_marker(
@@ -285,7 +285,7 @@ class FallbackOutputManager:
 
     DEFAULT_DIR = "data/demo_fallbacks"
 
-    def __init__(self, fallback_dir: Optional[str] = None) -> None:
+    def __init__(self, fallback_dir: str | None = None) -> None:
         """Initialize the fallback manager.
 
         Args:
@@ -402,7 +402,7 @@ class FallbackOutputManager:
 
 
 # Global singleton
-_fallback_manager: Optional[FallbackOutputManager] = None
+_fallback_manager: FallbackOutputManager | None = None
 
 
 def get_fallback_manager() -> FallbackOutputManager:
@@ -491,7 +491,7 @@ def display_presenter_controls() -> None:
     status_icon = "&#9989;" if is_enabled else "&#10060;"
 
     if display and HTML:
-        html = f'''
+        html = f"""
         <div style="
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             max-width: 600px;
@@ -535,8 +535,8 @@ def display_presenter_controls() -> None:
                 </p>
             </div>
         </div>
-        '''
+        """
         display(HTML(html))
     else:
         print(f"Presenter Mode: {status_text}")
-        print(f"Toggle with: set_presenter_mode(True/False)")
+        print("Toggle with: set_presenter_mode(True/False)")

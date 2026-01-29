@@ -2,100 +2,100 @@
 Base classes and utilities for dataset generators.
 """
 
-from .utils import set_random_seed, CleanlinessLevel, scale_count
-from .generator import BaseDataGenerator, GeneratorConfig
 from .anti_patterns import (
-    AntiPattern,
-    AntiPatternRegistry,
-    get_registry,
-    # Naming patterns
-    CrypticCodesPattern,
-    InconsistentCasePattern,
     AbbreviationsPattern,
     AmbiguousNamesPattern,
+    AntiPattern,
+    AntiPatternRegistry,
+    CalculatedStoredPattern,
+    ConflictingValuesPattern,
+    # Naming patterns
+    CrypticCodesPattern,
+    # Structural patterns
+    DenormalizationPattern,
     # Redundancy patterns
     DuplicateColumnsPattern,
     DuplicateIdsPattern,
-    CalculatedStoredPattern,
+    HiddenLogicPattern,
+    InconsistentCasePattern,
+    InconsistentDatesPattern,
     # Type patterns
     MixedBooleansPattern,
-    InconsistentDatesPattern,
-    NullVariationsPattern,
-    # Structural patterns
-    DenormalizationPattern,
-    ConflictingValuesPattern,
-    OrphanKeysPattern,
     # Metadata patterns
     NoDescriptionsPattern,
+    NullVariationsPattern,
+    OrphanKeysPattern,
     UndocumentedCodesPattern,
-    HiddenLogicPattern,
+    get_registry,
 )
-from .traps import (
-    TrapColumn,
-    TrapRegistry,
-    get_trap_registry,
-    # Individual trap classes
-    TrapRevenue,
-    TrapTotal,
-    TrapDate,
-    TrapStatus,
-    TrapMargin,
-    TrapCustomerCount,
-    TrapDiscount,
-)
+from .generator import BaseDataGenerator, GeneratorConfig
 from .test_queries import (
     TestQuery,
     TestQueryGenerator,
     get_query_generator,
 )
+from .traps import (
+    TrapColumn,
+    TrapCustomerCount,
+    TrapDate,
+    TrapDiscount,
+    TrapMargin,
+    TrapRegistry,
+    # Individual trap classes
+    TrapRevenue,
+    TrapStatus,
+    TrapTotal,
+    get_trap_registry,
+)
+from .utils import CleanlinessLevel, scale_count, set_random_seed
 
 __all__ = [
     # Generator classes
-    'BaseDataGenerator',
-    'GeneratorConfig',
+    "BaseDataGenerator",
+    "GeneratorConfig",
     # Utilities
-    'CleanlinessLevel',
-    'set_random_seed',
-    'scale_count',
+    "CleanlinessLevel",
+    "set_random_seed",
+    "scale_count",
     # Anti-pattern system
-    'AntiPattern',
-    'AntiPatternRegistry',
-    'get_registry',
+    "AntiPattern",
+    "AntiPatternRegistry",
+    "get_registry",
     # Naming patterns
-    'CrypticCodesPattern',
-    'InconsistentCasePattern',
-    'AbbreviationsPattern',
-    'AmbiguousNamesPattern',
+    "CrypticCodesPattern",
+    "InconsistentCasePattern",
+    "AbbreviationsPattern",
+    "AmbiguousNamesPattern",
     # Redundancy patterns
-    'DuplicateColumnsPattern',
-    'DuplicateIdsPattern',
-    'CalculatedStoredPattern',
+    "DuplicateColumnsPattern",
+    "DuplicateIdsPattern",
+    "CalculatedStoredPattern",
     # Type patterns
-    'MixedBooleansPattern',
-    'InconsistentDatesPattern',
-    'NullVariationsPattern',
+    "MixedBooleansPattern",
+    "InconsistentDatesPattern",
+    "NullVariationsPattern",
     # Structural patterns
-    'DenormalizationPattern',
-    'ConflictingValuesPattern',
-    'OrphanKeysPattern',
+    "DenormalizationPattern",
+    "ConflictingValuesPattern",
+    "OrphanKeysPattern",
     # Metadata patterns
-    'NoDescriptionsPattern',
-    'UndocumentedCodesPattern',
-    'HiddenLogicPattern',
+    "NoDescriptionsPattern",
+    "UndocumentedCodesPattern",
+    "HiddenLogicPattern",
     # Trap system
-    'TrapColumn',
-    'TrapRegistry',
-    'get_trap_registry',
+    "TrapColumn",
+    "TrapRegistry",
+    "get_trap_registry",
     # Individual trap classes
-    'TrapRevenue',
-    'TrapTotal',
-    'TrapDate',
-    'TrapStatus',
-    'TrapMargin',
-    'TrapCustomerCount',
-    'TrapDiscount',
+    "TrapRevenue",
+    "TrapTotal",
+    "TrapDate",
+    "TrapStatus",
+    "TrapMargin",
+    "TrapCustomerCount",
+    "TrapDiscount",
     # Test query system
-    'TestQuery',
-    'TestQueryGenerator',
-    'get_query_generator',
+    "TestQuery",
+    "TestQueryGenerator",
+    "get_query_generator",
 ]

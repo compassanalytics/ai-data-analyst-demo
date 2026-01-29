@@ -15,7 +15,6 @@ import argparse
 import json
 import os
 import sys
-from pathlib import Path
 
 # Add src to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,8 +22,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.config import Config
 from src.evaluation import (
     ComplexityLevel,
-    EvaluationResults,
     EvaluationReporter,
+    EvaluationResults,
     FailureCategory,
     GenieEvaluator,
     QueryGenerator,
@@ -72,104 +71,59 @@ Examples:
 
   # Custom output directory and formats
   uv run python scripts/evaluate_genie.py --output-dir ./my-reports --formats md,html
-        """
+        """,
     )
 
     # Space configuration
     parser.add_argument(
         "--space-id",
         default=os.getenv("GENIE_SPACE_ID", ""),
-        help="Genie Space ID (default: from GENIE_SPACE_ID env var)"
+        help="Genie Space ID (default: from GENIE_SPACE_ID env var)",
     )
 
     # Filtering options
     parser.add_argument(
         "--query-types",
-        help="Comma-separated list of query types to include (aggregation,filter,join,temporal,ranking,comparison)"
+        help="Comma-separated list of query types to include (aggregation,filter,join,temporal,ranking,comparison)",
     )
     parser.add_argument(
-        "--complexity",
-        help="Comma-separated list of complexity levels to include (simple,moderate,complex)"
+        "--complexity", help="Comma-separated list of complexity levels to include (simple,moderate,complex)"
     )
     parser.add_argument(
         "--failure-categories",
-        help="Comma-separated list of failure categories to include (ambiguous_columns,cryptic_codes,business_logic,temporal_confusion,aggregation_ambiguity,join_complexity)"
+        help="Comma-separated list of failure categories to include (ambiguous_columns,cryptic_codes,business_logic,temporal_confusion,aggregation_ambiguity,join_complexity)",
     )
-    parser.add_argument(
-        "--adversarial",
-        action="store_true",
-        help="Mark all test queries as adversarial"
-    )
+    parser.add_argument("--adversarial", action="store_true", help="Mark all test queries as adversarial")
 
     # Comparison mode
-    parser.add_argument(
-        "--compare-spaces",
-        help="Two space IDs separated by comma for comparison (CLEAN_ID,DIRTY_ID)"
-    )
+    parser.add_argument("--compare-spaces", help="Two space IDs separated by comma for comparison (CLEAN_ID,DIRTY_ID)")
 
     # Execution modes
-    parser.add_argument(
-        "--mock",
-        action="store_true",
-        help="Use mock mode (no Databricks connection required)"
-    )
+    parser.add_argument("--mock", action="store_true", help="Use mock mode (no Databricks connection required)")
     parser.add_argument(
         "--report-only",
         metavar="JSON_FILE",
-        help="Generate reports from existing JSON results file (no query execution)"
+        help="Generate reports from existing JSON results file (no query execution)",
     )
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show queries that would be executed without running them"
+        "--dry-run", action="store_true", help="Show queries that would be executed without running them"
     )
-    parser.add_argument(
-        "--limit",
-        type=int,
-        help="Limit number of queries to execute (for cost control)"
-    )
+    parser.add_argument("--limit", type=int, help="Limit number of queries to execute (for cost control)")
 
     # Output options
-    parser.add_argument(
-        "--output-dir",
-        default="reports",
-        help="Directory to save reports (default: reports)"
-    )
-    parser.add_argument(
-        "--formats",
-        default="md,html,json",
-        help="Comma-separated output formats (md,html,json)"
-    )
-    parser.add_argument(
-        "--title",
-        help="Custom title for the report"
-    )
+    parser.add_argument("--output-dir", default="reports", help="Directory to save reports (default: reports)")
+    parser.add_argument("--formats", default="md,html,json", help="Comma-separated output formats (md,html,json)")
+    parser.add_argument("--title", help="Custom title for the report")
 
     # Execution options
     parser.add_argument(
-        "--fresh",
-        action="store_true",
-        default=True,
-        help="Bypass cache for each query (default: True)"
+        "--fresh", action="store_true", default=True, help="Bypass cache for each query (default: True)"
     )
-    parser.add_argument(
-        "--no-fresh",
-        action="store_false",
-        dest="fresh",
-        help="Allow cached results"
-    )
+    parser.add_argument("--no-fresh", action="store_false", dest="fresh", help="Allow cached results")
 
     # Output verbosity
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Suppress progress output"
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Show detailed output for each query"
-    )
+    parser.add_argument("--quiet", action="store_true", help="Suppress progress output")
+    parser.add_argument("--verbose", action="store_true", help="Show detailed output for each query")
 
     return parser.parse_args()
 
@@ -289,17 +243,17 @@ def run_evaluation(args: argparse.Namespace) -> EvaluationResults:
     if args.limit and args.limit < len(test_queries):
         if not args.quiet:
             print(f"Limiting to {args.limit} queries (from {len(test_queries)} total)")
-        test_queries = test_queries[:args.limit]
+        test_queries = test_queries[: args.limit]
 
     if not args.quiet:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("Genie Evaluation")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"Space ID: {args.space_id or '(mock)'}")
         print(f"Mode: {'Mock' if args.mock else 'Live'}")
         print(f"Total Queries: {len(test_queries)}")
         print(f"Fresh (no cache): {args.fresh}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
     # Create config
     config = Config(
@@ -339,12 +293,12 @@ def run_comparison(args: argparse.Namespace) -> tuple[EvaluationResults, Evaluat
     space1_id, space2_id = [s.strip() for s in space_ids]
 
     if not args.quiet:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("Genie Space Comparison")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"Space 1: {space1_id}")
         print(f"Space 2: {space2_id}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
     # Generate test queries (same for both)
     generator = QueryGenerator()
@@ -361,7 +315,7 @@ def run_comparison(args: argparse.Namespace) -> tuple[EvaluationResults, Evaluat
     )
 
     if args.limit and args.limit < len(test_queries):
-        test_queries = test_queries[:args.limit]
+        test_queries = test_queries[: args.limit]
 
     # Evaluate Space 1
     if not args.quiet:
@@ -398,18 +352,18 @@ def print_summary(results: EvaluationResults, title: str = "Summary") -> None:
         print("No summary available")
         return
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(title)
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Total Queries: {summary.total_queries}")
     print(f"Correct:       {summary.correct_count} ({summary.overall_accuracy:.1f}%)")
     print(f"Partial:       {summary.partial_count}")
     print(f"Wrong:         {summary.wrong_count}")
     print(f"Failed:        {summary.failed_count}")
     print(f"Success Rate:  {summary.success_rate:.1f}%")
-    print(f"Total Time:    {summary.total_execution_time_ms/1000:.2f}s")
+    print(f"Total Time:    {summary.total_execution_time_ms / 1000:.2f}s")
     print(f"Avg Time:      {summary.average_execution_time_ms:.0f}ms")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
 
 def main():
@@ -421,7 +375,7 @@ def main():
         if not args.quiet:
             print(f"Loading results from {args.report_only}...")
 
-        with open(args.report_only, "r") as f:
+        with open(args.report_only) as f:
             data = json.load(f)
 
         results = EvaluationResults.from_dict(data)
@@ -457,11 +411,11 @@ def main():
         )
 
         if args.limit:
-            test_queries = test_queries[:args.limit]
+            test_queries = test_queries[: args.limit]
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("DRY RUN - Queries that would be executed")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"Total: {len(test_queries)} queries\n")
 
         for i, query in enumerate(test_queries, 1):
@@ -474,17 +428,17 @@ def main():
 
         # Print summary
         summary = generator.get_summary()
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print("Query Summary")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"Total: {summary['total']}")
-        print(f"\nBy Category:")
+        print("\nBy Category:")
         for cat, count in summary["by_category"].items():
             print(f"  {cat}: {count}")
-        print(f"\nBy Type:")
+        print("\nBy Type:")
         for typ, count in summary["by_type"].items():
             print(f"  {typ}: {count}")
-        print(f"\nBy Complexity:")
+        print("\nBy Complexity:")
         for comp, count in summary["by_complexity"].items():
             print(f"  {comp}: {count}")
 

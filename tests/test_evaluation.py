@@ -9,11 +9,9 @@ from __future__ import annotations
 import json
 import tempfile
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-import pytest
-
+from src.config import Config
 from src.evaluation import (
     AccuracyScore,
     ComparisonDetails,
@@ -29,9 +27,7 @@ from src.evaluation import (
     TestQuery,
 )
 from src.evaluation.evaluator import EvaluationResults
-from src.config import Config
-from src.utils.errors import AgentError, ErrorCategory
-
+from src.utils.errors import AgentError
 
 # =============================================================================
 # Mock Classes
@@ -44,11 +40,11 @@ class MockGenieResult:
 
     success: bool = True
     data: list[dict[str, Any]] = field(default_factory=list)
-    sql: Optional[str] = None
-    description: Optional[str] = None
-    error: Optional[str] = None
+    sql: str | None = None
+    description: str | None = None
+    error: str | None = None
     columns: list[str] = field(default_factory=list)
-    error_details: Optional[AgentError] = None
+    error_details: AgentError | None = None
     from_cache: bool = False
 
 
@@ -381,9 +377,7 @@ class TestQueryGenerator:
 
     def test_generate_by_failure_category(self) -> None:
         """Test filtering by failure category."""
-        queries = self.generator.generate_suite(
-            failure_categories=[FailureCategory.AMBIGUOUS_COLUMNS]
-        )
+        queries = self.generator.generate_suite(failure_categories=[FailureCategory.AMBIGUOUS_COLUMNS])
 
         assert len(queries) >= 5  # Should have at least 5 queries per category
         for query in queries:
@@ -649,9 +643,7 @@ class TestGenieEvaluator:
         )
 
         # Test the comparison logic
-        accuracy, failure_type, comparison = self.evaluator._compare_results(
-            test_query, mock_result
-        )
+        accuracy, failure_type, comparison = self.evaluator._compare_results(test_query, mock_result)
 
         assert accuracy == AccuracyScore.FAILED
         assert failure_type == EvaluationFailureType.NO_SQL_GENERATED

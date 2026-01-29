@@ -18,9 +18,9 @@ import sys
 # Add src to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.config import Config
-from src.agents.planner_agent import PlannerAgent
 from src.agents.multi_genie_orchestrator import GenieSpaceConfig
+from src.agents.planner_agent import PlannerAgent
+from src.config import Config
 
 
 def create_demo_configs() -> list[GenieSpaceConfig]:

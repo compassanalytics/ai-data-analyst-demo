@@ -8,8 +8,8 @@ Usage:
 """
 
 import argparse
-import sys
 import os
+import sys
 
 # Add src to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -27,23 +27,15 @@ Examples:
   uv run python scripts/test_genie.py
   uv run python scripts/test_genie.py "Show top 10 customers"
   uv run python scripts/test_genie.py --space-id abc123 "Total sales?"
-        """
+        """,
     )
-    parser.add_argument(
-        "query",
-        nargs="?",
-        help="Query to run (if not provided, enters interactive mode)"
-    )
+    parser.add_argument("query", nargs="?", help="Query to run (if not provided, enters interactive mode)")
     parser.add_argument(
         "--space-id",
         default=os.getenv("GENIE_SPACE_ID", ""),
-        help="Genie Space ID (default: from GENIE_SPACE_ID env var)"
+        help="Genie Space ID (default: from GENIE_SPACE_ID env var)",
     )
-    parser.add_argument(
-        "--mock",
-        action="store_true",
-        help="Use mock mode (no Databricks connection)"
-    )
+    parser.add_argument("--mock", action="store_true", help="Use mock mode (no Databricks connection)")
 
     args = parser.parse_args()
 
@@ -55,10 +47,7 @@ Examples:
     print(f"Mode: {'Mock' if args.mock else 'Live'}")
     print("=" * 60)
 
-    config = Config(
-        genie_space_id=args.space_id,
-        mock_mode=args.mock
-    )
+    config = Config(genie_space_id=args.space_id, mock_mode=args.mock)
 
     genie = GenieDataAgent(config)
 
@@ -81,7 +70,7 @@ def run_query(genie: GenieDataAgent, query: str):
         if result.sql:
             print(f"\nSQL:\n{result.sql}")
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(result.to_markdown_table())
 
         if result.description:

@@ -27,19 +27,19 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from velocity_motors import (
-    set_random_seed,
-    generate_sales_domain,
     generate_crm_domain,
     generate_operations_domain,
+    generate_sales_domain,
+    set_random_seed,
 )
-from velocity_motors.sales import generate_salespersons, generate_vehicles, generate_orders, generate_order_items
+from velocity_motors.sales import generate_order_items, generate_orders, generate_salespersons, generate_vehicles
 from velocity_motors.utils import scale_count
 
 
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description='Generate Velocity Motors fictional automotive dataset',
+        description="Generate Velocity Motors fictional automotive dataset",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -58,45 +58,45 @@ Examples:
     )
 
     parser.add_argument(
-        '--output-dir',
+        "--output-dir",
         type=str,
-        default='./data/velocity_motors',
-        help='Output directory for parquet files (default: ./data/velocity_motors)',
+        default="./data/velocity_motors",
+        help="Output directory for parquet files (default: ./data/velocity_motors)",
     )
 
     parser.add_argument(
-        '--scale',
+        "--scale",
         type=float,
         default=1.0,
-        help='Scale factor for record counts (default: 1.0, use 0.1 for 10%%)',
+        help="Scale factor for record counts (default: 1.0, use 0.1 for 10%%)",
     )
 
     parser.add_argument(
-        '--seed',
+        "--seed",
         type=int,
         default=42,
-        help='Random seed for reproducibility (default: 42)',
+        help="Random seed for reproducibility (default: 42)",
     )
 
     parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='Show what would be generated without writing files',
+        "--dry-run",
+        action="store_true",
+        help="Show what would be generated without writing files",
     )
 
     parser.add_argument(
-        '--domain',
+        "--domain",
         type=str,
-        choices=['sales', 'crm', 'operations', 'all'],
-        default='all',
-        help='Generate only specific domain (default: all)',
+        choices=["sales", "crm", "operations", "all"],
+        default="all",
+        help="Generate only specific domain (default: all)",
     )
 
     parser.add_argument(
-        '--cleanliness',
+        "--cleanliness",
         type=int,
         default=100,
-        help='Data cleanliness level 0-100 (100=pristine, 0=messy). Default: 100',
+        help="Data cleanliness level 0-100 (100=pristine, 0=messy). Default: 100",
     )
 
     return parser.parse_args()
@@ -119,7 +119,7 @@ def validate_args(args):
 def save_domain(domain_data: dict, output_dir: str, domain_name: str, dry_run: bool):
     """Save domain DataFrames to parquet files."""
     for table_name, df in domain_data.items():
-        path = os.path.join(output_dir, f'{table_name}.parquet')
+        path = os.path.join(output_dir, f"{table_name}.parquet")
         if dry_run:
             print(f"    [DRY RUN] Would write {path} ({len(df):,} rows)")
         else:
@@ -160,7 +160,7 @@ def main():
     print("=" * 70)
     print("VELOCITY MOTORS DATASET GENERATOR")
     print("=" * 70)
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"    Output:     {args.output_dir}")
     print(f"    Scale:      {args.scale}")
     print(f"    Seed:       {args.seed}")
@@ -186,7 +186,7 @@ def main():
     # Determine if we should use extended data (at cleanliness < 90)
     use_extended = args.cleanliness < 90
 
-    if args.domain == 'all':
+    if args.domain == "all":
         # =====================================================================
         # MULTI-PHASE GENERATION - Fixes FK circular dependency
         # =====================================================================
@@ -207,7 +207,7 @@ def main():
             n=scale_count(50, args.scale),
             cleanliness=args.cleanliness,
         )
-        salesperson_ids = salespersons_df['salesperson_id'].tolist()
+        salesperson_ids = salespersons_df["salesperson_id"].tolist()
 
         # Step 2: Generate vehicles (independent)
         print("  Generating vehicles...")
@@ -216,7 +216,7 @@ def main():
             cleanliness=args.cleanliness,
             use_extended=use_extended,
         )
-        vehicle_ids = vehicles_df['vehicle_id'].tolist()
+        vehicle_ids = vehicles_df["vehicle_id"].tolist()
 
         print("\n[Phase B] Generating CRM Domain (with salesperson FK)...")
         print("-" * 70)
@@ -227,9 +227,9 @@ def main():
             cleanliness=args.cleanliness,
             salesperson_ids=salesperson_ids,
         )
-        customer_ids = crm_data['customers']['customer_id'].tolist()
-        all_data['crm'] = crm_data
-        save_domain(crm_data, output_dir, 'crm', args.dry_run)
+        customer_ids = crm_data["customers"]["customer_id"].tolist()
+        all_data["crm"] = crm_data
+        save_domain(crm_data, output_dir, "crm", args.dry_run)
 
         print("\n[Phase C] Generating Sales Orders (with customer FK)...")
         print("-" * 70)
@@ -250,13 +250,13 @@ def main():
 
         # Assemble sales data
         sales_data = {
-            'salespersons': salespersons_df,
-            'vehicles': vehicles_df,
-            'orders': orders_df,
-            'order_items': order_items_df,
+            "salespersons": salespersons_df,
+            "vehicles": vehicles_df,
+            "orders": orders_df,
+            "order_items": order_items_df,
         }
-        all_data['sales'] = sales_data
-        save_domain(sales_data, output_dir, 'sales', args.dry_run)
+        all_data["sales"] = sales_data
+        save_domain(sales_data, output_dir, "sales", args.dry_run)
 
         print("\n[Phase D] Generating Operations Domain...")
         print("-" * 70)
@@ -268,45 +268,45 @@ def main():
             customer_ids=customer_ids,
             vehicle_ids=vehicle_ids,
         )
-        all_data['operations'] = ops_data
-        save_domain(ops_data, output_dir, 'operations', args.dry_run)
+        all_data["operations"] = ops_data
+        save_domain(ops_data, output_dir, "operations", args.dry_run)
 
     else:
         # Single domain generation (original behavior)
         # Note: When generating single domains, FK integrity may not be guaranteed
 
         # Generate Sales Domain
-        if args.domain == 'sales':
+        if args.domain == "sales":
             print("\n[1/3] Generating Sales Domain...")
             print("-" * 70)
             sales_data = generate_sales_domain(
                 scale=args.scale,
                 cleanliness=args.cleanliness,
             )
-            all_data['sales'] = sales_data
-            save_domain(sales_data, output_dir, 'sales', args.dry_run)
+            all_data["sales"] = sales_data
+            save_domain(sales_data, output_dir, "sales", args.dry_run)
 
         # Generate CRM Domain
-        elif args.domain == 'crm':
+        elif args.domain == "crm":
             print("\n[2/3] Generating CRM Domain...")
             print("-" * 70)
             crm_data = generate_crm_domain(
                 scale=args.scale,
                 cleanliness=args.cleanliness,
             )
-            all_data['crm'] = crm_data
-            save_domain(crm_data, output_dir, 'crm', args.dry_run)
+            all_data["crm"] = crm_data
+            save_domain(crm_data, output_dir, "crm", args.dry_run)
 
         # Generate Operations Domain
-        elif args.domain == 'operations':
+        elif args.domain == "operations":
             print("\n[3/3] Generating Operations Domain...")
             print("-" * 70)
             ops_data = generate_operations_domain(
                 scale=args.scale,
                 cleanliness=args.cleanliness,
             )
-            all_data['operations'] = ops_data
-            save_domain(ops_data, output_dir, 'operations', args.dry_run)
+            all_data["operations"] = ops_data
+            save_domain(ops_data, output_dir, "operations", args.dry_run)
 
     elapsed = (datetime.now() - start_time).total_seconds()
     print_summary(all_data, output_dir, elapsed)

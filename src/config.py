@@ -11,11 +11,11 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Optional
 
 # Try to load from .env file for local development
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
@@ -55,15 +55,15 @@ class Config:
     """
 
     databricks_host: str = field(default="")
-    databricks_token: Optional[str] = field(default=None, repr=False)
+    databricks_token: str | None = field(default=None, repr=False)
     genie_space_id: str = field(default="")
     warehouse_id: str = field(default="")
     model_endpoint: str = field(default="databricks-meta-llama-3-3-70b-instruct")
     mock_mode: bool = field(default=False)
-    vector_search_endpoint: Optional[str] = field(default=None)
-    vector_search_index: Optional[str] = field(default=None)
+    vector_search_endpoint: str | None = field(default=None)
+    vector_search_index: str | None = field(default=None)
     embedding_endpoint: str = field(default="databricks-bge-large-en")
-    genie_spaces_json: Optional[str] = field(default=None)
+    genie_spaces_json: str | None = field(default=None)
     # Error handling and retry configuration
     default_max_retries: int = field(default=3)
     default_retry_base_delay: float = field(default=1.0)
@@ -132,7 +132,7 @@ class Config:
     def from_databricks_secrets(
         cls,
         scope: str = "ai-data-analyst",
-        host: Optional[str] = None,
+        host: str | None = None,
     ) -> Config:
         """Load configuration from Databricks secrets.
 
@@ -146,6 +146,7 @@ class Config:
         try:
             # Import dbutils for Databricks environment
             from pyspark.sql import SparkSession
+
             spark = SparkSession.builder.getOrCreate()
             dbutils = spark._jvm.com.databricks.dbutils_v1.DBUtilsHolder.dbutils()
 
@@ -229,6 +230,7 @@ class Config:
             return []
 
         import json
+
         from src.agents.multi_genie_orchestrator import GenieSpaceConfig
 
         try:
@@ -306,7 +308,7 @@ class Config:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Config":
+    def from_dict(cls, data: dict) -> Config:
         """Create Config from dictionary.
 
         Note: databricks_token is set to None and must be re-set from

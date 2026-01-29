@@ -24,8 +24,8 @@ import math
 import operator
 import re
 from datetime import datetime, timedelta
-from langchain_core.tools import tool
 
+from langchain_core.tools import tool
 
 # Safe operators for calculator AST evaluation
 _SAFE_OPERATORS = {

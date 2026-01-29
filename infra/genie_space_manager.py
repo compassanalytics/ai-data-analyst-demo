@@ -12,7 +12,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -45,9 +45,7 @@ class TableSource(BaseModel):
         """Validate the table identifier format."""
         parts = v.split(".")
         if len(parts) != 3:
-            raise ValueError(
-                f"Table identifier must be in 'catalog.schema.table' format, got: {v}"
-            )
+            raise ValueError(f"Table identifier must be in 'catalog.schema.table' format, got: {v}")
         return v
 
 
@@ -93,14 +91,12 @@ class GenieSpaceConfig(BaseModel):
     """
 
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     warehouse_id: str
-    parent_path: str = Field(
-        description="Workspace path (e.g., /Workspace/Shared/genie-spaces)"
-    )
+    parent_path: str = Field(description="Workspace path (e.g., /Workspace/Shared/genie-spaces)")
     tables: list[TableSource]
     sample_questions: list[SampleQuestion] = Field(default_factory=list)
-    instructions: Optional[str] = None
+    instructions: str | None = None
     example_sqls: list[ExampleSQL] = Field(default_factory=list)
     join_specs: list[JoinSpec] = Field(default_factory=list)
 
@@ -123,7 +119,7 @@ class GenieSpaceConfig(BaseModel):
         if not path.exists():
             raise FileNotFoundError(f"Configuration file not found: {path}")
 
-        with open(path, "r") as f:
+        with open(path) as f:
             content = f.read()
 
         # Substitute environment variables if requested
@@ -192,8 +188,8 @@ class GenieSpaceManager:
 
     def __init__(
         self,
-        workspace_client: Optional[Any] = None,
-        profile: Optional[str] = None,
+        workspace_client: Any | None = None,
+        profile: str | None = None,
     ):
         """Initialize the Genie Space Manager.
 
@@ -241,21 +237,20 @@ class GenieSpaceManager:
         sorted_tables = sorted(config.tables, key=lambda t: t.identifier)
         serialized: dict[str, Any] = {
             "version": 1,
-            "data_sources": {
-                "tables": [{"identifier": t.identifier} for t in sorted_tables]
-            },
+            "data_sources": {"tables": [{"identifier": t.identifier} for t in sorted_tables]},
         }
 
         # Sample questions go in config block
         # IDs must be lowercase 32-hex UUIDs without hyphens
         if config.sample_questions:
             import hashlib
+
             serialized["config"] = {
                 "sample_questions": [
                     {
                         # Generate deterministic UUID from question ID for reproducibility
                         "id": hashlib.md5(q.id.encode()).hexdigest(),
-                        "question": q.question
+                        "question": q.question,
                     }
                     for q in config.sample_questions
                 ]
@@ -307,9 +302,7 @@ class GenieSpaceManager:
 
         return space_id
 
-    def update_space(
-        self, space_id: str, config: GenieSpaceConfig, dry_run: bool = False
-    ) -> None:
+    def update_space(self, space_id: str, config: GenieSpaceConfig, dry_run: bool = False) -> None:
         """Update an existing Genie Space.
 
         Args:
@@ -395,7 +388,7 @@ class GenieSpaceManager:
     def deploy_from_config(
         self,
         config_path: str | Path,
-        space_id: Optional[str] = None,
+        space_id: str | None = None,
         dry_run: bool = False,
     ) -> str:
         """Deploy a Genie Space from a YAML configuration file.
@@ -444,17 +437,11 @@ class GenieSpaceManager:
 
         sample_questions = []
         for sq in serialized_space.get("config", {}).get("sample_questions", []):
-            sample_questions.append(
-                SampleQuestion(id=sq.get("id", ""), question=sq.get("question", []))
-            )
+            sample_questions.append(SampleQuestion(id=sq.get("id", ""), question=sq.get("question", [])))
 
         example_sqls = []
-        for ex in serialized_space.get("instructions", {}).get(
-            "example_question_sqls", []
-        ):
-            example_sqls.append(
-                ExampleSQL(question=ex.get("question", ""), sql=ex.get("sql", ""))
-            )
+        for ex in serialized_space.get("instructions", {}).get("example_question_sqls", []):
+            example_sqls.append(ExampleSQL(question=ex.get("question", ""), sql=ex.get("sql", "")))
 
         join_specs = []
         for js in serialized_space.get("instructions", {}).get("join_specs", []):

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from src.config import Config
 from src.utils.errors import AgentError, classify_error
@@ -24,6 +24,7 @@ class Document:
         score: Relevance score (0-1)
         metadata: Additional document metadata
     """
+
     content: str
     source: str
     score: float = 0.0
@@ -41,11 +42,12 @@ class RAGResult:
         error: Error message if query failed
         error_details: Structured error information for classification
     """
+
     success: bool
     answer: str = ""
     documents: list[Document] = field(default_factory=list)
-    error: Optional[str] = None
-    error_details: Optional[AgentError] = None
+    error: str | None = None
+    error_details: AgentError | None = None
 
     @property
     def is_retryable(self) -> bool:
@@ -127,6 +129,7 @@ class RAGAgent:
         """Lazy-load the VectorSearchClient for VS operations."""
         if self._vs_client is None and not self.config.mock_mode:
             from databricks.vector_search.client import VectorSearchClient
+
             self._vs_client = VectorSearchClient(
                 workspace_url=self.config.databricks_host,
                 personal_access_token=self.config.databricks_token,
@@ -138,6 +141,7 @@ class RAGAgent:
         """Lazy-load ChatDatabricks for answer generation."""
         if self._llm is None and not self.config.mock_mode:
             from databricks_langchain import ChatDatabricks
+
             self._llm = ChatDatabricks(
                 endpoint=self.config.model_endpoint,
                 temperature=0.1,
@@ -178,7 +182,7 @@ class RAGAgent:
                 return RAGResult(
                     success=False,
                     error="Vector Search endpoint or index not configured. "
-                          "Set VECTOR_SEARCH_ENDPOINT and VECTOR_SEARCH_INDEX environment variables."
+                    "Set VECTOR_SEARCH_ENDPOINT and VECTOR_SEARCH_INDEX environment variables.",
                 )
 
             # Get the Vector Search index
@@ -290,6 +294,7 @@ ANSWER:"""
 
         try:
             from langchain_core.messages import HumanMessage
+
             response = self.llm.invoke([HumanMessage(content=prompt)])
             return response.content
         except Exception as e:

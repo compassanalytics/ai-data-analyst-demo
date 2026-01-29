@@ -30,18 +30,17 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dataset_generators.healthcare import (
-    set_random_seed,
-    scale_count,
     generate_healthcare_star_schema,
     generate_healthcare_super_table,
-    HEALTHCARE_FAILURE_SCENARIOS,
+    scale_count,
+    set_random_seed,
 )
 
 
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description='Generate Healthcare dataset (star schema and super table)',
+        description="Generate Healthcare dataset (star schema and super table)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -60,42 +59,42 @@ Examples:
     )
 
     parser.add_argument(
-        '--output-dir',
+        "--output-dir",
         type=str,
-        default='./data',
-        help='Base output directory for parquet files (default: ./data)',
+        default="./data",
+        help="Base output directory for parquet files (default: ./data)",
     )
 
     parser.add_argument(
-        '--scale',
+        "--scale",
         type=float,
         default=1.0,
-        help='Scale factor for record counts (default: 1.0, use 0.1 for 10%%)',
+        help="Scale factor for record counts (default: 1.0, use 0.1 for 10%%)",
     )
 
     parser.add_argument(
-        '--seed',
+        "--seed",
         type=int,
         default=42,
-        help='Random seed for reproducibility (default: 42)',
+        help="Random seed for reproducibility (default: 42)",
     )
 
     parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='Show what would be generated without writing files',
+        "--dry-run",
+        action="store_true",
+        help="Show what would be generated without writing files",
     )
 
     parser.add_argument(
-        '--clean-only',
-        action='store_true',
-        help='Generate only star schema (clean version)',
+        "--clean-only",
+        action="store_true",
+        help="Generate only star schema (clean version)",
     )
 
     parser.add_argument(
-        '--dirty-only',
-        action='store_true',
-        help='Generate only super table (dirty version)',
+        "--dirty-only",
+        action="store_true",
+        help="Generate only super table (dirty version)",
     )
 
     return parser.parse_args()
@@ -158,7 +157,7 @@ def main():
     print("=" * 70)
     print("HEALTHCARE DATASET GENERATOR")
     print("=" * 70)
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"    Output:     {args.output_dir}")
     print(f"    Scale:      {args.scale}")
     print(f"    Seed:       {args.seed}")
@@ -168,8 +167,8 @@ def main():
 
     # Ensure we're working with absolute paths
     output_dir = os.path.abspath(args.output_dir)
-    star_dir = os.path.join(output_dir, 'healthcare_star')
-    super_dir = os.path.join(output_dir, 'healthcare_super')
+    star_dir = os.path.join(output_dir, "healthcare_star")
+    super_dir = os.path.join(output_dir, "healthcare_super")
 
     # Set random seed
     set_random_seed(args.seed)
@@ -191,13 +190,17 @@ def main():
             n_claims = scale_count(60000, args.scale)
             n_prescriptions = scale_count(40000, args.scale)
 
-            print(f"  [DRY RUN] Would generate:")
+            print("  [DRY RUN] Would generate:")
             print(f"    - dim_patient: ~{n_patients:,} rows")
             print(f"    - dim_provider: ~{n_providers:,} rows")
-            print(f"    - dim_date: ~1,461 rows (4 years)")
-            print(f"    - dim_diagnosis: ~{len(__import__('dataset_generators.healthcare.codes', fromlist=['ICD10_CODES_CLEAN']).ICD10_CODES_CLEAN)} rows")
-            print(f"    - dim_procedure: ~{len(__import__('dataset_generators.healthcare.codes', fromlist=['CPT_CODES']).CPT_CODES)} rows")
-            print(f"    - dim_payer: ~25 rows")
+            print("    - dim_date: ~1,461 rows (4 years)")
+            print(
+                f"    - dim_diagnosis: ~{len(__import__('dataset_generators.healthcare.codes', fromlist=['ICD10_CODES_CLEAN']).ICD10_CODES_CLEAN)} rows"
+            )
+            print(
+                f"    - dim_procedure: ~{len(__import__('dataset_generators.healthcare.codes', fromlist=['CPT_CODES']).CPT_CODES)} rows"
+            )
+            print("    - dim_payer: ~25 rows")
             print(f"    - fact_encounters: ~{n_encounters:,} rows")
             print(f"    - fact_claims: ~{n_claims:,} rows")
             print(f"    - fact_prescriptions: ~{n_prescriptions:,} rows")
@@ -205,15 +208,15 @@ def main():
 
             # Create placeholder for summary
             star_data = {
-                'dim_patient': type('DF', (), {'__len__': lambda s: n_patients, 'columns': range(14)})(),
-                'dim_provider': type('DF', (), {'__len__': lambda s: n_providers, 'columns': range(8)})(),
-                'dim_date': type('DF', (), {'__len__': lambda s: 1461, 'columns': range(10)})(),
-                'dim_diagnosis': type('DF', (), {'__len__': lambda s: 50, 'columns': range(5)})(),
-                'dim_procedure': type('DF', (), {'__len__': lambda s: 35, 'columns': range(4)})(),
-                'dim_payer': type('DF', (), {'__len__': lambda s: 25, 'columns': range(4)})(),
-                'fact_encounters': type('DF', (), {'__len__': lambda s: n_encounters, 'columns': range(9)})(),
-                'fact_claims': type('DF', (), {'__len__': lambda s: n_claims, 'columns': range(9)})(),
-                'fact_prescriptions': type('DF', (), {'__len__': lambda s: n_prescriptions, 'columns': range(12)})(),
+                "dim_patient": type("DF", (), {"__len__": lambda s: n_patients, "columns": range(14)})(),
+                "dim_provider": type("DF", (), {"__len__": lambda s: n_providers, "columns": range(8)})(),
+                "dim_date": type("DF", (), {"__len__": lambda s: 1461, "columns": range(10)})(),
+                "dim_diagnosis": type("DF", (), {"__len__": lambda s: 50, "columns": range(5)})(),
+                "dim_procedure": type("DF", (), {"__len__": lambda s: 35, "columns": range(4)})(),
+                "dim_payer": type("DF", (), {"__len__": lambda s: 25, "columns": range(4)})(),
+                "fact_encounters": type("DF", (), {"__len__": lambda s: n_encounters, "columns": range(9)})(),
+                "fact_claims": type("DF", (), {"__len__": lambda s: n_claims, "columns": range(9)})(),
+                "fact_prescriptions": type("DF", (), {"__len__": lambda s: n_prescriptions, "columns": range(12)})(),
             }
         else:
             star_data = generate_healthcare_star_schema(
@@ -230,12 +233,12 @@ def main():
         n_rows = scale_count(50000, args.scale)
 
         if args.dry_run:
-            print(f"  [DRY RUN] Would generate:")
+            print("  [DRY RUN] Would generate:")
             print(f"    - healthcare_super_table: ~{n_rows:,} rows, 100+ columns")
             print(f"  [DRY RUN] Would save to: {super_dir}/")
 
             # Create placeholder for summary
-            super_df = type('DF', (), {'__len__': lambda s: n_rows, 'columns': range(105)})()
+            super_df = type("DF", (), {"__len__": lambda s: n_rows, "columns": range(105)})()
         else:
             super_df = generate_healthcare_super_table(
                 n_rows=n_rows,

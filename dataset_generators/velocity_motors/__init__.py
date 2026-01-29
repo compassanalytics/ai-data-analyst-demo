@@ -77,26 +77,26 @@ Usage:
     )
 """
 
-from .utils import (
-    set_random_seed,
-    scale_count,
-    inject_nulls,
-    get_null_rate,
-    calculate_cleanliness_intensity,
-    apply_case_inconsistency,
-)
-from .sales import generate_sales_domain
 from .customers import generate_crm_domain
 from .operations import generate_operations_domain
+from .sales import generate_sales_domain
+from .utils import (
+    apply_case_inconsistency,
+    calculate_cleanliness_intensity,
+    get_null_rate,
+    inject_nulls,
+    scale_count,
+    set_random_seed,
+)
 
 __all__ = [
-    'set_random_seed',
-    'scale_count',
-    'inject_nulls',
-    'get_null_rate',
-    'calculate_cleanliness_intensity',
-    'apply_case_inconsistency',
-    'generate_sales_domain',
-    'generate_crm_domain',
-    'generate_operations_domain',
+    "set_random_seed",
+    "scale_count",
+    "inject_nulls",
+    "get_null_rate",
+    "calculate_cleanliness_intensity",
+    "apply_case_inconsistency",
+    "generate_sales_domain",
+    "generate_crm_domain",
+    "generate_operations_domain",
 ]

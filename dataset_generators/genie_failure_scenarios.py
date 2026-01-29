@@ -44,7 +44,7 @@ AMBIGUOUS_COLUMNS_TEST = {
     "fix": """
     Star schema solution: Single fact table with ONE 'net_amount' column.
     Clear naming convention documented in Unity Catalog.
-    """
+    """,
 }
 
 
@@ -68,16 +68,16 @@ CRYPTIC_CODES_TEST = {
     "questions": [
         {
             "question": "Show sales by customer segment",
-            "problem": "Genie sees ENT, MID, SMB, IND but doesn't know ENT=Enterprise"
+            "problem": "Genie sees ENT, MID, SMB, IND but doesn't know ENT=Enterprise",
         },
         {
             "question": "How many orders have status 'pending'?",
-            "problem": "Which sts_cd = pending? Genie can't map business terms to codes"
+            "problem": "Which sts_cd = pending? Genie can't map business terms to codes",
         },
         {
             "question": "What is the breakdown by channel?",
-            "problem": "ON=On-Premise, OFF=Off-Premise, EC=E-Commerce - not obvious"
-        }
+            "problem": "ON=On-Premise, OFF=Off-Premise, EC=E-Commerce - not obvious",
+        },
     ],
     "fix": """
     Star schema solution:
@@ -85,7 +85,7 @@ CRYPTIC_CODES_TEST = {
     - dim_order_status with status_name column
     - Clear business-friendly naming in all dimensions
     - SQL expressions in Genie Knowledge Store to map common terms
-    """
+    """,
 }
 
 
@@ -104,7 +104,7 @@ BUSINESS_LOGIC_TEST = {
             Without documentation, Genie assumes calendar quarters.
             """,
             "incorrect_sql": "WHERE QUARTER(sale_date) = 1",
-            "correct_sql": "WHERE fiscal_quarter = 1"
+            "correct_sql": "WHERE fiscal_quarter = 1",
         },
         {
             "question": "Show active customers only",
@@ -134,7 +134,7 @@ BUSINESS_LOGIC_TEST = {
             - Brand tier = premium?
             No 'is_premium' flag means Genie guesses.
             """,
-        }
+        },
     ],
     "fix": """
     Solutions:
@@ -144,7 +144,7 @@ BUSINESS_LOGIC_TEST = {
        - gross_margin: (SUM(net_amount) - SUM(cost_amount)) / SUM(net_amount)
        - active_customer: order_date >= DATE_SUB(CURRENT_DATE, 90)
     4. Document all business rules in table/column descriptions
-    """
+    """,
 }
 
 
@@ -182,7 +182,7 @@ TEMPORAL_TEST = {
             If date is stored as string in MM/DD/YYYY format,
             international users will be confused.
             """,
-        }
+        },
     ],
     "fix": """
     Solutions:
@@ -193,7 +193,7 @@ TEMPORAL_TEST = {
     2. Store dates as proper DATE type, never strings
     3. Add example SQL queries for common time comparisons
     4. Document time zone assumptions
-    """
+    """,
 }
 
 
@@ -224,7 +224,7 @@ AGGREGATION_TEST = {
                 FROM fact_sales
                 GROUP BY order_id
             )
-            """
+            """,
         },
         {
             "question": "How many customers bought Product X?",
@@ -242,7 +242,7 @@ AGGREGATION_TEST = {
             - Period boundaries
             Can't be answered with simple SQL on transactional data.
             """,
-        }
+        },
     ],
     "fix": """
     Solutions:
@@ -253,7 +253,7 @@ AGGREGATION_TEST = {
        - avg_order_value: SUM(net_amount) / COUNT(DISTINCT order_id)
        - unique_customers: COUNT(DISTINCT customer_key)
     3. Use metric views in Databricks for complex calculations
-    """
+    """,
 }
 
 
@@ -295,7 +295,7 @@ JOIN_TEST = {
             If relationships aren't documented, Genie may
             create invalid joins or wrong groupings.
             """,
-        }
+        },
     ],
     "fix": """
     Solutions:
@@ -303,7 +303,7 @@ JOIN_TEST = {
     2. Add example SQL for complex patterns (anti-joins, set operations)
     3. Create views for common complex queries
     4. Keep star schema simple (facts + dimensions)
-    """
+    """,
 }
 
 
@@ -521,15 +521,16 @@ DIMENSIONS (Grouping)
 # PRINT ALL SCENARIOS
 # ============================================================================
 
+
 def print_all_scenarios():
     """Print all failure scenarios for reference."""
-    print("="*80)
+    print("=" * 80)
     print("GENIE FAILURE SCENARIOS - WORKSHOP DEMONSTRATION GUIDE")
-    print("="*80)
+    print("=" * 80)
     print(DEMO_SCRIPT)
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("SQL EXPRESSIONS TO FIX THESE ISSUES")
-    print("="*80)
+    print("=" * 80)
     print(GENIE_SQL_EXPRESSIONS)
 
 

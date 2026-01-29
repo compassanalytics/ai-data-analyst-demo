@@ -4,11 +4,9 @@ These descriptions are used to add COMMENT metadata to columns,
 which enables Genie AI to understand the business meaning of each field.
 """
 
-from typing import Dict
-
 # Type alias for nested column description dictionaries
 # Structure: {schema: {table: {column: description}}}
-ColumnDescriptions = Dict[str, Dict[str, Dict[str, str]]]
+ColumnDescriptions = dict[str, dict[str, dict[str, str]]]
 
 
 # =============================================================================
@@ -341,7 +339,8 @@ DATASET_CONFIGS = {
 # Helper Functions
 # =============================================================================
 
-def get_column_descriptions(dataset: str, schema: str, table: str) -> Dict[str, str]:
+
+def get_column_descriptions(dataset: str, schema: str, table: str) -> dict[str, str]:
     """Get column descriptions for a specific table.
 
     Args:
@@ -370,7 +369,7 @@ def get_column_descriptions(dataset: str, schema: str, table: str) -> Dict[str, 
     return tables[table]
 
 
-def get_table_list(dataset: str) -> Dict[str, list]:
+def get_table_list(dataset: str) -> dict[str, list]:
     """Get all tables for a dataset organized by schema.
 
     Args:
@@ -402,7 +401,7 @@ def get_base_url(dataset: str) -> str:
     return config["base_url"]
 
 
-def list_datasets() -> Dict[str, str]:
+def list_datasets() -> dict[str, str]:
     """List all available datasets with descriptions.
 
     Returns:

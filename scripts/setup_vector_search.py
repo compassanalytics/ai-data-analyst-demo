@@ -31,10 +31,11 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.config import Config
-
 # Default configuration (can be overridden by environment variables)
 import os
+
+from src.config import Config
+
 DEFAULT_ENDPOINT_NAME = os.getenv("VECTOR_SEARCH_ENDPOINT", "rag-demo-endpoint")
 DEFAULT_CATALOG = os.getenv("VS_CATALOG", "workspace")
 DEFAULT_SCHEMA = os.getenv("VS_SCHEMA", "rag_demo")
@@ -130,7 +131,7 @@ def create_delta_table(
     cdf_sql = ENABLE_CDF_SQL.format(catalog=catalog, schema=schema, table=table)
 
     if dry_run:
-        print(f"   [DRY RUN] Would execute:")
+        print("   [DRY RUN] Would execute:")
         for line in sql.strip().split("\n"):
             print(f"      {line}")
         return True
@@ -152,13 +153,13 @@ def create_delta_table(
         print(f"   ✅ Table {full_name} created")
 
         # Ensure Change Data Feed is enabled (required for Delta Sync)
-        print(f"   ⏳ Enabling Change Data Feed...")
+        print("   ⏳ Enabling Change Data Feed...")
         client.statement_execution.execute_statement(
             warehouse_id=config.warehouse_id,
             statement=cdf_sql,
             wait_timeout="30s",
         )
-        print(f"   ✅ Change Data Feed enabled")
+        print("   ✅ Change Data Feed enabled")
         return True
 
     except Exception as e:
@@ -211,14 +212,14 @@ def create_vector_search_endpoint(
             pass  # Assume endpoint doesn't exist
 
         # Create new endpoint
-        print(f"   ⏳ Creating endpoint (this takes 5-15 minutes)...")
+        print("   ⏳ Creating endpoint (this takes 5-15 minutes)...")
         vsc.create_endpoint(
             name=endpoint_name,
             endpoint_type="STANDARD",  # Required for free tier
         )
 
         # Wait for endpoint to be ready
-        print(f"   ⏳ Waiting for endpoint to be ONLINE...")
+        print("   ⏳ Waiting for endpoint to be ONLINE...")
         max_wait = 900  # 15 minutes
         wait_interval = 30
         elapsed = 0
@@ -287,14 +288,14 @@ def create_delta_sync_index(
     print(f"   Embedding model: {embedding_endpoint}")
 
     if dry_run:
-        print(f"   [DRY RUN] Would create index with:")
+        print("   [DRY RUN] Would create index with:")
         print(f"      - endpoint_name: {endpoint_name}")
         print(f"      - source_table: {source_table}")
         print(f"      - index_name: {full_index_name}")
-        print(f"      - primary_key: id")
-        print(f"      - embedding_source_column: content")
+        print("      - primary_key: id")
+        print("      - embedding_source_column: content")
         print(f"      - embedding_model_endpoint_name: {embedding_endpoint}")
-        print(f"      - pipeline_type: TRIGGERED")
+        print("      - pipeline_type: TRIGGERED")
         return True
 
     try:
@@ -318,7 +319,7 @@ def create_delta_sync_index(
             pass  # Index doesn't exist, create it
 
         # Create Delta Sync index with managed embeddings
-        print(f"   ⏳ Creating index...")
+        print("   ⏳ Creating index...")
         vsc.create_delta_sync_index(
             endpoint_name=endpoint_name,
             source_table_name=source_table,
@@ -330,7 +331,7 @@ def create_delta_sync_index(
         )
 
         print(f"   ✅ Index '{full_index_name}' created")
-        print(f"   ℹ️  Note: Index needs to be synced after loading documents")
+        print("   ℹ️  Note: Index needs to be synced after loading documents")
         return True
 
     except Exception as e:
@@ -402,7 +403,7 @@ def main():
 
     embedding_endpoint = config.embedding_endpoint
 
-    print(f"\n📋 Configuration:")
+    print("\n📋 Configuration:")
     print(f"   Databricks Host: {config.databricks_host}")
     print(f"   Warehouse ID: {config.warehouse_id}")
     print(f"   Embedding Model: {embedding_endpoint}")
@@ -413,7 +414,7 @@ def main():
     print(f"   Endpoint: {args.endpoint_name}")
 
     if args.dry_run:
-        print(f"\n🔍 DRY RUN MODE - No changes will be made\n")
+        print("\n🔍 DRY RUN MODE - No changes will be made\n")
 
     # Step 1: Create schema
     if not create_schema(config, args.catalog, args.schema, args.dry_run):
@@ -426,7 +427,7 @@ def main():
             print("\n❌ Failed to create table. Aborting.")
             sys.exit(1)
     else:
-        print(f"\n⏭️  Skipping table creation (--skip-table)")
+        print("\n⏭️  Skipping table creation (--skip-table)")
 
     # Step 3: Create Vector Search endpoint
     if not args.skip_endpoint:
@@ -434,7 +435,7 @@ def main():
             print("\n❌ Failed to create endpoint. Aborting.")
             sys.exit(1)
     else:
-        print(f"\n⏭️  Skipping endpoint creation (--skip-endpoint)")
+        print("\n⏭️  Skipping endpoint creation (--skip-endpoint)")
 
     # Step 4: Create Delta Sync index
     if not create_delta_sync_index(
@@ -456,12 +457,12 @@ def main():
         print("✅ DRY RUN COMPLETE - No changes were made")
     else:
         print("✅ SETUP COMPLETE")
-        print(f"\nAdd to your .env file:")
+        print("\nAdd to your .env file:")
         print(f"   VECTOR_SEARCH_ENDPOINT={args.endpoint_name}")
         print(f"   VECTOR_SEARCH_INDEX={args.catalog}.{args.schema}.{args.index}")
-        print(f"\nNext steps:")
-        print(f"   1. Load documents: uv run python scripts/load_documents.py")
-        print(f"   2. Sync index: The sync happens automatically after loading")
+        print("\nNext steps:")
+        print("   1. Load documents: uv run python scripts/load_documents.py")
+        print("   2. Sync index: The sync happens automatically after loading")
 
 
 if __name__ == "__main__":

@@ -51,3 +51,4 @@ plans/
 
 # Claude Code artifacts
 .claude/
+.coverage

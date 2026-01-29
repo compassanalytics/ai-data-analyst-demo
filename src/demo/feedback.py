@@ -12,20 +12,21 @@ Color scheme matches visualization.py for consistency:
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 # Color constants matching visualization.py
 COLOR_SUCCESS = "#10B981"  # Green - complete status
-COLOR_ERROR = "#EF4444"    # Red - error status
+COLOR_ERROR = "#EF4444"  # Red - error status
 COLOR_WARNING = "#F59E0B"  # Amber - retrying status
-COLOR_INFO = "#3B82F6"     # Blue - running status
+COLOR_INFO = "#3B82F6"  # Blue - running status
 COLOR_NEUTRAL = "#6B7280"  # Gray - pending status
 
 
 def _get_display():
     """Get IPython display function if available."""
     try:
-        from IPython.display import display, HTML
+        from IPython.display import HTML, display
+
         return display, HTML
     except ImportError:
         return None, None
@@ -35,7 +36,7 @@ def _create_banner(
     message: str,
     color: str,
     icon: str,
-    details: Optional[str] = None,
+    details: str | None = None,
     extra_content: str = "",
 ) -> str:
     """Create HTML banner with consistent styling.
@@ -52,13 +53,13 @@ def _create_banner(
     """
     details_html = ""
     if details:
-        details_html = f'''
+        details_html = f"""
             <div style="margin-top: 8px; font-size: 13px; color: #4b5563;">
                 {details}
             </div>
-        '''
+        """
 
-    return f'''
+    return f"""
     <div style="
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         padding: 16px;
@@ -83,10 +84,10 @@ def _create_banner(
             </div>
         </div>
     </div>
-    '''
+    """
 
 
-def display_success(message: str, details: Optional[str] = None) -> None:
+def display_success(message: str, details: str | None = None) -> None:
     """Display a success message with green banner and checkmark.
 
     Args:
@@ -103,7 +104,7 @@ def display_success(message: str, details: Optional[str] = None) -> None:
             print(f"  {details}")
 
 
-def display_error(message: str, suggestion: Optional[str] = None) -> None:
+def display_error(message: str, suggestion: str | None = None) -> None:
     """Display an error message with red banner and recovery suggestion.
 
     Args:
@@ -114,7 +115,7 @@ def display_error(message: str, suggestion: Optional[str] = None) -> None:
 
     suggestion_html = ""
     if suggestion:
-        suggestion_html = f'''
+        suggestion_html = f"""
             <div style="
                 margin-top: 12px;
                 padding: 8px 12px;
@@ -125,7 +126,7 @@ def display_error(message: str, suggestion: Optional[str] = None) -> None:
             ">
                 <strong>Suggestion:</strong> {suggestion}
             </div>
-        '''
+        """
 
     if display and HTML:
         html = _create_banner(message, COLOR_ERROR, "\u2717", extra_content=suggestion_html)
@@ -136,7 +137,7 @@ def display_error(message: str, suggestion: Optional[str] = None) -> None:
             print(f"  Suggestion: {suggestion}")
 
 
-def display_warning(message: str, details: Optional[str] = None) -> None:
+def display_warning(message: str, details: str | None = None) -> None:
     """Display a warning message with amber banner.
 
     Args:
@@ -153,7 +154,7 @@ def display_warning(message: str, details: Optional[str] = None) -> None:
             print(f"  {details}")
 
 
-def display_info(message: str, details: Optional[str] = None) -> None:
+def display_info(message: str, details: str | None = None) -> None:
     """Display an info message with blue banner.
 
     Args:
@@ -212,7 +213,7 @@ def compare_output(
         match_icon = "\u2713" if matches else "\u2717"
         match_text = "Match!" if matches else "Mismatch"
 
-        html = f'''
+        html = f"""
         <div style="
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             max-width: 900px;
@@ -281,17 +282,17 @@ def compare_output(
                 </div>
             </div>
         </div>
-        '''
+        """
         display(HTML(html))
     else:
         print(f"{'=' * 60}")
         print(f"Comparison: {'MATCH' if matches else 'MISMATCH'}")
         print(f"{'=' * 60}")
         print(f"\n{label_actual}:")
-        print(f"-" * 40)
+        print("-" * 40)
         print(actual_str)
         print(f"\n{label_expected}:")
-        print(f"-" * 40)
+        print("-" * 40)
         print(expected_str)
         print(f"{'=' * 60}")
 
@@ -317,7 +318,7 @@ def display_progress_spinner(message: str) -> str:
         >>> # ... do work ...
         >>> handle.update(HTML("<div>Done!</div>"))
     """
-    return f'''
+    return f"""
     <div style="
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         display: flex;
@@ -347,13 +348,13 @@ def display_progress_spinner(message: str) -> str:
         "></div>
         <span style="font-size: 14px; color: #374151;">{message}</span>
     </div>
-    '''
+    """
 
 
 def display_code_block(
     code: str,
     language: str = "python",  # noqa: ARG001 - reserved for future syntax highlighting
-    title: Optional[str] = None,
+    title: str | None = None,
 ) -> None:
     """Display a styled code block.
 
@@ -370,7 +371,7 @@ def display_code_block(
     if display and HTML:
         title_html = ""
         if title:
-            title_html = f'''
+            title_html = f"""
                 <div style="
                     font-size: 12px;
                     font-weight: 600;
@@ -379,9 +380,9 @@ def display_code_block(
                     background-color: #e5e7eb;
                     border-radius: 8px 8px 0 0;
                 ">{title}</div>
-            '''
+            """
 
-        html = f'''
+        html = f"""
         <div style="
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             max-width: 800px;
@@ -392,7 +393,7 @@ def display_code_block(
                 background-color: #1f2937;
                 color: #f3f4f6;
                 padding: 16px;
-                border-radius: {'0 0 8px 8px' if title else '8px'};
+                border-radius: {"0 0 8px 8px" if title else "8px"};
                 font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
                 font-size: 13px;
                 overflow-x: auto;
@@ -400,7 +401,7 @@ def display_code_block(
                 line-height: 1.5;
             "><code>{code_escaped}</code></pre>
         </div>
-        '''
+        """
         display(HTML(html))
     else:
         if title:
@@ -412,7 +413,7 @@ def display_step_indicator(
     current_step: int,
     total_steps: int,
     step_name: str,
-    completed_steps: Optional[list[str]] = None,  # noqa: ARG001 - reserved for step labels
+    completed_steps: list[str] | None = None,  # noqa: ARG001 - reserved for step labels
 ) -> None:
     """Display a workshop step progress indicator.
 
@@ -441,7 +442,7 @@ def display_step_indicator(
                 color = COLOR_NEUTRAL
                 icon = str(i)
 
-            step_indicators.append(f'''
+            step_indicators.append(f"""
                 <div style="
                     width: 32px;
                     height: 32px;
@@ -454,7 +455,7 @@ def display_step_indicator(
                     font-weight: 600;
                     font-size: 14px;
                 ">{icon}</div>
-            ''')
+            """)
 
         # Add connectors between steps
         connected_indicators = []
@@ -462,15 +463,15 @@ def display_step_indicator(
             connected_indicators.append(indicator)
             if i < len(step_indicators) - 1:
                 connector_color = COLOR_SUCCESS if i < current_step - 1 else COLOR_NEUTRAL
-                connected_indicators.append(f'''
+                connected_indicators.append(f"""
                     <div style="
                         width: 40px;
                         height: 3px;
                         background-color: {connector_color};
                     "></div>
-                ''')
+                """)
 
-        html = f'''
+        html = f"""
         <div style="
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             padding: 16px;
@@ -486,7 +487,7 @@ def display_step_indicator(
                 gap: 0;
                 margin-bottom: 16px;
             ">
-                {''.join(connected_indicators)}
+                {"".join(connected_indicators)}
             </div>
             <div style="
                 text-align: center;
@@ -497,7 +498,7 @@ def display_step_indicator(
                 Step {current_step} of {total_steps}: {step_name}
             </div>
         </div>
-        '''
+        """
         display(HTML(html))
     else:
         progress = "[" + "=" * current_step + " " * (total_steps - current_step) + "]"

@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class QueryType(Enum):
@@ -176,7 +176,7 @@ class ComparisonDetails:
     actual_tables: list[str] = field(default_factory=list)
     missing_tables: list[str] = field(default_factory=list)
     extra_tables: list[str] = field(default_factory=list)
-    sql_generated: Optional[str] = None
+    sql_generated: str | None = None
     comparison_notes: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -243,9 +243,9 @@ class EvaluationResult:
     failure_type: EvaluationFailureType
     comparison: ComparisonDetails
     execution_time_ms: float = 0.0
-    genie_response_raw: Optional[dict[str, Any]] = None
-    error_message: Optional[str] = None
-    error_category: Optional[str] = None
+    genie_response_raw: dict[str, Any] | None = None
+    error_message: str | None = None
+    error_category: str | None = None
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
     @property

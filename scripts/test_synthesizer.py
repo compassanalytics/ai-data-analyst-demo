@@ -19,8 +19,8 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.agents.multi_genie_orchestrator import (
-    MultiGenieOrchestrator,
     GenieSpaceConfig,
+    MultiGenieOrchestrator,
 )
 from src.agents.synthesizer_agent import SynthesizerAgent
 from src.config import Config
@@ -85,31 +85,19 @@ Examples:
 
   # Single domain test (limited insights)
   uv run python scripts/test_synthesizer.py --mock --spaces "Sales Data" "Show top products"
-        """
+        """,
     )
     parser.add_argument(
         "query",
         nargs="?",
         default="What are the current sales trends, inventory levels, and customer segments?",
-        help="Natural language query to run across spaces"
+        help="Natural language query to run across spaces",
     )
+    parser.add_argument("--mock", action="store_true", help="Use mock mode (no Databricks connection)")
     parser.add_argument(
-        "--mock",
-        action="store_true",
-        help="Use mock mode (no Databricks connection)"
+        "--spaces", type=str, default=None, help="Comma-separated list of space names to query (default: all)"
     )
-    parser.add_argument(
-        "--spaces",
-        type=str,
-        default=None,
-        help="Comma-separated list of space names to query (default: all)"
-    )
-    parser.add_argument(
-        "--concurrency",
-        type=int,
-        default=3,
-        help="Maximum parallel queries (default: 3)"
-    )
+    parser.add_argument("--concurrency", type=int, default=3, help="Maximum parallel queries (default: 3)")
 
     args = parser.parse_args()
 

@@ -2,10 +2,12 @@
 
 from .evaluator import BenchmarkEvaluator
 from .llm_generator import LLMQueryGenerator
+from .llm_judge import LLMJudgeEvaluator
 from .models import (
     BenchmarkComparison,
     BenchmarkQuery,
     BenchmarkRun,
+    EvaluationMode,
     GenerationSource,
     Severity,
 )
@@ -23,10 +25,13 @@ __all__ = [
     "BenchmarkEvaluator",
     # LLM Generator
     "LLMQueryGenerator",
+    # LLM Judge
+    "LLMJudgeEvaluator",
     # Models
     "BenchmarkComparison",
     "BenchmarkQuery",
     "BenchmarkRun",
+    "EvaluationMode",
     "GenerationSource",
     "Severity",
     # Reporter

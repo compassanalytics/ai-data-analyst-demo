@@ -12,6 +12,7 @@ Main components:
 
 from __future__ import annotations
 
+from src.evaluation.evaluator import EvaluationResults, GenieEvaluator
 from src.evaluation.models import (
     AccuracyScore,
     ComparisonDetails,
@@ -25,7 +26,6 @@ from src.evaluation.models import (
     TestQuery,
 )
 from src.evaluation.query_generator import QueryGenerator
-from src.evaluation.evaluator import EvaluationResults, GenieEvaluator
 from src.evaluation.reporter import EvaluationReporter
 
 __all__ = [

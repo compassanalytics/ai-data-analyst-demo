@@ -6,18 +6,19 @@ specialized subagents (Genie for data, RAG for documents) using LangGraph.
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, TypedDict, Sequence
 import operator
+from collections.abc import Sequence
+from typing import Annotated, Any, Literal, TypedDict
 
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
 
-from src.config import Config
 from src.agents.genie_agent import GenieDataAgent, GenieResult
 from src.agents.rag_agent import RAGAgent, RAGResult
+from src.config import Config
 
 
 class AgentState(TypedDict):
@@ -30,6 +31,7 @@ class AgentState(TypedDict):
         rag_result: Latest result from RAG agent
         iteration_count: Number of agent iterations (for safety limits)
     """
+
     messages: Annotated[Sequence[BaseMessage], operator.add]
     next_agent: str
     genie_result: GenieResult | None
@@ -141,6 +143,7 @@ def create_supervisor_agent(
 
     if not use_mock_llm:
         from databricks_langchain import ChatDatabricks
+
         llm = ChatDatabricks(
             endpoint=config.model_endpoint,
             temperature=0.1,
@@ -149,14 +152,44 @@ def create_supervisor_agent(
 
     # Keywords for routing in mock mode
     DATA_KEYWORDS = [
-        "revenue", "sales", "product", "top", "bottom", "trend", "growth",
-        "customer", "metric", "kpi", "data", "number", "count", "sum",
-        "average", "total", "monthly", "quarterly", "yearly", "region",
-        "segment", "analysis", "analyze", "report"
+        "revenue",
+        "sales",
+        "product",
+        "top",
+        "bottom",
+        "trend",
+        "growth",
+        "customer",
+        "metric",
+        "kpi",
+        "data",
+        "number",
+        "count",
+        "sum",
+        "average",
+        "total",
+        "monthly",
+        "quarterly",
+        "yearly",
+        "region",
+        "segment",
+        "analysis",
+        "analyze",
+        "report",
     ]
     DOC_KEYWORDS = [
-        "policy", "document", "procedure", "guide", "how to", "security",
-        "compliance", "pricing", "refund", "onboarding", "process", "rule"
+        "policy",
+        "document",
+        "procedure",
+        "guide",
+        "how to",
+        "security",
+        "compliance",
+        "pricing",
+        "refund",
+        "onboarding",
+        "process",
+        "rule",
     ]
 
     def mock_route_query(question: str) -> tuple[str, str]:
@@ -180,7 +213,11 @@ def create_supervisor_agent(
         # Safety limit on iterations
         if iteration >= 5:
             return {
-                "messages": [AIMessage(content="I've reached my iteration limit. Here's what I found so far based on our conversation.")],
+                "messages": [
+                    AIMessage(
+                        content="I've reached my iteration limit. Here's what I found so far based on our conversation."
+                    )
+                ],
                 "next_agent": "end",
                 "iteration_count": iteration,
             }
@@ -199,11 +236,7 @@ def create_supervisor_agent(
                 # Create a mock tool call response
                 response = AIMessage(
                     content="",
-                    tool_calls=[{
-                        "id": f"call_{iteration}",
-                        "name": tool_name,
-                        "args": {"question": tool_arg}
-                    }]
+                    tool_calls=[{"id": f"call_{iteration}", "name": tool_name, "args": {"question": tool_arg}}],
                 )
                 return {
                     "messages": [response],
@@ -214,8 +247,8 @@ def create_supervisor_agent(
                 # After tool execution, synthesize final response
                 tool_results = []
                 for msg in messages:
-                    if hasattr(msg, 'content') and isinstance(msg.content, str):
-                        if '|' in msg.content or 'Sources:' in msg.content:
+                    if hasattr(msg, "content") and isinstance(msg.content, str):
+                        if "|" in msg.content or "Sources:" in msg.content:
                             tool_results.append(msg.content)
 
                 final_content = "\n\n".join(tool_results) if tool_results else "I processed your request."
@@ -282,7 +315,7 @@ def create_supervisor_agent(
             "tools": "tools",
             "supervisor": "supervisor",
             "__end__": END,
-        }
+        },
     )
     workflow.add_edge("tools", "after_tools")
     workflow.add_edge("after_tools", "supervisor")

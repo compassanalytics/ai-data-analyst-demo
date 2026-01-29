@@ -204,16 +204,16 @@ def upload_dataset(
     data_path = config["path"]
     files = config["files"]
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Uploading dataset: {dataset}")
     print(f"Source: {data_path}")
     print(f"Container: {container_name}")
     print(f"Files: {len(files)}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     if not data_path.exists():
         print(f"\nERROR: Data directory not found: {data_path}")
-        print(f"Generate the dataset first:")
+        print("Generate the dataset first:")
         print(f"  uv run python dataset_generators/generate_{dataset}.py")
         return {}
 
@@ -292,9 +292,9 @@ Environment:
 
     args = parser.parse_args()
 
-    print("="*60)
+    print("=" * 60)
     print("Azure Blob Storage Uploader")
-    print("="*60)
+    print("=" * 60)
     print(f"Container: {args.container}")
     if args.dry_run:
         print("Mode: DRY RUN (no actual uploads)")
@@ -313,9 +313,9 @@ Environment:
         all_results[ds] = results
 
     # Summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("UPLOAD SUMMARY")
-    print("="*60)
+    print("=" * 60)
 
     total_success = 0
     total_failed = 0
@@ -338,9 +338,9 @@ Environment:
     print(f"\nTotal: {total_success} files uploaded, {total_failed} failed")
 
     if not args.dry_run and total_success > 0:
-        print("\n" + "-"*60)
+        print("\n" + "-" * 60)
         print("FILES ARE NOW AVAILABLE AT:")
-        print("-"*60)
+        print("-" * 60)
         # Note: The actual URL depends on the storage account
         print("Configure your storage account URL in config/dataset_schemas.py")
         print("Example: https://<account>.blob.core.windows.net/datasets/<dataset>/<file>.parquet")

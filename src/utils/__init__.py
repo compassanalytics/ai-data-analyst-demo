@@ -24,6 +24,7 @@ from .circuit_breaker import (
     CircuitState,
 )
 from .errors import (
+    RETRYABLE_CATEGORIES,
     AgentError,
     AgentTimeoutError,
     AuthenticationError,
@@ -31,17 +32,16 @@ from .errors import (
     NetworkError,
     ParseError,
     RateLimitError,
-    RETRYABLE_CATEGORIES,
     SpaceUnavailableError,
     ValidationError,
     classify_error,
 )
 from .retry_policies import (
+    RetryContext,
     create_genie_retry_policy,
     genie_retry_policy,
     is_retryable_exception,
     retry_with_config,
-    RetryContext,
 )
 
 __all__ = [
