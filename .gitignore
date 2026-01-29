@@ -38,6 +38,10 @@ build/
 dataset_generators/data/
 data/
 
+# Benchmark outputs (generated locally)
+benchmarks/
+results/
+
 # Deployment artifacts (environment-specific)
 config/velocity_motors_spaces.yaml
 
