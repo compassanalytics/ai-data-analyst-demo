@@ -21,8 +21,6 @@ jobs:
 
   typecheck:
     runs-on: ubuntu-latest
-    # Type checking is advisory for now - pre-existing issues need cleanup
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

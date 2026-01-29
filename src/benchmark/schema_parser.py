@@ -153,7 +153,7 @@ class DomainContext:
         Returns:
             List of column names (may contain duplicates from different tables)
         """
-        columns = []
+        columns: list[str] = []
         for table in self.tables:
             columns.extend(col.name for col in table.columns)
         return columns

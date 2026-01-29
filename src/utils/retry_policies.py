@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from tenacity import (
     RetryCallState,
@@ -82,12 +82,14 @@ def create_genie_retry_policy(
     Returns:
         A retry decorator configured for Genie API calls
     """
-    stop_conditions = [stop_after_attempt(max_retries + 1)]  # +1 because first attempt counts
+    # Stop conditions list - typed as Any since tenacity uses various stop types
+    stop_conditions: list[Any] = [stop_after_attempt(max_retries + 1)]  # +1 because first attempt counts
 
     if timeout_seconds is not None:
         stop_conditions.append(stop_after_delay(timeout_seconds))
 
     # Combine stop conditions with any (stop on first condition met)
+    stop_condition: Any
     if len(stop_conditions) > 1:
         from tenacity import stop_any
 

@@ -7,6 +7,8 @@ evaluating Genie's ability to handle various data quality challenges.
 
 from __future__ import annotations
 
+from typing import Any
+
 from src.evaluation.models import (
     ComplexityLevel,
     FailureCategory,
@@ -546,7 +548,7 @@ class QueryGenerator:
         """
         return self.generate_suite()
 
-    def get_summary(self) -> dict[str, int]:
+    def get_summary(self) -> dict[str, Any]:
         """Get a summary of available queries.
 
         Returns:
@@ -554,24 +556,26 @@ class QueryGenerator:
         """
         all_queries = self.get_all_queries()
 
-        summary = {
-            "total": len(all_queries),
-            "by_category": {},
-            "by_type": {},
-            "by_complexity": {},
-        }
+        by_category: dict[str, int] = {}
+        by_type: dict[str, int] = {}
+        by_complexity: dict[str, int] = {}
 
         for query in all_queries:
             # Count by category
             cat_key = query.failure_category.value
-            summary["by_category"][cat_key] = summary["by_category"].get(cat_key, 0) + 1
+            by_category[cat_key] = by_category.get(cat_key, 0) + 1
 
             # Count by type
             type_key = query.query_type.value
-            summary["by_type"][type_key] = summary["by_type"].get(type_key, 0) + 1
+            by_type[type_key] = by_type.get(type_key, 0) + 1
 
             # Count by complexity
             comp_key = query.complexity.value
-            summary["by_complexity"][comp_key] = summary["by_complexity"].get(comp_key, 0) + 1
+            by_complexity[comp_key] = by_complexity.get(comp_key, 0) + 1
 
-        return summary
+        return {
+            "total": len(all_queries),
+            "by_category": by_category,
+            "by_type": by_type,
+            "by_complexity": by_complexity,
+        }

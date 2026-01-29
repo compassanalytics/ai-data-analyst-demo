@@ -425,7 +425,7 @@ class PipelineState:
         Returns:
             Dictionary representation of pipeline state
         """
-        base_dict = {
+        base_dict: dict[str, Any] = {
             "current_stage": self.current_stage.value,
             "is_running": self.is_running,
             "timing": self.get_timing_summary(),

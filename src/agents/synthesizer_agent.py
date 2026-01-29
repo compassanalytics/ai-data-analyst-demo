@@ -391,15 +391,15 @@ class SynthesizerAgent:
                 ]
             )
 
-            result = self._parse_llm_response(
+            synthesis_result = self._parse_llm_response(
                 response.content,
                 domains_analyzed=domains_analyzed,
                 warnings=warnings,
             )
             # Add the unavailable domains and limitations
-            result.domains_unavailable = domains_unavailable
-            result.data_limitations = data_limitations
-            return result
+            synthesis_result.domains_unavailable = domains_unavailable
+            synthesis_result.data_limitations = data_limitations
+            return synthesis_result
 
         except Exception as e:
             return SynthesisResult(

@@ -14,6 +14,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode
 
 from src.agents.genie_agent import GenieDataAgent, GenieResult
@@ -110,7 +111,7 @@ def create_supervisor_agent(
     genie_agent: GenieDataAgent | None = None,
     rag_agent: RAGAgent | None = None,
     checkpointer: MemorySaver | None = None,
-) -> StateGraph:
+) -> CompiledStateGraph[Any, Any, Any, Any]:
     """Create the supervisor agent graph.
 
     The supervisor uses ChatDatabricks to route queries to specialized agents:
@@ -223,10 +224,11 @@ def create_supervisor_agent(
             }
 
         # Get the last user message
-        last_user_msg = None
+        last_user_msg: str | None = None
         for msg in reversed(messages):
             if isinstance(msg, HumanMessage):
-                last_user_msg = msg.content
+                content = msg.content
+                last_user_msg = content if isinstance(content, str) else str(content)
                 break
 
         if use_mock_llm:
@@ -393,8 +395,9 @@ class SupervisorRunner:
 
         # Build initial state
         # When using checkpointer, don't pass full history - checkpointer manages it
+        initial_state: AgentState
         if self._checkpointer and self._thread_id:
-            initial_state: AgentState = {
+            initial_state = {
                 "messages": [user_message],  # Only new message
                 "next_agent": "supervisor",
                 "genie_result": None,
@@ -403,7 +406,7 @@ class SupervisorRunner:
             }
             invoke_config = {"configurable": {"thread_id": self._thread_id}}
         else:
-            initial_state: AgentState = {
+            initial_state = {
                 "messages": self._message_history + [user_message],
                 "next_agent": "supervisor",
                 "genie_result": None,
@@ -412,7 +415,7 @@ class SupervisorRunner:
             }
             invoke_config = {}
 
-        final_state = self.graph.invoke(initial_state, invoke_config)
+        final_state = self.graph.invoke(initial_state, invoke_config)  # type: ignore[arg-type]
 
         # Update local history (for non-checkpointer mode)
         if not self._checkpointer:
@@ -421,7 +424,11 @@ class SupervisorRunner:
         # Extract response
         for message in reversed(final_state["messages"]):
             if isinstance(message, AIMessage) and not message.tool_calls:
-                return message.content
+                content = message.content
+                # Handle multimodal content
+                if isinstance(content, str):
+                    return content
+                return str(content)
 
         return "I wasn't able to generate a response."
 

@@ -36,6 +36,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMe
 from langchain_core.tools import StructuredTool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode
 
 
@@ -116,7 +117,7 @@ class AgentRunner:
 
     def __init__(
         self,
-        graph: StateGraph,
+        graph: CompiledStateGraph[Any, Any, Any, Any],
         thread_id: str | None = None,
         name: str = "Agent",
         checkpointer: MemorySaver | None = None,
@@ -152,23 +153,24 @@ class AgentRunner:
 
         # Build initial state
         # When using checkpointer, don't accumulate local history
+        initial_state: WorkshopAgentState
         if self._checkpointer and self.thread_id:
-            initial_state: WorkshopAgentState = {
+            initial_state = {
                 "messages": [user_message],
                 "next_step": "agent",
                 "iteration_count": 0,
             }
             invoke_config = {"configurable": {"thread_id": self.thread_id}}
         else:
-            initial_state: WorkshopAgentState = {
+            initial_state = {
                 "messages": self._message_history + [user_message],
                 "next_step": "agent",
                 "iteration_count": 0,
             }
             invoke_config = {}
 
-        # Invoke the graph
-        final_state = self.graph.invoke(initial_state, invoke_config)
+        # Invoke the graph (compiled graph has invoke method)
+        final_state = self.graph.invoke(initial_state, invoke_config)  # type: ignore[arg-type]
 
         # Update local history only when not using checkpointer
         if not self._checkpointer:
@@ -177,7 +179,11 @@ class AgentRunner:
         # Extract the final response
         for message in reversed(final_state["messages"]):
             if isinstance(message, AIMessage) and not message.tool_calls:
-                return message.content
+                content = message.content
+                # Handle multimodal content (text + images)
+                if isinstance(content, str):
+                    return content
+                return str(content)
 
         return "I wasn't able to generate a response."
 
@@ -434,10 +440,11 @@ class AgentBuilder:
                 }
 
             # Get the last user message
-            last_user_msg = None
+            last_user_msg: str | None = None
             for msg in reversed(messages):
                 if isinstance(msg, HumanMessage):
-                    last_user_msg = msg.content
+                    content = msg.content
+                    last_user_msg = content if isinstance(content, str) else str(content)
                     break
 
             if mock_mode:
@@ -480,10 +487,11 @@ class AgentBuilder:
                         }
                 else:
                     # After tool execution, synthesize response
-                    tool_results = []
+                    tool_results: list[str] = []
                     for msg in messages:
                         if isinstance(msg, ToolMessage):
-                            tool_results.append(msg.content)
+                            content = msg.content
+                            tool_results.append(content if isinstance(content, str) else str(content))
 
                     if tool_results:
                         final_content = "\n".join(tool_results)
@@ -599,7 +607,11 @@ class AgentBuilder:
             if tool.name == tool_name:
                 # Get the first argument name from the schema
                 if tool.args_schema:
-                    schema = tool.args_schema.schema()
+                    # args_schema can be a Pydantic model class or a dict
+                    if hasattr(tool.args_schema, "schema"):
+                        schema = tool.args_schema.schema()  # type: ignore[union-attr]
+                    else:
+                        schema = tool.args_schema  # Already a dict
                     props = schema.get("properties", {})
                     if props:
                         first_arg = list(props.keys())[0]

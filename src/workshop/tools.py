@@ -23,12 +23,14 @@ import ast
 import math
 import operator
 import re
+from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import Any
 
 from langchain_core.tools import tool
 
-# Safe operators for calculator AST evaluation
-_SAFE_OPERATORS = {
+# Safe binary operators for calculator AST evaluation
+_SAFE_BINARY_OPS: dict[type, Callable[[Any, Any], Any]] = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
@@ -36,6 +38,10 @@ _SAFE_OPERATORS = {
     ast.FloorDiv: operator.floordiv,
     ast.Mod: operator.mod,
     ast.Pow: operator.pow,
+}
+
+# Safe unary operators
+_SAFE_UNARY_OPS: dict[type, Callable[[Any], Any]] = {
     ast.USub: operator.neg,
     ast.UAdd: operator.pos,
 }
@@ -88,19 +94,19 @@ def _safe_eval_ast(node: ast.AST) -> float | int:
         raise ValueError(f"Unknown variable: {node.id}")
 
     elif isinstance(node, ast.BinOp):
-        op_type = type(node.op)
-        if op_type not in _SAFE_OPERATORS:
-            raise ValueError(f"Unsupported operator: {op_type.__name__}")
+        bin_op_type = type(node.op)
+        if bin_op_type not in _SAFE_BINARY_OPS:
+            raise ValueError(f"Unsupported operator: {bin_op_type.__name__}")
         left = _safe_eval_ast(node.left)
         right = _safe_eval_ast(node.right)
-        return _SAFE_OPERATORS[op_type](left, right)
+        return _SAFE_BINARY_OPS[bin_op_type](left, right)
 
     elif isinstance(node, ast.UnaryOp):
-        op_type = type(node.op)
-        if op_type not in _SAFE_OPERATORS:
-            raise ValueError(f"Unsupported unary operator: {op_type.__name__}")
+        unary_op_type = type(node.op)
+        if unary_op_type not in _SAFE_UNARY_OPS:
+            raise ValueError(f"Unsupported unary operator: {unary_op_type.__name__}")
         operand = _safe_eval_ast(node.operand)
-        return _SAFE_OPERATORS[op_type](operand)
+        return _SAFE_UNARY_OPS[unary_op_type](operand)
 
     elif isinstance(node, ast.Call):
         if not isinstance(node.func, ast.Name):
@@ -109,7 +115,8 @@ def _safe_eval_ast(node: ast.AST) -> float | int:
         if func_name not in _SAFE_FUNCTIONS:
             raise ValueError(f"Unknown function: {func_name}")
         args = [_safe_eval_ast(arg) for arg in node.args]
-        return _SAFE_FUNCTIONS[func_name](*args)
+        func = _SAFE_FUNCTIONS[func_name]
+        return func(*args)  # type: ignore[operator]
 
     elif isinstance(node, ast.Expression):
         return _safe_eval_ast(node.body)
