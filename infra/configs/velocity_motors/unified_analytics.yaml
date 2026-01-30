@@ -9,24 +9,24 @@ parent_path: "${PARENT_PATH}"
 
 tables:
   # Sales Domain (8 tables)
-  - identifier: "velocity_motors.sales.territories"
-  - identifier: "velocity_motors.sales.salespersons"
-  - identifier: "velocity_motors.sales.vehicles"
-  - identifier: "velocity_motors.sales.features"
-  - identifier: "velocity_motors.sales.vehicle_features"
-  - identifier: "velocity_motors.sales.price_history"
-  - identifier: "velocity_motors.sales.orders"
-  - identifier: "velocity_motors.sales.order_items"
+  - identifier: "${CATALOG}.sales.territories"
+  - identifier: "${CATALOG}.sales.salespersons"
+  - identifier: "${CATALOG}.sales.vehicles"
+  - identifier: "${CATALOG}.sales.features"
+  - identifier: "${CATALOG}.sales.vehicle_features"
+  - identifier: "${CATALOG}.sales.price_history"
+  - identifier: "${CATALOG}.sales.orders"
+  - identifier: "${CATALOG}.sales.order_items"
   # CRM Domain (4 tables)
-  - identifier: "velocity_motors.crm.customer_segments"
-  - identifier: "velocity_motors.crm.customers"
-  - identifier: "velocity_motors.crm.interactions"
-  - identifier: "velocity_motors.crm.leads"
+  - identifier: "${CATALOG}.crm.customer_segments"
+  - identifier: "${CATALOG}.crm.customers"
+  - identifier: "${CATALOG}.crm.interactions"
+  - identifier: "${CATALOG}.crm.leads"
   # Operations Domain (4 tables)
-  - identifier: "velocity_motors.operations.warehouse_locations"
-  - identifier: "velocity_motors.operations.suppliers"
-  - identifier: "velocity_motors.operations.parts_inventory"
-  - identifier: "velocity_motors.operations.service_orders"
+  - identifier: "${CATALOG}.operations.warehouse_locations"
+  - identifier: "${CATALOG}.operations.suppliers"
+  - identifier: "${CATALOG}.operations.parts_inventory"
+  - identifier: "${CATALOG}.operations.service_orders"
 
 sample_questions:
   # Cross-domain questions (Sales + CRM + Operations)
@@ -203,66 +203,66 @@ instructions: |
 
 join_specs:
   # Sales Domain Internal Joins
-  - left_table: "velocity_motors.sales.salespersons"
-    right_table: "velocity_motors.sales.territories"
+  - left_table: "${CATALOG}.sales.salespersons"
+    right_table: "${CATALOG}.sales.territories"
     join_keys: ["territory_id=territory_id"]
-  - left_table: "velocity_motors.sales.salespersons"
-    right_table: "velocity_motors.sales.salespersons"
+  - left_table: "${CATALOG}.sales.salespersons"
+    right_table: "${CATALOG}.sales.salespersons"
     join_keys: ["manager_id=salesperson_id"]
-  - left_table: "velocity_motors.sales.orders"
-    right_table: "velocity_motors.sales.salespersons"
+  - left_table: "${CATALOG}.sales.orders"
+    right_table: "${CATALOG}.sales.salespersons"
     join_keys: ["salesperson_id=salesperson_id"]
-  - left_table: "velocity_motors.sales.orders"
-    right_table: "velocity_motors.sales.vehicles"
+  - left_table: "${CATALOG}.sales.orders"
+    right_table: "${CATALOG}.sales.vehicles"
     join_keys: ["vehicle_id=vehicle_id"]
-  - left_table: "velocity_motors.sales.order_items"
-    right_table: "velocity_motors.sales.orders"
+  - left_table: "${CATALOG}.sales.order_items"
+    right_table: "${CATALOG}.sales.orders"
     join_keys: ["order_id=order_id"]
-  - left_table: "velocity_motors.sales.vehicle_features"
-    right_table: "velocity_motors.sales.vehicles"
+  - left_table: "${CATALOG}.sales.vehicle_features"
+    right_table: "${CATALOG}.sales.vehicles"
     join_keys: ["vehicle_id=vehicle_id"]
-  - left_table: "velocity_motors.sales.vehicle_features"
-    right_table: "velocity_motors.sales.features"
+  - left_table: "${CATALOG}.sales.vehicle_features"
+    right_table: "${CATALOG}.sales.features"
     join_keys: ["feature_id=feature_id"]
-  - left_table: "velocity_motors.sales.price_history"
-    right_table: "velocity_motors.sales.vehicles"
+  - left_table: "${CATALOG}.sales.price_history"
+    right_table: "${CATALOG}.sales.vehicles"
     join_keys: ["vehicle_id=vehicle_id"]
 
   # CRM Domain Internal Joins
-  - left_table: "velocity_motors.crm.customers"
-    right_table: "velocity_motors.crm.customer_segments"
+  - left_table: "${CATALOG}.crm.customers"
+    right_table: "${CATALOG}.crm.customer_segments"
     join_keys: ["segment_id=segment_id"]
-  - left_table: "velocity_motors.crm.interactions"
-    right_table: "velocity_motors.crm.customers"
+  - left_table: "${CATALOG}.crm.interactions"
+    right_table: "${CATALOG}.crm.customers"
     join_keys: ["customer_id=customer_id"]
-  - left_table: "velocity_motors.crm.leads"
-    right_table: "velocity_motors.crm.customers"
+  - left_table: "${CATALOG}.crm.leads"
+    right_table: "${CATALOG}.crm.customers"
     join_keys: ["customer_id=customer_id"]
 
   # Operations Domain Internal Joins
-  - left_table: "velocity_motors.operations.parts_inventory"
-    right_table: "velocity_motors.operations.suppliers"
+  - left_table: "${CATALOG}.operations.parts_inventory"
+    right_table: "${CATALOG}.operations.suppliers"
     join_keys: ["supplier_id=supplier_id"]
-  - left_table: "velocity_motors.operations.parts_inventory"
-    right_table: "velocity_motors.operations.warehouse_locations"
+  - left_table: "${CATALOG}.operations.parts_inventory"
+    right_table: "${CATALOG}.operations.warehouse_locations"
     join_keys: ["warehouse_id=warehouse_id"]
 
   # Cross-Domain Joins: Sales <-> CRM
-  - left_table: "velocity_motors.sales.orders"
-    right_table: "velocity_motors.crm.customers"
+  - left_table: "${CATALOG}.sales.orders"
+    right_table: "${CATALOG}.crm.customers"
     join_keys: ["customer_id=customer_id"]
-  - left_table: "velocity_motors.crm.leads"
-    right_table: "velocity_motors.sales.salespersons"
+  - left_table: "${CATALOG}.crm.leads"
+    right_table: "${CATALOG}.sales.salespersons"
     join_keys: ["salesperson_id=salesperson_id"]
 
   # Cross-Domain Joins: CRM <-> Operations
-  - left_table: "velocity_motors.operations.service_orders"
-    right_table: "velocity_motors.crm.customers"
+  - left_table: "${CATALOG}.operations.service_orders"
+    right_table: "${CATALOG}.crm.customers"
     join_keys: ["customer_id=customer_id"]
 
   # Cross-Domain Joins: Sales <-> Operations
-  - left_table: "velocity_motors.operations.service_orders"
-    right_table: "velocity_motors.sales.vehicles"
+  - left_table: "${CATALOG}.operations.service_orders"
+    right_table: "${CATALOG}.sales.vehicles"
     join_keys: ["vehicle_id=vehicle_id"]
 
 example_sqls:
@@ -273,8 +273,8 @@ example_sqls:
         SELECT
           o.customer_id,
           SUM(oi.total_price) as purchase_revenue
-        FROM velocity_motors.sales.orders o
-        JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+        FROM ${CATALOG}.sales.orders o
+        JOIN ${CATALOG}.sales.order_items oi ON o.order_id = oi.order_id
         WHERE o.status = 'Completed'
         GROUP BY o.customer_id
       ),
@@ -282,7 +282,7 @@ example_sqls:
         SELECT
           customer_id,
           SUM(total_cost) as service_revenue
-        FROM velocity_motors.operations.service_orders
+        FROM ${CATALOG}.operations.service_orders
         WHERE status = 'Completed'
         GROUP BY customer_id
       )
@@ -293,8 +293,8 @@ example_sqls:
         COALESCE(sr.purchase_revenue, 0) as purchase_revenue,
         COALESCE(svc.service_revenue, 0) as service_revenue,
         COALESCE(sr.purchase_revenue, 0) + COALESCE(svc.service_revenue, 0) as total_lifetime_value
-      FROM velocity_motors.crm.customers c
-      JOIN velocity_motors.crm.customer_segments cs ON c.segment_id = cs.segment_id
+      FROM ${CATALOG}.crm.customers c
+      JOIN ${CATALOG}.crm.customer_segments cs ON c.segment_id = cs.segment_id
       LEFT JOIN sales_revenue sr ON c.customer_id = sr.customer_id
       LEFT JOIN service_revenue svc ON c.customer_id = svc.customer_id
       ORDER BY total_lifetime_value DESC
@@ -307,12 +307,12 @@ example_sqls:
         SELECT DISTINCT
           o.salesperson_id,
           o.customer_id
-        FROM velocity_motors.sales.orders o
+        FROM ${CATALOG}.sales.orders o
         WHERE o.status = 'Completed'
       ),
       customers_with_service AS (
         SELECT DISTINCT customer_id
-        FROM velocity_motors.operations.service_orders
+        FROM ${CATALOG}.operations.service_orders
         WHERE status = 'Completed'
       )
       SELECT
@@ -321,8 +321,8 @@ example_sqls:
         COUNT(DISTINCT sc.customer_id) as total_customers,
         COUNT(DISTINCT cws.customer_id) as returning_for_service,
         ROUND(100.0 * COUNT(DISTINCT cws.customer_id) / NULLIF(COUNT(DISTINCT sc.customer_id), 0), 1) as retention_rate_pct
-      FROM velocity_motors.sales.salespersons s
-      JOIN velocity_motors.sales.territories t ON s.territory_id = t.territory_id
+      FROM ${CATALOG}.sales.salespersons s
+      JOIN ${CATALOG}.sales.territories t ON s.territory_id = t.territory_id
       JOIN salesperson_customers sc ON s.salesperson_id = sc.salesperson_id
       LEFT JOIN customers_with_service cws ON sc.customer_id = cws.customer_id
       GROUP BY s.salesperson_id, s.name, t.region_name
@@ -340,9 +340,9 @@ example_sqls:
         SUM(so.total_cost) as total_service_revenue,
         ROUND(AVG(so.total_cost), 2) as avg_order_value,
         ROUND(AVG(so.customer_rating), 2) as avg_satisfaction
-      FROM velocity_motors.operations.service_orders so
-      JOIN velocity_motors.crm.customers c ON so.customer_id = c.customer_id
-      JOIN velocity_motors.crm.customer_segments cs ON c.segment_id = cs.segment_id
+      FROM ${CATALOG}.operations.service_orders so
+      JOIN ${CATALOG}.crm.customers c ON so.customer_id = c.customer_id
+      JOIN ${CATALOG}.crm.customer_segments cs ON c.segment_id = cs.segment_id
       WHERE so.status = 'Completed'
       GROUP BY cs.segment_name
       ORDER BY total_service_revenue DESC
@@ -356,8 +356,8 @@ example_sqls:
         COUNT(so.service_order_id) as service_orders,
         SUM(so.total_cost) as total_service_revenue,
         ROUND(SUM(so.total_cost) / NULLIF(COUNT(DISTINCT v.vehicle_id), 0), 2) as avg_revenue_per_vehicle
-      FROM velocity_motors.sales.vehicles v
-      LEFT JOIN velocity_motors.operations.service_orders so ON v.vehicle_id = so.vehicle_id AND so.status = 'Completed'
+      FROM ${CATALOG}.sales.vehicles v
+      LEFT JOIN ${CATALOG}.operations.service_orders so ON v.vehicle_id = so.vehicle_id AND so.status = 'Completed'
       GROUP BY v.make
       ORDER BY avg_revenue_per_vehicle DESC
 
@@ -370,10 +370,10 @@ example_sqls:
         t.territory_name,
         COUNT(DISTINCT o.order_id) as orders,
         SUM(oi.total_price) as revenue
-      FROM velocity_motors.sales.orders o
-      JOIN velocity_motors.sales.salespersons s ON o.salesperson_id = s.salesperson_id
-      JOIN velocity_motors.sales.territories t ON s.territory_id = t.territory_id
-      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      FROM ${CATALOG}.sales.orders o
+      JOIN ${CATALOG}.sales.salespersons s ON o.salesperson_id = s.salesperson_id
+      JOIN ${CATALOG}.sales.territories t ON s.territory_id = t.territory_id
+      JOIN ${CATALOG}.sales.order_items oi ON o.order_id = oi.order_id
       WHERE o.status = 'Completed' AND oi.item_type = 'Vehicle'
       GROUP BY ROLLUP(t.division_name, t.region_name, t.territory_name)
       ORDER BY t.division_name, t.region_name, t.territory_name
@@ -387,15 +387,15 @@ example_sqls:
         v.model,
         v.year,
         v.msrp
-      FROM velocity_motors.sales.vehicles v
+      FROM ${CATALOG}.sales.vehicles v
       WHERE EXISTS (
-        SELECT 1 FROM velocity_motors.sales.vehicle_features vf
-        JOIN velocity_motors.sales.features f ON vf.feature_id = f.feature_id
+        SELECT 1 FROM ${CATALOG}.sales.vehicle_features vf
+        JOIN ${CATALOG}.sales.features f ON vf.feature_id = f.feature_id
         WHERE vf.vehicle_id = v.vehicle_id AND f.feature_name = 'Sunroof'
       )
       AND EXISTS (
-        SELECT 1 FROM velocity_motors.sales.vehicle_features vf
-        JOIN velocity_motors.sales.features f ON vf.feature_id = f.feature_id
+        SELECT 1 FROM ${CATALOG}.sales.vehicle_features vf
+        JOIN ${CATALOG}.sales.features f ON vf.feature_id = f.feature_id
         WHERE vf.vehicle_id = v.vehicle_id AND f.feature_name = 'Navigation System'
       )
 
@@ -407,9 +407,9 @@ example_sqls:
         f.feature_category,
         COUNT(DISTINCT vf.vehicle_id) as vehicles_with_feature,
         COUNT(DISTINCT o.order_id) as sold_vehicles_with_feature
-      FROM velocity_motors.sales.features f
-      JOIN velocity_motors.sales.vehicle_features vf ON f.feature_id = vf.feature_id
-      LEFT JOIN velocity_motors.sales.orders o ON vf.vehicle_id = o.vehicle_id AND o.status = 'Completed'
+      FROM ${CATALOG}.sales.features f
+      JOIN ${CATALOG}.sales.vehicle_features vf ON f.feature_id = vf.feature_id
+      LEFT JOIN ${CATALOG}.sales.orders o ON vf.vehicle_id = o.vehicle_id AND o.status = 'Completed'
       GROUP BY f.feature_id, f.feature_name, f.feature_category
       ORDER BY sold_vehicles_with_feature DESC
       LIMIT 15
@@ -426,8 +426,8 @@ example_sqls:
         MIN(ph.price) as lowest_price,
         MAX(ph.price) as highest_price,
         MAX(ph.price) - MIN(ph.price) as price_range
-      FROM velocity_motors.sales.vehicles v
-      JOIN velocity_motors.sales.price_history ph ON v.vehicle_id = ph.vehicle_id
+      FROM ${CATALOG}.sales.vehicles v
+      JOIN ${CATALOG}.sales.price_history ph ON v.vehicle_id = ph.vehicle_id
       GROUP BY v.vehicle_id, v.make, v.model, v.year
       HAVING COUNT(*) > 2
       ORDER BY price_changes DESC
@@ -442,9 +442,9 @@ example_sqls:
         COUNT(s.salesperson_id) as direct_reports,
         SUM(s.quota) as team_quota,
         ROUND(AVG(s.commission_rate), 3) as avg_team_commission
-      FROM velocity_motors.sales.salespersons m
-      JOIN velocity_motors.sales.salespersons s ON m.salesperson_id = s.manager_id
-      LEFT JOIN velocity_motors.sales.territories t ON m.territory_id = t.territory_id
+      FROM ${CATALOG}.sales.salespersons m
+      JOIN ${CATALOG}.sales.salespersons s ON m.salesperson_id = s.manager_id
+      LEFT JOIN ${CATALOG}.sales.territories t ON m.territory_id = t.territory_id
       GROUP BY m.salesperson_id, m.name, t.region_name
       ORDER BY direct_reports DESC
 
@@ -458,8 +458,8 @@ example_sqls:
         SUM(oi.total_price) as calculated_total,
         o.order_total - SUM(oi.total_price) as discrepancy,
         o.discount_amount
-      FROM velocity_motors.sales.orders o
-      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      FROM ${CATALOG}.sales.orders o
+      JOIN ${CATALOG}.sales.order_items oi ON o.order_id = oi.order_id
       WHERE o.status = 'Completed'
       GROUP BY o.order_id, o.order_date, o.order_total, o.discount_amount
       HAVING ABS(o.order_total - SUM(oi.total_price)) > 0.01

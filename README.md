@@ -29,31 +29,72 @@ This hands-on workshop teaches you to build AI data analysts that can:
 
 ### Prerequisites
 
-- Databricks account ([Free Edition](https://www.databricks.com/learn/free-edition) works)
-- Python 3.10+
-- [uv](https://docs.astral.sh/uv/) for Python environment management
+- Databricks account with Unity Catalog enabled ([Free Edition](https://www.databricks.com/learn/free-edition) works — Community Edition does **not**)
+- A running SQL Warehouse (Serverless or Pro)
 
-### Setup
+### Step 1: Download Workshop Materials
 
-```bash
-# Clone the repository
-git clone https://github.com/YOUR_ORG/ai-data-analyst-workshop.git
-cd ai-data-analyst-workshop
+Create a new notebook in your Databricks workspace and paste this into the first cell:
 
-# Install dependencies
-uv sync
+```python
+# Download AI Data Analyst Workshop materials
+import json, os, subprocess, urllib.request
 
-# Copy environment template
-cp .env.example .env
-# Edit .env with your Databricks credentials
+REPO = "compassanalytics/ai-data-analyst-demo"
+VERSION = "latest"
+
+user = spark.sql("SELECT current_user()").first()[0]
+target = f"/Workspace/Users/{user}/ai-data-analyst-workshop"
+
+# Resolve latest version
+try:
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{REPO}/releases/latest",
+        headers={"Accept": "application/vnd.github.v3+json"},
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        tag = json.loads(resp.read().decode()).get("tag_name", "")
+        version = tag.replace("workshop-", "") if tag.startswith("workshop-") else tag
+except Exception as e:
+    print(f"Could not fetch latest version ({e}), falling back to v1.0")
+    version = "v1.0"
+
+# Download and extract
+url = f"https://github.com/{REPO}/releases/download/workshop-{version}/workshop-materials-{version}.tar.gz"
+print(f"Downloading {version} to {target} ...")
+os.makedirs(target, exist_ok=True)
+r = subprocess.run(f"curl -sL {url} | tar -xz -C {target} --strip-components=1", shell=True, capture_output=True, text=True)
+if r.returncode != 0:
+    raise RuntimeError(f"Download failed: {r.stderr}")
+
+for item in sorted(os.listdir(target)):
+    p = os.path.join(target, item)
+    info = f"/ ({len(os.listdir(p))} items)" if os.path.isdir(p) else f" ({os.path.getsize(p):,} bytes)"
+    print(f"  {item}{info}")
+print(f"\nWorkshop materials ready at: {target}")
 ```
 
-See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.
+Run the cell — all workshop materials will be unpacked into your workspace.
 
-### Run Demo Notebook
+### Step 2: Run Setup Notebooks
 
-1. Upload `notebooks/` to your Databricks workspace
-2. Follow along with Part 1, 2, or 3
+Open each setup notebook in order and click **Run All**:
+
+| Order | Notebook | What It Does |
+|-------|----------|-------------|
+| 1 | `notebooks/00a_setup_data.ipynb` | Loads 16 tables into Unity Catalog |
+| 2 | `notebooks/00b_setup_rag.ipynb` | Creates Vector Search index for policy documents |
+| 3 | `notebooks/00c_setup_genie.ipynb` | Deploys Genie Spaces via Infrastructure-as-Code |
+
+### Step 3: Run Workshop Notebooks
+
+| Part | Notebook | Focus |
+|------|----------|-------|
+| 1 | `01_agent_basics.ipynb` | Genie + RAG multi-agent with progressive query difficulty |
+| 2 | `02_multi_genie_orchestration.ipynb` | Parallel multi-Genie queries with report generation |
+| 3 | `03_build_your_agent.ipynb` | Build your own LangGraph agent from scratch |
+
+See [WORKSHOP_GUIDE.md](WORKSHOP_GUIDE.md) for the full step-by-step guide with configuration details.
 
 ## Repository Structure
 
@@ -74,7 +115,8 @@ ai-data-analyst-workshop/
 
 ## Documentation
 
-- [Setup Guide](docs/SETUP.md) - Environment setup for participants
+- [Workshop Guide](WORKSHOP_GUIDE.md) - Full step-by-step participant walkthrough
+- [Setup Guide](docs/SETUP.md) - Environment setup details
 - [Architecture](docs/ARCHITECTURE.md) - How the agents work
 - [Genie Best Practices](docs/GENIE_BEST_PRACTICES.md) - Data quality and Knowledge Store
 

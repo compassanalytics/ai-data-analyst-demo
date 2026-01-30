@@ -7,10 +7,10 @@ warehouse_id: "${WAREHOUSE_ID}"
 parent_path: "${PARENT_PATH}"
 
 tables:
-  - identifier: "velocity_motors.sales.salespersons"
-  - identifier: "velocity_motors.sales.vehicles"
-  - identifier: "velocity_motors.sales.orders"
-  - identifier: "velocity_motors.sales.order_items"
+  - identifier: "${CATALOG}.sales.salespersons"
+  - identifier: "${CATALOG}.sales.vehicles"
+  - identifier: "${CATALOG}.sales.orders"
+  - identifier: "${CATALOG}.sales.order_items"
 
 sample_questions:
   - id: "sales_q1"
@@ -63,14 +63,14 @@ instructions: |
   - Commission rates range from 1.5% to 4%, correlated with salesperson seniority
 
 join_specs:
-  - left_table: "velocity_motors.sales.orders"
-    right_table: "velocity_motors.sales.salespersons"
+  - left_table: "${CATALOG}.sales.orders"
+    right_table: "${CATALOG}.sales.salespersons"
     join_keys: ["salesperson_id=salesperson_id"]
-  - left_table: "velocity_motors.sales.orders"
-    right_table: "velocity_motors.sales.vehicles"
+  - left_table: "${CATALOG}.sales.orders"
+    right_table: "${CATALOG}.sales.vehicles"
     join_keys: ["vehicle_id=vehicle_id"]
-  - left_table: "velocity_motors.sales.order_items"
-    right_table: "velocity_motors.sales.orders"
+  - left_table: "${CATALOG}.sales.order_items"
+    right_table: "${CATALOG}.sales.orders"
     join_keys: ["order_id=order_id"]
 
 example_sqls:
@@ -80,9 +80,9 @@ example_sqls:
         v.make,
         COUNT(DISTINCT o.order_id) as orders,
         SUM(oi.total_price) as revenue
-      FROM velocity_motors.sales.orders o
-      JOIN velocity_motors.sales.vehicles v ON o.vehicle_id = v.vehicle_id
-      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      FROM ${CATALOG}.sales.orders o
+      JOIN ${CATALOG}.sales.vehicles v ON o.vehicle_id = v.vehicle_id
+      JOIN ${CATALOG}.sales.order_items oi ON o.order_id = oi.order_id
       WHERE o.status = 'Completed' AND oi.item_type = 'Vehicle'
       GROUP BY v.make
       ORDER BY revenue DESC
@@ -95,9 +95,9 @@ example_sqls:
         s.quota,
         SUM(oi.total_price) as revenue,
         ROUND(100.0 * SUM(oi.total_price) / s.quota, 1) as quota_attainment_pct
-      FROM velocity_motors.sales.orders o
-      JOIN velocity_motors.sales.salespersons s ON o.salesperson_id = s.salesperson_id
-      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      FROM ${CATALOG}.sales.orders o
+      JOIN ${CATALOG}.sales.salespersons s ON o.salesperson_id = s.salesperson_id
+      JOIN ${CATALOG}.sales.order_items oi ON o.order_id = oi.order_id
       WHERE o.status = 'Completed' AND oi.item_type = 'Vehicle'
         AND YEAR(o.order_date) = YEAR(CURRENT_DATE())
       GROUP BY s.salesperson_id, s.name, s.region, s.quota
@@ -112,9 +112,9 @@ example_sqls:
         SUM(oi.total_price) as revenue,
         SUM(CASE WHEN v.condition = 'New' THEN oi.total_price ELSE 0 END) as new_vehicle_revenue,
         SUM(CASE WHEN v.condition != 'New' THEN oi.total_price ELSE 0 END) as used_vehicle_revenue
-      FROM velocity_motors.sales.orders o
-      JOIN velocity_motors.sales.vehicles v ON o.vehicle_id = v.vehicle_id
-      JOIN velocity_motors.sales.order_items oi ON o.order_id = oi.order_id
+      FROM ${CATALOG}.sales.orders o
+      JOIN ${CATALOG}.sales.vehicles v ON o.vehicle_id = v.vehicle_id
+      JOIN ${CATALOG}.sales.order_items oi ON o.order_id = oi.order_id
       WHERE o.status = 'Completed' AND oi.item_type = 'Vehicle'
       GROUP BY DATE_TRUNC('month', o.order_date)
       ORDER BY month DESC

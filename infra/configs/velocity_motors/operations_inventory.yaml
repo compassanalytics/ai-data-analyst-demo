@@ -7,12 +7,12 @@ warehouse_id: "${WAREHOUSE_ID}"
 parent_path: "${PARENT_PATH}"
 
 tables:
-  - identifier: "velocity_motors.operations.warehouse_locations"
-  - identifier: "velocity_motors.operations.suppliers"
-  - identifier: "velocity_motors.operations.parts_inventory"
-  - identifier: "velocity_motors.operations.service_orders"
-  - identifier: "velocity_motors.crm.customers"
-  - identifier: "velocity_motors.sales.vehicles"
+  - identifier: "${CATALOG}.operations.warehouse_locations"
+  - identifier: "${CATALOG}.operations.suppliers"
+  - identifier: "${CATALOG}.operations.parts_inventory"
+  - identifier: "${CATALOG}.operations.service_orders"
+  - identifier: "${CATALOG}.crm.customers"
+  - identifier: "${CATALOG}.sales.vehicles"
 
 sample_questions:
   - id: "ops_q1"
@@ -84,17 +84,17 @@ instructions: |
   - ~60% of completed service orders have customer ratings
 
 join_specs:
-  - left_table: "velocity_motors.operations.parts_inventory"
-    right_table: "velocity_motors.operations.suppliers"
+  - left_table: "${CATALOG}.operations.parts_inventory"
+    right_table: "${CATALOG}.operations.suppliers"
     join_keys: ["supplier_id=supplier_id"]
-  - left_table: "velocity_motors.operations.parts_inventory"
-    right_table: "velocity_motors.operations.warehouse_locations"
+  - left_table: "${CATALOG}.operations.parts_inventory"
+    right_table: "${CATALOG}.operations.warehouse_locations"
     join_keys: ["warehouse_id=warehouse_id"]
-  - left_table: "velocity_motors.operations.service_orders"
-    right_table: "velocity_motors.crm.customers"
+  - left_table: "${CATALOG}.operations.service_orders"
+    right_table: "${CATALOG}.crm.customers"
     join_keys: ["customer_id=customer_id"]
-  - left_table: "velocity_motors.operations.service_orders"
-    right_table: "velocity_motors.sales.vehicles"
+  - left_table: "${CATALOG}.operations.service_orders"
+    right_table: "${CATALOG}.sales.vehicles"
     join_keys: ["vehicle_id=vehicle_id"]
 
 example_sqls:
@@ -109,8 +109,8 @@ example_sqls:
         p.status,
         s.supplier_name,
         s.lead_time_days
-      FROM velocity_motors.operations.parts_inventory p
-      JOIN velocity_motors.operations.suppliers s ON p.supplier_id = s.supplier_id
+      FROM ${CATALOG}.operations.parts_inventory p
+      JOIN ${CATALOG}.operations.suppliers s ON p.supplier_id = s.supplier_id
       WHERE p.quantity_on_hand <= p.reorder_point
       ORDER BY p.category, p.quantity_on_hand ASC
 
@@ -124,7 +124,7 @@ example_sqls:
         SUM(total_cost) as total_revenue,
         ROUND(AVG(CASE WHEN status = 'Completed' THEN total_cost END), 2) as avg_order_value,
         ROUND(AVG(customer_rating), 2) as avg_rating
-      FROM velocity_motors.operations.service_orders
+      FROM ${CATALOG}.operations.service_orders
       GROUP BY service_type
       ORDER BY total_revenue DESC
 
@@ -137,8 +137,8 @@ example_sqls:
         COUNT(p.part_id) as part_count,
         SUM(p.quantity_on_hand * p.unit_cost) as inventory_value,
         SUM(CASE WHEN p.status IN ('Below Reorder', 'Critical Low', 'Out of Stock') THEN 1 ELSE 0 END) as parts_needing_reorder
-      FROM velocity_motors.operations.warehouse_locations w
-      LEFT JOIN velocity_motors.operations.parts_inventory p ON w.warehouse_id = p.warehouse_id
+      FROM ${CATALOG}.operations.warehouse_locations w
+      LEFT JOIN ${CATALOG}.operations.parts_inventory p ON w.warehouse_id = p.warehouse_id
       WHERE w.is_active = true
       GROUP BY w.warehouse_id, w.warehouse_name, w.warehouse_type, w.current_utilization
       ORDER BY inventory_value DESC

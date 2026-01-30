@@ -7,11 +7,11 @@ warehouse_id: "${WAREHOUSE_ID}"
 parent_path: "${PARENT_PATH}"
 
 tables:
-  - identifier: "velocity_motors.crm.customer_segments"
-  - identifier: "velocity_motors.crm.customers"
-  - identifier: "velocity_motors.crm.interactions"
-  - identifier: "velocity_motors.crm.leads"
-  - identifier: "velocity_motors.sales.salespersons"
+  - identifier: "${CATALOG}.crm.customer_segments"
+  - identifier: "${CATALOG}.crm.customers"
+  - identifier: "${CATALOG}.crm.interactions"
+  - identifier: "${CATALOG}.crm.leads"
+  - identifier: "${CATALOG}.sales.salespersons"
 
 sample_questions:
   - id: "crm_q1"
@@ -67,17 +67,17 @@ instructions: |
   - High-LTV customers have 10-50 interactions; Low-LTV have 1-5 interactions
 
 join_specs:
-  - left_table: "velocity_motors.crm.customers"
-    right_table: "velocity_motors.crm.customer_segments"
+  - left_table: "${CATALOG}.crm.customers"
+    right_table: "${CATALOG}.crm.customer_segments"
     join_keys: ["segment_id=segment_id"]
-  - left_table: "velocity_motors.crm.interactions"
-    right_table: "velocity_motors.crm.customers"
+  - left_table: "${CATALOG}.crm.interactions"
+    right_table: "${CATALOG}.crm.customers"
     join_keys: ["customer_id=customer_id"]
-  - left_table: "velocity_motors.crm.leads"
-    right_table: "velocity_motors.crm.customers"
+  - left_table: "${CATALOG}.crm.leads"
+    right_table: "${CATALOG}.crm.customers"
     join_keys: ["customer_id=customer_id"]
-  - left_table: "velocity_motors.crm.leads"
-    right_table: "velocity_motors.sales.salespersons"
+  - left_table: "${CATALOG}.crm.leads"
+    right_table: "${CATALOG}.sales.salespersons"
     join_keys: ["salesperson_id=salesperson_id"]
 
 example_sqls:
@@ -88,7 +88,7 @@ example_sqls:
         COUNT(*) as total_leads,
         SUM(CASE WHEN is_converted THEN 1 ELSE 0 END) as converted,
         ROUND(100.0 * SUM(CASE WHEN is_converted THEN 1 ELSE 0 END) / COUNT(*), 1) as conversion_rate_pct
-      FROM velocity_motors.crm.leads
+      FROM ${CATALOG}.crm.leads
       GROUP BY source
       ORDER BY conversion_rate_pct DESC
 
@@ -101,8 +101,8 @@ example_sqls:
         ROUND(AVG(c.lifetime_value), 2) as avg_ltv,
         SUM(c.lifetime_value) as total_ltv,
         ROUND(AVG(c.credit_score), 0) as avg_credit_score
-      FROM velocity_motors.crm.customers c
-      JOIN velocity_motors.crm.customer_segments cs ON c.segment_id = cs.segment_id
+      FROM ${CATALOG}.crm.customers c
+      JOIN ${CATALOG}.crm.customer_segments cs ON c.segment_id = cs.segment_id
       GROUP BY cs.segment_name
       ORDER BY total_ltv DESC
 
@@ -114,8 +114,8 @@ example_sqls:
         COUNT(*) as assigned_leads,
         SUM(CASE WHEN l.is_converted THEN 1 ELSE 0 END) as converted,
         ROUND(100.0 * SUM(CASE WHEN l.is_converted THEN 1 ELSE 0 END) / COUNT(*), 1) as conversion_rate_pct
-      FROM velocity_motors.crm.leads l
-      JOIN velocity_motors.sales.salespersons s ON l.salesperson_id = s.salesperson_id
+      FROM ${CATALOG}.crm.leads l
+      JOIN ${CATALOG}.sales.salespersons s ON l.salesperson_id = s.salesperson_id
       GROUP BY s.salesperson_id, s.name, s.region
       HAVING COUNT(*) >= 10
       ORDER BY conversion_rate_pct DESC
