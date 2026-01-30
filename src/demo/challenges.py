@@ -592,47 +592,53 @@ question = REPORT_QUESTIONS[report_type]""",
     ),
     "add_genie_space": Challenge(
         id="add_genie_space",
-        title="Add a New Genie Space",
-        description="""Add a fourth Genie Space to the orchestrator configuration.
+        title="Add the Operations Genie Space",
+        description="""Add a fourth Genie Space for the Velocity Motors **Operations** domain.
+
+The Operations database contains these tables:
+- `service_orders` — repair/service work orders
+- `parts_inventory` — spare-parts stock levels
+- `warehouse_locations` — warehouse and distribution centres
+- `suppliers` — parts supplier directory
 
 Your task:
-1. Create a new GenieSpaceConfig for a domain like:
-   - "Finance" (budgets, expenses, forecasts)
-   - "Marketing" (campaigns, leads, conversions)
-   - "Operations" (shipping, fulfillment, logistics)
-
-2. Add it to the space_configs list
-3. Re-initialize the orchestrator
-4. Run a query and pass the result to validation
+1. Create a `GenieSpaceConfig` for Operations
+2. Append it to `space_configs`
+3. Re-initialize the orchestrator **and** planner with the updated list
+4. Run a cross-domain query that includes operations data
 
 Note: In mock mode, any space_id works. In live mode, you'd need a real Space ID.
 """,
         difficulty=Difficulty.MEDIUM,
         time_estimate_minutes=10,
         hints=[
-            "Create: GenieSpaceConfig(space_id='mock-finance', name='Finance', domain='...')",
-            "Append to list: space_configs.append(new_config)",
-            "Re-create orchestrator with updated space_configs",
+            "Create: GenieSpaceConfig(space_id='mock-operations-space', name='Operations', "
+            "domain='service orders, parts inventory, warehouse locations, suppliers, logistics')",
+            "Append to list: space_configs.append(ops_space)",
+            "Re-create both planner AND orchestrator with the updated space_configs",
         ],
         validator=_validate_genie_space_added,
-        success_message="Excellent! You've expanded the multi-agent system.",
-        solution_code="""# Example solution - add Finance space
-finance_space = GenieSpaceConfig(
-    space_id="mock-finance-space",
-    name="Finance",
-    domain="budgets, expenses, forecasts, financial planning",
+        success_message="Excellent! You've expanded the multi-agent system to 4 Genie Spaces.",
+        solution_code="""# Add the Operations Genie Space
+ops_space = GenieSpaceConfig(
+    space_id="mock-operations-space",
+    name="Operations",
+    domain="service orders, parts inventory, warehouse locations, suppliers, logistics",
 )
 
-space_configs.append(finance_space)
+space_configs.append(ops_space)
 
-# Re-initialize orchestrator with new config
+# Re-initialize planner + orchestrator with 4 spaces
+planner = PlannerAgent(config, space_configs)
 orchestrator = MultiGenieOrchestrator(
     space_configs,
     config,
     progress_callback=state.get_progress_callback(),
 )
 
-# Query all spaces including the new one
-result = orchestrator.query_all("Analyze Q4 performance across all domains")""",
+# Query all 4 spaces
+result = orchestrator.query_all(
+    "How do parts inventory levels affect service order completion times?"
+)""",
     ),
 }
