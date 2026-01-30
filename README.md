@@ -59,7 +59,7 @@ See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.
 
 ```
 ai-data-analyst-workshop/
-├── notebooks/              # Workshop notebooks (00a/00b setup, 01-03 exercises)
+├── notebooks/              # Workshop notebooks (00b-00d setup, 01-03 exercises)
 ├── src/                    # Agent code, benchmark, evaluation, demo, workshop
 ├── dataset_generators/     # Generate Velocity Motors sample data (16 tables)
 ├── config/                 # Dataset schemas and Genie Space configurations

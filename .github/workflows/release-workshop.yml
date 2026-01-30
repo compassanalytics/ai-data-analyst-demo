@@ -30,28 +30,76 @@ jobs:
       - name: Create workshop bundle
         run: |
           mkdir -p workshop-bundle
-          # Copy core directories
+
+          # --- Full directory copies ---
           cp -r src workshop-bundle/
           cp -r notebooks workshop-bundle/
-          cp -r scripts workshop-bundle/
           cp -r config workshop-bundle/
           cp -r infra workshop-bundle/
-          cp -r snippets workshop-bundle/
-          # Copy data documents for RAG (if present)
+
+          # --- Remove download-only notebook (not needed in bundle) ---
+          rm -f workshop-bundle/notebooks/00a_setup_download.ipynb
+
+          # --- Scripts: only workshop-relevant scripts ---
+          mkdir -p workshop-bundle/scripts
+          cp scripts/load_velocity_motors_to_unity_catalog.py workshop-bundle/scripts/
+          cp scripts/deploy_velocity_motors_spaces.py workshop-bundle/scripts/
+          cp scripts/setup_vector_search.py workshop-bundle/scripts/
+          cp scripts/load_documents.py workshop-bundle/scripts/
+
+          # --- Data: only RAG documents ---
           if [ -d data/documents ]; then
             mkdir -p workshop-bundle/data
             cp -r data/documents workshop-bundle/data/
           fi
-          # Copy docs (exclude research subdirectory)
+
+          # --- Docs: only workshop-essential docs ---
           mkdir -p workshop-bundle/docs
-          find docs -maxdepth 1 -type f -exec cp {} workshop-bundle/docs/ \;
-          # Copy root files
+          for doc in SETUP.md troubleshooting.md GENIE_BEST_PRACTICES.md KNOWLEDGE_BASE.md README.md ARCHITECTURE.md; do
+            [ -f "docs/$doc" ] && cp "docs/$doc" workshop-bundle/docs/
+          done
+
+          # --- Root files ---
           cp pyproject.toml workshop-bundle/
           cp README.md workshop-bundle/
           cp databricks.yml workshop-bundle/
           cp .env.example workshop-bundle/
-          # Create tarball
+
+          # --- Cleanup Python cache artifacts ---
+          find workshop-bundle -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+          find workshop-bundle -name '*.pyc' -delete 2>/dev/null || true
+          find workshop-bundle -name '.DS_Store' -delete 2>/dev/null || true
+
+          # --- Create tarball ---
           tar -czvf workshop-materials-${{ steps.version.outputs.VERSION }}.tar.gz workshop-bundle
+
+      - name: Verify bundle contents
+        run: |
+          echo "=== Bundle Contents ==="
+          tar -tzf workshop-materials-${{ steps.version.outputs.VERSION }}.tar.gz | head -100
+          echo ""
+          echo "=== Verification ==="
+          CONTENTS=$(tar -tzf workshop-materials-${{ steps.version.outputs.VERSION }}.tar.gz)
+          PASS=true
+          for item in src notebooks scripts config infra data/documents docs pyproject.toml README.md databricks.yml .env.example; do
+            if echo "$CONTENTS" | grep -q "workshop-bundle/$item"; then
+              echo "[OK] $item"
+            else
+              echo "[MISSING] $item"
+              PASS=false
+            fi
+          done
+          for excluded in snippets/ 00a_setup_download benchmark.py upload_to_azure.py test_planner.py test_multi_genie.py test_synthesizer.py test_report_writer.py; do
+            if echo "$CONTENTS" | grep -q "$excluded"; then
+              echo "[LEAKED] $excluded found in bundle!"
+              PASS=false
+            fi
+          done
+          if [ "$PASS" = false ]; then
+            echo "Bundle verification FAILED"
+            exit 1
+          fi
+          echo "Bundle verification PASSED"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

@@ -9,6 +9,8 @@ This folder contains documentation for the AI Data Analyst Workshop.
 | [SETUP.md](SETUP.md) | Participant setup guide for Databricks Free Edition |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Technical architecture of the multi-agent system |
 | [GENIE_BEST_PRACTICES.md](GENIE_BEST_PRACTICES.md) | Data quality and Knowledge Store configuration |
+| [troubleshooting.md](troubleshooting.md) | Common errors and solutions |
+| [KNOWLEDGE_BASE.md](KNOWLEDGE_BASE.md) | Index to all workshop documentation |
 
 ## Workshop Parts
 
