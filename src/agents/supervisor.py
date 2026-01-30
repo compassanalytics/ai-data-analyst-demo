@@ -10,7 +10,7 @@ import operator
 from collections.abc import Sequence
 from typing import Annotated, Any, Literal, TypedDict
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
@@ -370,6 +370,8 @@ class SupervisorRunner:
         else:
             self._checkpointer = None
 
+        self.verbose = False
+
         self.graph = create_supervisor_agent(
             config,
             self.genie_agent,
@@ -378,12 +380,13 @@ class SupervisorRunner:
         )
         self._message_history: list[BaseMessage] = []
 
-    def query(self, question: str, reset_history: bool = False) -> str:
+    def query(self, question: str, reset_history: bool = False, verbose: bool = False) -> str:
         """Query the supervisor agent.
 
         Args:
             question: Natural language question
             reset_history: Whether to reset conversation history
+            verbose: Whether to print raw tool outputs before the final response
 
         Returns:
             The agent's response as a string
@@ -420,6 +423,15 @@ class SupervisorRunner:
         # Update local history (for non-checkpointer mode)
         if not self._checkpointer:
             self._message_history = list(final_state["messages"])
+
+        # Print raw tool outputs when verbose is enabled
+        if verbose or self.verbose:
+            for message in final_state["messages"]:
+                if isinstance(message, ToolMessage):
+                    tool_name = getattr(message, "name", "unknown")
+                    print(f"--- Raw Tool Output ({tool_name}) ---")
+                    print(message.content)
+                    print("-" * 60)
 
         # Extract response
         for message in reversed(final_state["messages"]):
