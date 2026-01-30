@@ -37,9 +37,11 @@ jobs:
           cp -r config workshop-bundle/
           cp -r infra workshop-bundle/
           cp -r snippets workshop-bundle/
-          # Copy data documents for RAG
-          mkdir -p workshop-bundle/data
-          cp -r data/documents workshop-bundle/data/
+          # Copy data documents for RAG (if present)
+          if [ -d data/documents ]; then
+            mkdir -p workshop-bundle/data
+            cp -r data/documents workshop-bundle/data/
+          fi
           # Copy docs (exclude research subdirectory)
           mkdir -p workshop-bundle/docs
           find docs -maxdepth 1 -type f -exec cp {} workshop-bundle/docs/ \;
