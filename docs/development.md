@@ -102,7 +102,7 @@ ai-data-analyst-workshop/
 │   ├── star_schema_generator.py  # Clean data generator
 │   └── super_table_generator.py  # Dirty data generator
 ├── notebooks/                    # Databricks notebooks
-│   ├── 00b_setup_data.ipynb  # Data setup
+│   ├── 00a_setup_data.ipynb  # Data setup
 │   ├── 01_agent_basics.ipynb                # Basic demo
 │   ├── advanced_01_agent_basics.ipynb       # Multi-Genie demo
 │   └── 03_build_your_agent.ipynb # Agent Builder workshop
@@ -273,7 +273,7 @@ uv run python dataset_generators/generate_velocity_motors.py \
 ### Upload to Databricks
 
 Use the setup notebook:
-1. Open `notebooks/00b_setup_data.ipynb`
+1. Open `notebooks/00a_setup_data.ipynb`
 2. Configure widgets (dataset, catalog)
 3. Run all cells
 

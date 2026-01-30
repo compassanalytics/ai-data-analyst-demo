@@ -38,7 +38,7 @@ jobs:
           cp -r infra workshop-bundle/
 
           # --- Remove download-only notebook (not needed in bundle) ---
-          rm -f workshop-bundle/notebooks/00a_setup_download.ipynb
+          # (no exclusions needed — 00a_setup_download was removed from source)
 
           # --- Scripts: only workshop-relevant scripts ---
           mkdir -p workshop-bundle/scripts
@@ -89,7 +89,7 @@ jobs:
               PASS=false
             fi
           done
-          for excluded in snippets/ 00a_setup_download benchmark.py upload_to_azure.py test_planner.py test_multi_genie.py test_synthesizer.py test_report_writer.py; do
+          for excluded in snippets/ benchmark.py upload_to_azure.py test_planner.py test_multi_genie.py test_synthesizer.py test_report_writer.py; do
             if echo "$CONTENTS" | grep -q "$excluded"; then
               echo "[LEAKED] $excluded found in bundle!"
               PASS=false

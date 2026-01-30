@@ -24,7 +24,7 @@ Mock mode: `MOCK_MODE=true` for testing without Databricks
 src/agents/ - GenieDataAgent, RAGAgent, MultiGenieOrchestrator, Supervisor, Synthesizer, Planner
 src/config.py - Configuration (from_env, from_databricks_secrets, from_notebook_params)
 dataset_generators/ - velocity_motors, healthcare, finance_banking, star_schema, super_table
-notebooks/ - 00b_setup_data, 00c_setup_rag, 00d_setup_genie, 01_agent_basics, 02_multi_genie_orchestration, 03_build_your_agent
+notebooks/ - 00a_setup_data, 00b_setup_rag, 00c_setup_genie, 01_agent_basics, 02_multi_genie_orchestration, 03_build_your_agent
 scripts/ - test_genie.py, evaluate_genie.py, benchmark.py, setup_vector_search.py
 
 ## Critical Files

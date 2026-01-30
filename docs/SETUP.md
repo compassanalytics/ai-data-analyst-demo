@@ -134,7 +134,7 @@ Use the automated setup notebook to load workshop data with column descriptions 
 
 ### Quick Start
 
-1. Open `notebooks/00b_setup_data.ipynb` in Databricks
+1. Open `notebooks/00a_setup_data.ipynb` in Databricks
 2. Configure widgets:
    - **Dataset**: Choose `velocity_motors`, `star_schema`, `super_table`, or `all`
    - **Catalog**: Name of the Unity Catalog to create/use (default: `workshop`)

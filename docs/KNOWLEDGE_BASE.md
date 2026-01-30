@@ -54,9 +54,9 @@ Draft Genie Space config with advanced relationship patterns (not a live config)
 
 | Order | Notebook | Purpose |
 |-------|----------|---------|
-| 1 | `notebooks/00b_setup_data.ipynb` | Load datasets into Unity Catalog |
-| 2 | `notebooks/00c_setup_rag.ipynb` | Set up Vector Search for RAG |
-| 3 | `notebooks/00d_setup_genie.ipynb` | Deploy Genie Spaces via IaC |
+| 1 | `notebooks/00a_setup_data.ipynb` | Load datasets into Unity Catalog |
+| 2 | `notebooks/00b_setup_rag.ipynb` | Set up Vector Search for RAG |
+| 3 | `notebooks/00c_setup_genie.ipynb` | Deploy Genie Spaces via IaC |
 
 ### Workshop Notebooks
 
