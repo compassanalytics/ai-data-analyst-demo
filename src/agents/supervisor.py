@@ -260,20 +260,40 @@ def create_supervisor_agent(
                     "iteration_count": iteration,
                 }
 
-        # Real mode: use LLM
-        response = llm_with_tools.invoke(messages)
+        # Real mode: use LLM (with retry for malformed model responses)
+        max_retries = 2
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = llm_with_tools.invoke(messages)
 
-        # Check if tools were called
-        if response.tool_calls:
-            return {
-                "messages": [response],
-                "next_agent": "tools",
-                "iteration_count": iteration + 1,
-            }
+                # Check if tools were called
+                if response.tool_calls:
+                    return {
+                        "messages": [response],
+                        "next_agent": "tools",
+                        "iteration_count": iteration + 1,
+                    }
 
-        # No tools called - final response
+                # No tools called - final response
+                return {
+                    "messages": [response],
+                    "next_agent": "end",
+                    "iteration_count": iteration,
+                }
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    continue
+
+        # All retries failed - return graceful error
         return {
-            "messages": [response],
+            "messages": [
+                AIMessage(
+                    content=f"The model produced an invalid response after {max_retries} attempts. "
+                    f"Try rephrasing your question. Error: {last_error}"
+                )
+            ],
             "next_agent": "end",
             "iteration_count": iteration,
         }

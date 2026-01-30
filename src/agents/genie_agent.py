@@ -145,7 +145,6 @@ class GenieDataAgent:
             self._client = WorkspaceClient(
                 host=self.config.databricks_host or None,
                 token=self.config.databricks_token,
-                disable_notice=True,
             )
         return self._client
 
