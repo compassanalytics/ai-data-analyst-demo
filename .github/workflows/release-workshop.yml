@@ -40,13 +40,6 @@ jobs:
           # --- Remove download-only notebook (not needed in bundle) ---
           # (no exclusions needed — 00a_setup_download was removed from source)
 
-          # --- Scripts: only workshop-relevant scripts ---
-          mkdir -p workshop-bundle/scripts
-          cp scripts/load_velocity_motors_to_unity_catalog.py workshop-bundle/scripts/
-          cp scripts/deploy_velocity_motors_spaces.py workshop-bundle/scripts/
-          cp scripts/setup_vector_search.py workshop-bundle/scripts/
-          cp scripts/load_documents.py workshop-bundle/scripts/
-
           # --- Data: only RAG documents ---
           if [ -d data/documents ]; then
             mkdir -p workshop-bundle/data
@@ -81,7 +74,7 @@ jobs:
           echo "=== Verification ==="
           CONTENTS=$(tar -tzf workshop-materials-${{ steps.version.outputs.VERSION }}.tar.gz)
           PASS=true
-          for item in src notebooks scripts config infra data/documents docs pyproject.toml README.md databricks.yml .env.example; do
+          for item in src notebooks config infra data/documents docs pyproject.toml README.md databricks.yml .env.example; do
             if echo "$CONTENTS" | grep -q "workshop-bundle/$item"; then
               echo "[OK] $item"
             else

@@ -52,6 +52,9 @@ config/velocity_motors_spaces.yaml
 docs/research/
 plans/
 
+# Archive
+archive/
+
 # Claude Code artifacts
 .claude/
 .coverage
