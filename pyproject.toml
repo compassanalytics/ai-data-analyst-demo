@@ -76,8 +76,8 @@ ignore = [
 # B023 false positives in closures, F841 unused vars from pattern matching, F601 intentional traps
 "dataset_generators/**" = ["B023", "F841", "B007", "F601", "F401", "UP035", "E402"]
 "tests/**" = ["B023"]
-# Databricks snippet files use spark global
-"snippets/**" = ["F821"]
+# Databricks snippet files use spark global, E402 for config before imports
+"snippets/**" = ["F821", "E402"]
 # SIM103 sometimes more readable
 "src/**" = ["SIM103"]
 
