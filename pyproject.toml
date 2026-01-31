@@ -69,7 +69,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 # Databricks notebooks have dbutils and spark as globals, E722 for dbutils cleanup, E402 imports
-"notebooks/**" = ["F821", "E722", "E402"]
+# B007/F841: workshop TODO placeholders intentionally leave vars unused for participants to fill in
+"notebooks/**" = ["F821", "E722", "E402", "B007", "F841"]
 # E402 for path manipulation before imports
 "scripts/**" = ["F821", "E402"]
 # B023 false positives in closures, F841 unused vars from pattern matching, F601 intentional traps

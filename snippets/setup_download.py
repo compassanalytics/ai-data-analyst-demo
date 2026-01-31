@@ -44,7 +44,19 @@ if r.returncode != 0:
     raise RuntimeError(f"Download failed: {r.stderr}\nCheck: https://github.com/{REPO}/releases")
 
 # --- verify ---
-expected = {"src", "notebooks", "scripts", "config", "infra", "data", "docs", "pyproject.toml", "README.md", "databricks.yml", ".env.example"}
+expected = {
+    "src",
+    "notebooks",
+    "scripts",
+    "config",
+    "infra",
+    "data",
+    "docs",
+    "pyproject.toml",
+    "README.md",
+    "databricks.yml",
+    ".env.example",
+}
 actual = set(os.listdir(target))
 missing = expected - actual
 for item in sorted(actual):
