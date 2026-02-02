@@ -1,0 +1,132 @@
+# Genie Space for Star Schema - Beverage Analytics
+# Clean dimensional model demonstrating proper data engineering for AI/BI
+
+title: "Star Schema - Beverage Analytics"
+description: "AI-powered analytics for a well-modeled CPG/Beverage star schema with clean dimensions and facts"
+warehouse_id: "${WAREHOUSE_ID}"
+parent_path: "${PARENT_PATH}"
+
+tables:
+  - identifier: "${CATALOG}.analytics.fact_sales"
+  - identifier: "${CATALOG}.analytics.dim_date"
+  - identifier: "${CATALOG}.analytics.dim_product"
+  - identifier: "${CATALOG}.analytics.dim_customer"
+  - identifier: "${CATALOG}.analytics.dim_store"
+  - identifier: "${CATALOG}.analytics.dim_promotion"
+
+sample_questions:
+  - id: "star_q1"
+    question: ["What were total sales by product category last year?"]
+  - id: "star_q2"
+    question: ["Which customer segment has the highest average order value?"]
+  - id: "star_q3"
+    question: ["Show monthly sales trends by region"]
+  - id: "star_q4"
+    question: ["What is the ROI of our promotions?"]
+  - id: "star_q5"
+    question: ["Compare Q1 vs Q2 revenue by product category"]
+  - id: "star_q6"
+    question: ["Which stores have the highest profit margins?"]
+  - id: "star_q7"
+    question: ["What are the top 10 products by units sold?"]
+  - id: "star_q8"
+    question: ["Show sales by fiscal quarter for the current fiscal year"]
+
+instructions: |
+  This space analyzes sales data for a CPG/Beverage distribution company using a clean star schema.
+
+  Business Context:
+  - Beverage distributor selling Beer, Cider, Ready-to-Drink, and Non-Alcoholic products
+  - Sells to 500 customers across 5 regions: Northeast, Southeast, Midwest, Southwest, West
+  - Operates 80 distribution centers / warehouses
+  - 50 promotional campaigns tracked
+  - ~50,000 sales transactions across 2023-2025
+  - Fiscal year starts February 1st (common for beverage companies)
+
+  Table Descriptions:
+  - fact_sales: Transactional fact table (grain: one row per sale line). ~50,000 rows. Measures: quantity_sold, unit_price, gross_amount, discount_amount, net_amount, cost_amount, profit_amount, units_sold.
+  - dim_date: Date dimension with calendar and fiscal attributes. Fiscal year starts Feb 1. Key: date_key (YYYYMMDD integer).
+  - dim_product: Product dimension with hierarchy (category > subcategory > brand). ~150 products. Categories: Beer, Cider, Ready-to-Drink, Non-Alcoholic.
+  - dim_customer: Customer dimension with segments and geography. 500 customers. Segments: Enterprise, Mid-Market, Small Business, Independent.
+  - dim_store: Distribution center dimension. 80 stores. Types: Distribution Center, Regional Warehouse, Local Depot.
+  - dim_promotion: Promotion campaigns. 50 promotions. Types: Price Discount, Buy One Get One, Bundle Deal, Loyalty Reward, Seasonal Special.
+
+  Key Relationships:
+  - fact_sales.date_key = dim_date.date_key
+  - fact_sales.product_key = dim_product.product_key
+  - fact_sales.customer_key = dim_customer.customer_key
+  - fact_sales.store_key = dim_store.store_key
+  - fact_sales.promotion_key = dim_promotion.promotion_key (nullable - NULL means no promotion)
+
+  Key Metrics:
+  - Revenue: SUM(fact_sales.net_amount)
+  - Gross Sales: SUM(fact_sales.gross_amount)
+  - Profit: SUM(fact_sales.profit_amount)
+  - Profit Margin: SUM(profit_amount) / SUM(net_amount) * 100
+  - Units Sold: SUM(fact_sales.units_sold) for individual units, SUM(fact_sales.quantity_sold) for packs
+  - Average Order Value: AVG(fact_sales.net_amount)
+  - Discount Rate: SUM(discount_amount) / SUM(gross_amount) * 100
+
+  Business Rules:
+  - promotion_key can be NULL (70% of transactions have no promotion)
+  - Net amount = gross amount - discount amount
+  - Profit = net amount - cost amount
+  - units_sold = quantity_sold * units_per_pack (from dim_product)
+  - Fiscal quarters: Q1=Feb-Apr, Q2=May-Jul, Q3=Aug-Oct, Q4=Nov-Jan
+
+join_specs:
+  - left_table: "${CATALOG}.analytics.fact_sales"
+    right_table: "${CATALOG}.analytics.dim_date"
+    join_keys: ["date_key=date_key"]
+  - left_table: "${CATALOG}.analytics.fact_sales"
+    right_table: "${CATALOG}.analytics.dim_product"
+    join_keys: ["product_key=product_key"]
+  - left_table: "${CATALOG}.analytics.fact_sales"
+    right_table: "${CATALOG}.analytics.dim_customer"
+    join_keys: ["customer_key=customer_key"]
+  - left_table: "${CATALOG}.analytics.fact_sales"
+    right_table: "${CATALOG}.analytics.dim_store"
+    join_keys: ["store_key=store_key"]
+  - left_table: "${CATALOG}.analytics.fact_sales"
+    right_table: "${CATALOG}.analytics.dim_promotion"
+    join_keys: ["promotion_key=promotion_key"]
+
+example_sqls:
+  - question: "Total sales by product category"
+    sql: |
+      SELECT
+        p.category,
+        SUM(f.net_amount) as revenue,
+        SUM(f.quantity_sold) as units
+      FROM ${CATALOG}.analytics.fact_sales f
+      JOIN ${CATALOG}.analytics.dim_product p ON f.product_key = p.product_key
+      GROUP BY p.category
+      ORDER BY revenue DESC
+
+  - question: "Monthly sales trend with fiscal quarter"
+    sql: |
+      SELECT
+        d.fiscal_quarter_name,
+        d.month_name,
+        SUM(f.net_amount) as revenue,
+        SUM(f.profit_amount) as profit,
+        COUNT(*) as transactions
+      FROM ${CATALOG}.analytics.fact_sales f
+      JOIN ${CATALOG}.analytics.dim_date d ON f.date_key = d.date_key
+      WHERE d.fiscal_year = 2024
+      GROUP BY d.fiscal_quarter_name, d.month_name, d.month
+      ORDER BY d.month
+
+  - question: "Customer segment performance"
+    sql: |
+      SELECT
+        c.segment,
+        c.region,
+        COUNT(*) as transactions,
+        SUM(f.net_amount) as revenue,
+        AVG(f.net_amount) as avg_order_value,
+        SUM(f.profit_amount) as profit
+      FROM ${CATALOG}.analytics.fact_sales f
+      JOIN ${CATALOG}.analytics.dim_customer c ON f.customer_key = c.customer_key
+      GROUP BY c.segment, c.region
+      ORDER BY revenue DESC

@@ -1,0 +1,31 @@
+# Genie Space for Super Table - Messy Data Demo
+# Demonstrates how poor data engineering degrades AI/BI tool performance
+# Intentionally minimal instructions to show the contrast with clean data
+
+title: "Super Table - Messy Data Demo"
+description: "Demo space showing how a denormalized super table with anti-patterns impacts AI analytics"
+warehouse_id: "${WAREHOUSE_ID}"
+parent_path: "${PARENT_PATH}"
+
+tables:
+  - identifier: "${CATALOG}.demo.super_table"
+
+sample_questions:
+  - id: "super_q1"
+    question: ["What is the total revenue?"]
+  - id: "super_q2"
+    question: ["Show sales by region"]
+  - id: "super_q3"
+    question: ["What are the top products by profit?"]
+  - id: "super_q4"
+    question: ["Which customer segment generates the most revenue?"]
+
+instructions: |
+  This space contains a single denormalized table with sales transaction data.
+  The table has 120+ columns with various naming conventions.
+
+  Note: This is intentionally a "messy data" demo. The data has:
+  - Multiple columns that appear to mean the same thing (e.g. several revenue-related columns)
+  - Cryptic abbreviations for codes and segments
+  - Inconsistent naming conventions
+  - Mixed date formats
