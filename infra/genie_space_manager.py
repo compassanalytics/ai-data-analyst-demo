@@ -417,6 +417,25 @@ class GenieSpaceManager:
         )
         return response.get("spaces", [])
 
+    def find_existing_space(self, title: str, parent_path: str) -> str | None:
+        """Find an existing Genie Space by title and parent path.
+
+        Args:
+            title: The title of the space to find
+            parent_path: The workspace parent path of the space
+
+        Returns:
+            The space_id if a matching space is found, None otherwise
+        """
+        try:
+            spaces = self.list_spaces()
+            for space in spaces:
+                if space.get("title") == title and space.get("parent_path") == parent_path:
+                    return space.get("space_id")
+        except Exception as e:
+            print(f"  Warning: Could not check for existing spaces: {e}")
+        return None
+
     def deploy_from_config(
         self,
         config_path: str | Path,
@@ -425,8 +444,10 @@ class GenieSpaceManager:
     ) -> str:
         """Deploy a Genie Space from a YAML configuration file.
 
-        If space_id is provided, updates the existing space.
-        Otherwise, creates a new space.
+        Uses upsert logic: if a space with the same title and parent_path
+        already exists, it will be updated instead of creating a duplicate.
+
+        If space_id is explicitly provided, updates that specific space.
 
         Args:
             config_path: Path to the YAML configuration file
@@ -437,6 +458,13 @@ class GenieSpaceManager:
             The space_id of the created/updated space
         """
         config = GenieSpaceConfig.from_yaml(config_path)
+
+        # If no explicit space_id, check for existing space with same title + parent_path
+        if not space_id and not dry_run:
+            existing_id = self.find_existing_space(config.title, config.parent_path)
+            if existing_id:
+                print(f"  Found existing space '{config.title}': {existing_id}")
+                space_id = existing_id
 
         if space_id:
             self.update_space(space_id, config, dry_run=dry_run)

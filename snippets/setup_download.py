@@ -47,7 +47,6 @@ if r.returncode != 0:
 expected = {
     "src",
     "notebooks",
-    "scripts",
     "config",
     "infra",
     "data",
