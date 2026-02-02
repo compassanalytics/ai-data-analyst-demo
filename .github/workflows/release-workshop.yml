@@ -48,9 +48,14 @@ jobs:
 
           # --- Docs: only workshop-essential docs ---
           mkdir -p workshop-bundle/docs
-          for doc in SETUP.md troubleshooting.md GENIE_BEST_PRACTICES.md KNOWLEDGE_BASE.md README.md ARCHITECTURE.md; do
+          for doc in SETUP.md TROUBLESHOOTING.md GENIE_BEST_PRACTICES.md README.md ARCHITECTURE.md; do
             [ -f "docs/$doc" ] && cp "docs/$doc" workshop-bundle/docs/
           done
+
+          # --- Demo docs: attendee-facing setup, guide, and SDK reference ---
+          if [ -d docs/demo ]; then
+            cp -r docs/demo workshop-bundle/docs/demo
+          fi
 
           # --- Root files ---
           cp pyproject.toml workshop-bundle/
@@ -74,7 +79,7 @@ jobs:
           echo "=== Verification ==="
           CONTENTS=$(tar -tzf workshop-materials-${{ steps.version.outputs.VERSION }}.tar.gz)
           PASS=true
-          for item in src notebooks config infra data/documents docs pyproject.toml README.md databricks.yml .env.example; do
+          for item in src notebooks config infra data/documents docs docs/demo pyproject.toml README.md databricks.yml .env.example; do
             if echo "$CONTENTS" | grep -q "workshop-bundle/$item"; then
               echo "[OK] $item"
             else
