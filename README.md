@@ -95,7 +95,7 @@ from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.jobs import NotebookTask, RunIf, Source, SubmitTask, TaskDependency
 
 CATALOG = "workshop"
-DATASET = "velocity_motors"  # velocity_motors | star_schema | super_table | all
+DATASET = "all"  # velocity_motors | star_schema | super_table | all
 GENIE_SPACES = "all"         # domain | unified | all
 SETUP_RAG = False             # Set True to include RAG Vector Search setup
 EXISTING_CLUSTER_ID = ""      # Leave empty for serverless
