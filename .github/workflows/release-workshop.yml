@@ -40,6 +40,73 @@ jobs:
           # --- Remove internal-only files from notebooks/data/ ---
           rm -rf workshop-bundle/notebooks/data/demo_fallbacks
 
+          # --- Remove src modules not used by any notebook ---
+          rm -rf workshop-bundle/src/benchmark
+          rm -rf workshop-bundle/src/evaluation
+
+          # --- Trim src/demo to only modules used by notebook 02 ---
+          # Notebook 02 imports: PipelineStage, PipelineState, render_for_notebook, render_progress_html
+          # These live in pipeline.py, visualization.py, and widgets.py (transitive)
+          rm -f workshop-bundle/src/demo/challenges.py
+          rm -f workshop-bundle/src/demo/checkpoints.py
+          rm -f workshop-bundle/src/demo/feedback.py
+          rm -f workshop-bundle/src/demo/presenter.py
+
+          # Rewrite src/demo/__init__.py to only export what remains
+          cat > workshop-bundle/src/demo/__init__.py << 'INITEOF'
+          """Demo utilities for the Jupyter notebooks."""
+
+          from src.demo.pipeline import (
+              PipelineStage,
+              PipelineState,
+              SpaceProgress,
+              SpaceQueryStatus,
+              StageResult,
+          )
+          from src.demo.visualization import (
+              generate_mermaid_diagram,
+              generate_pipeline_diagram_text,
+              generate_space_progress_text,
+              generate_stage_progress_text,
+              generate_timing_table,
+              render_for_notebook,
+              render_progress_html,
+          )
+          from src.demo.widgets import (
+              DatabricksWidgets,
+              LocalWidgets,
+              WidgetConfig,
+              create_widget_manager,
+              get_question_for_report_type,
+              is_databricks,
+              is_serverless,
+          )
+
+          __all__ = [
+              "PipelineState",
+              "PipelineStage",
+              "SpaceQueryStatus",
+              "SpaceProgress",
+              "StageResult",
+              "render_for_notebook",
+              "render_progress_html",
+              "generate_stage_progress_text",
+              "generate_space_progress_text",
+              "generate_timing_table",
+              "generate_pipeline_diagram_text",
+              "generate_mermaid_diagram",
+              "WidgetConfig",
+              "DatabricksWidgets",
+              "LocalWidgets",
+              "create_widget_manager",
+              "get_question_for_report_type",
+              "is_databricks",
+              "is_serverless",
+          ]
+          INITEOF
+          # Fix indentation from heredoc
+          sed -i 's/^          //' workshop-bundle/src/demo/__init__.py
+
           # --- Docs: only workshop-essential docs ---
           mkdir -p workshop-bundle/docs
           for doc in SETUP.md TROUBLESHOOTING.md GENIE_BEST_PRACTICES.md README.md ARCHITECTURE.md; do
@@ -51,11 +118,8 @@ jobs:
             cp -r docs/demo workshop-bundle/docs/demo
           fi
 
-          # --- Root files ---
-          cp pyproject.toml workshop-bundle/
+          # --- Root: only README (no pyproject.toml, databricks.yml, .env.example) ---
           cp README.md workshop-bundle/
-          cp databricks.yml workshop-bundle/
-          cp .env.example workshop-bundle/
 
           # --- Cleanup Python cache artifacts ---
           find workshop-bundle -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
@@ -73,7 +137,7 @@ jobs:
           echo "=== Verification ==="
           CONTENTS=$(tar -tzf workshop-materials-${{ steps.version.outputs.VERSION }}.tar.gz)
           PASS=true
-          for item in src notebooks config infra docs docs/demo pyproject.toml README.md databricks.yml .env.example; do
+          for item in src notebooks config infra docs docs/demo README.md; do
             if echo "$CONTENTS" | grep -q "workshop-bundle/$item"; then
               echo "[OK] $item"
             else
@@ -81,8 +145,8 @@ jobs:
               PASS=false
             fi
           done
-          for excluded in snippets/ demo_fallbacks/ benchmark.py upload_to_azure.py test_planner.py test_multi_genie.py test_synthesizer.py test_report_writer.py; do
-            if echo "$CONTENTS" | grep -q "$excluded"; then
+          for excluded in snippets/ demo_fallbacks/ src/benchmark/ src/evaluation/ challenges.py checkpoints.py feedback.py presenter.py pyproject.toml databricks.yml .env.example; do
+            if echo "$CONTENTS" | grep -q "workshop-bundle/$excluded"; then
               echo "[LEAKED] $excluded found in bundle!"
               PASS=false
             fi

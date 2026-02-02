@@ -50,10 +50,7 @@ expected = {
     "config",
     "infra",
     "docs",
-    "pyproject.toml",
     "README.md",
-    "databricks.yml",
-    ".env.example",
 }
 actual = set(os.listdir(target))
 missing = expected - actual
