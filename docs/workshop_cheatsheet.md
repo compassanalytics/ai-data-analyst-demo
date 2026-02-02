@@ -1,4 +1,4 @@
-# Genie SDK Demo — Workshop Presenter Script
+# Genie Orchestrator — Workshop Presenter Script (Part 2: Technical)
 
 **Notebooks:**
 - Workshop (fill-in): `01_genie_sdk_demo.ipynb`
@@ -33,55 +33,52 @@ Cells 2 (pip install), 4 (imports), 6-8 (widget config) are run-once setup with 
 
 ---
 
-## Opening (5 min)
+## Opening — Transition from Part 1 (5 min)
 
 **Presenter:**
 
-> "Welcome everyone. Today we're going to build an AI data analyst — piece by piece. We'll start with a single API call and end with a system that can decompose a complex business question, route it to multiple data domains, and synthesize a unified answer."
+> "You just saw what a single Genie Space can do — and where it hits a wall. One SQL query per question. No multi-step reasoning. No cross-domain joins. 25 table limit. These are real constraints."
 
-- Set expectations: this is hands-on. Every concept is backed by code you'll write.
-- Quick show of hands: who has used Genie in the UI? Who has used the Databricks SDK?
-- Reassure: no prior Genie experience needed. We start from zero.
+> "The key insight: Genie is not the end product. It's a building block. A text-to-SQL tool that an agent can call programmatically. Once you treat Genie as a tool instead of a UI, you can put an LLM in front of it to rewrite questions, route across multiple spaces, and synthesize cross-domain answers."
 
-> "There are three steps. Step 1: connect to Genie and query it with code. Step 2: put an LLM in front of Genie so it can rewrite questions to match your schema. Step 3: orchestrate multiple Genie Spaces to answer questions that span Sales, CRM, and Operations."
+`[DRAW]` Show the shift on the board:
 
-- The notebook has fill-in-the-blank sections. We'll walk through each one together.
+```
+What you just used:              What we're building:
+
+  User --> Genie Space --> Answer    User --> Agent --> [Genie Space A]
+                                                   --> [Genie Space B]
+                                                   --> [Genie Space C]
+                                                   --> Synthesized Answer
+```
+
+- This is what we're building in three steps.
+
+> "Step 1: learn the Genie SDK — how to query a Space, parse responses, and get DataFrames through code. Step 2: put an LLM router in front of Genie that rewrites questions to match column names and picks the right Space. Step 3: orchestrate multiple Genie Spaces — decompose a complex question into sub-queries, fan out to different domains, and synthesize one answer."
+
+| Part 1 Limitation | Technical Step | What it solves |
+|---|---|---|
+| Schema mismatch / fragile questions | Step 2 (LLM Router) | Rewrites user language to match column names |
+| Single space, 25 table limit | Step 3 (Multi-Genie) | Fan out across domain-specific spaces |
+| No multi-step reasoning | Step 3 (Decompose + Synthesize) | LLM breaks complex questions into sub-queries |
+| No cross-domain analysis | Step 3 (Synthesizer) | Combines results from multiple spaces |
+
+- The notebook has fill-in-the-blank sections. We walk through each one together.
 - If you get stuck, the answer key notebook has everything filled in.
 
 ---
 
-## Step 1: Connect to Genie (Cells 0-25)
+## Step 1: Learn the Building Block — Genie SDK (Cells 0-25)
 
-### 1A. What is Genie? (3 min)
+### 1A. Genie as a Programmatic Tool (2 min)
 
 **Presenter:**
 
-> "Let's start with the problem. You have structured data in Unity Catalog — sales transactions, customer records, inventory. Your business analysts want to ask questions in plain English without writing SQL. That's what Genie does."
+> "You've already used Genie through the UI. Now we connect to the same engine through code — because agents don't click buttons. The Databricks SDK exposes every Genie operation as a Python method."
 
-- Genie is not a general-purpose chatbot. It's a text-to-SQL engine with a curated context window.
-- You tell it which tables to use, describe the columns, give it sample questions. Genie uses that context to generate SQL from natural language.
-
-> "Think of a Genie Space as a curated lens over your data — you decide what it can see, and you describe the columns so it understands the business meaning."
-
-`[DRAW]` Architecture on the board:
-
-```
-  "What are the top vehicles by revenue?"
-                  |
-                  v
-          [ Genie Space ]
-           (table schemas,
-            column descriptions,
-            sample questions)
-                  |
-                  v
-         Generated SQL + Answer
-```
-
-- The Space metadata (table names, column descriptions, sample questions) is what makes Genie accurate. Bad metadata = bad SQL.
-- This is why we spent time in the setup notebooks adding column comments to Unity Catalog.
-
-> "Today we'll connect to Genie programmatically — same engine, but through code instead of the UI."
+- Same text-to-SQL engine, same Space metadata, same SQL generation — just called from code instead of a browser.
+- Everything you configured in Part 1 (tables, column descriptions, sample questions) is what the SDK talks to.
+- We need to learn this API surface before we can build an orchestrator on top of it.
 
 ---
 
@@ -160,11 +157,7 @@ answer = next(
 
 **Presenter:**
 
-> "What if your analyst asks a follow-up? 'Now break that down by customer segment.' Do they start over from scratch?"
-
-`[PAUSE]` — brief audience response.
-
-> "No. Genie supports multi-turn conversations. You pass the `conversation_id` back and Genie remembers the SQL context from before."
+> "Genie supports multi-turn conversations. If a user asks a follow-up like 'break that down by customer segment', you pass the `conversation_id` back and Genie uses the previous SQL as context."
 
 - This is the same pattern as ChatGPT conversations — context carries forward.
 - Under the hood, Genie uses the previous SQL as context for the next question.
@@ -200,11 +193,7 @@ followup = w.genie.create_message_and_wait(
 
 **Presenter:**
 
-> "We've been writing raw SDK calls and extracting attachments manually every time. That's fine for exploration, but what happens when you need to do this 50 times across a codebase?"
-
-`[PAUSE]` — someone says "wrap it in a function" or "make a class."
-
-> "Exactly. The `GenieUtils` class is provided for you — but some key lines inside the methods are missing. Let's walk through each method and fill in the SDK calls."
+> "We've been writing raw SDK calls and extracting attachments manually. The `GenieUtils` class wraps all of this into reusable methods — `ask_genie`, `to_dataframe`, `print_output`. The class is provided but some key lines are missing. We'll fill in the SDK calls method by method."
 
 **Code Lead:**
 
@@ -325,7 +314,7 @@ df = GenieUtils.to_dataframe(result, client=w)
 
 **Presenter:**
 
-> "Let's take stock. We can now query Genie programmatically, parse responses, follow up in conversations, get DataFrames, and we have a utility class wrapping it all."
+> "We now have the building block working through code. We can query Genie, parse responses, follow up in conversations, and get DataFrames — all programmatically."
 
 Recap what we built:
 - `WorkspaceClient()` — authentication
@@ -333,27 +322,19 @@ Recap what we built:
 - `create_message_and_wait()` — follow-up query
 - `GenieUtils` — reusable wrapper with `ask_genie`, `to_dataframe`, `print_output`
 
-> "But we're still hand-writing every question. What happens when the user says 'revenue by region' but the column is called `total_order_value`? Genie might figure it out. Or it might not."
-
-`[PAUSE]` — let that sink in.
-
-> "We need something smarter in front of Genie."
+> "This is the tool interface our agent will use. But right now we're still hand-writing every question. If a user says 'revenue by region' but the column is `total_order_value` and the table has `dealer_region` — Genie might handle it, or it might not. We need an LLM layer to translate user language into schema language before it reaches Genie."
 
 ---
 
-## Step 2: Single Genie Orchestrator (Cells 26-40)
+## Step 2: Add an LLM Router — Single Genie Orchestrator (Cells 26-40)
 
 ### 2A. The Schema Mismatch Problem (3 min)
 
 **Presenter:**
 
-> "Your user asks 'what's the revenue by region?' but the column is called `total_order_value`, not `revenue`. The table has `dealer_region`, not just `region`. Genie's context window helps, but it doesn't always bridge that gap."
+> "This is the first limitation we solve. Users say 'revenue by region' — but the column is `total_order_value` and the table has `dealer_region`. Genie's context window helps, but it doesn't always bridge that gap."
 
-> "How do we fix this?"
-
-`[PAUSE]` — someone will say "use an LLM."
-
-> "Right. We put an LLM in front of Genie as a router. It reads the table schemas — column names, types, descriptions — and rewrites the user's question to match the actual data model. Then it sends the improved question to Genie."
+- The solution: put an LLM in front of Genie. It reads the table schemas (column names, types, descriptions) and rewrites the user's question to match the actual data model before sending it to Genie.
 
 `[DRAW]` on the board:
 
@@ -376,8 +357,7 @@ Recap what we built:
 - The router does two things: **rewrite** and **route**.
 - Rewrite: "revenue" becomes "total_order_value". "Region" becomes "dealer_region".
 - Route: with multiple spaces, it picks the right one. With a single space, it still rewrites.
-
-> "The LLM doesn't touch the data. It just makes the question Genie-friendly."
+- The LLM never touches the data. It only rewrites the question to be Genie-friendly.
 
 ---
 
@@ -496,7 +476,7 @@ router_response = ask_router(llm, "Which vehicle models have the most service or
 
 **Presenter:**
 
-> "We have the router and Genie as separate pieces. Now we wire them into a single `execute()` call. Question goes in, formatted answer comes out."
+> "Now we wire the router and Genie into a single `GenieOrchestrator.execute()` call. User question in, formatted answer out."
 
 **Code Lead:**
 
@@ -556,7 +536,7 @@ Walk through the output formats:
 
 **Presenter:**
 
-> "We now have a single-space orchestrator: the LLM rewrites the question to match the schema, Genie answers it, and we get a formatted result."
+> "We now have a single-space orchestrator. The LLM rewrites the question to match the schema, Genie generates SQL and executes it, and we get a formatted result. Schema mismatch — solved."
 
 Recap what we added:
 - `ChatDatabricks` — LLM connection via Model Serving
@@ -564,19 +544,17 @@ Recap what we added:
 - `ask_router()` — rewrites + routes
 - `GenieOrchestrator.execute()` — full pipeline in one call
 
-> "But real organizations don't have one Genie Space. They have Sales, CRM, Operations — each with different tables, different schemas, different owners. What changes?"
-
-`[PAUSE]` — let them think.
-
-> "The code barely changes. The architecture does."
+> "Next limitation: real organizations don't have one Genie Space. They have Sales, CRM, Operations — each with different tables, schemas, and owners. A single Space can only hold 25 tables. We need to route across multiple spaces and combine results."
 
 ---
 
-## Step 3: Multi-Genie Orchestration (Cells 41-55)
+## Step 3: Decompose + Synthesize — Multi-Genie Orchestration (Cells 41-55)
 
 ### 3A. Multi-Space Routing (Cells 41-49) (8 min)
 
 **Presenter:**
+
+> "Now we address the 25-table limit and domain separation. Instead of one large Space, we use domain-specific Spaces — Sales, Customer, Operations — each with focused tables and metadata. The same router and orchestrator code works; we just pass more space IDs."
 
 `[DRAW]` on the board:
 
@@ -592,13 +570,9 @@ Recap what we added:
      +---> Operations Genie   (parts, service, inventory)
 ```
 
-> "Same router, same orchestrator — but now initialized with 3 space IDs instead of 1. The router reads metadata from all three spaces and picks the best match for each question."
-
-- Each space covers a different business domain.
-- The router sees all three sets of column names and descriptions.
-- The question determines which space gets chosen.
-
-> "This is where the metadata quality really matters. If Sales and Operations both have a `total_value` column, the descriptions need to be clear enough for the LLM to pick the right one."
+- Each space covers a different business domain with its own tables and column descriptions.
+- The router sees metadata from all three spaces and picks the best match for the question.
+- Metadata quality is critical here — if Sales and Operations both have a `total_value` column, the descriptions must be distinct enough for the LLM to pick correctly.
 
 **Code Lead:**
 
@@ -637,11 +611,7 @@ Now run the demo cells. For each, highlight which space the router chose.
 
 **Presenter:**
 
-> "That last question is the interesting one. The router picked ONE space. But the answer needs data from TWO. The router was forced to choose, and the answer is incomplete."
-
-`[PAUSE]` — let them feel the limitation.
-
-> "This is the fundamental limitation of single-route architectures. Some questions don't fit in one box."
+> "Notice the last question — the router picked ONE space, but the answer needs data from TWO. The router was forced to choose, and the result is incomplete. This is the limitation of single-route: some questions don't fit in one box. That's what `execute_multi` solves."
 
 ---
 
@@ -649,14 +619,14 @@ Now run the demo cells. For each, highlight which space the router chose.
 
 **Presenter:**
 
-> "How would you handle: 'Compare revenue by region with customer satisfaction ratings and parts inventory levels'? No single Genie Space has all that data."
+> "The router picks ONE space per question. But some questions span domains — 'Compare revenue by region with customer satisfaction ratings and parts inventory levels' needs Sales, Customer, and Operations data. No single Space has all of it."
 
-`[PAUSE]` — take audience responses. Acknowledge all approaches:
-- "Join all tables in one space" — works but doesn't scale, and you lose domain ownership
-- "Run multiple queries and merge manually" — works but tedious
-- "Use an LLM to combine" — that's where we're going
+`[PAUSE]` — take audience responses. Common suggestions:
+- "Join all tables in one space" — doesn't scale, loses domain ownership, hits 25-table limit
+- "Run multiple queries and merge manually" — works but tedious and not automatable
+- "Use an LLM to split and recombine" — that's the pattern we'll build
 
-> "We'll use a decompose-then-synthesize pattern. An LLM breaks the complex question into focused sub-queries, each targeting one space. After all results come back, another LLM call synthesizes them into a single answer."
+> "The pattern is decompose-then-synthesize. An LLM breaks the complex question into focused sub-queries, each targeting one space. After all results come back, a second LLM call synthesizes them into a single answer. This solves the multi-step reasoning and cross-domain limitations from Part 1."
 
 `[DRAW]` on the board:
 
@@ -809,9 +779,9 @@ multi_orch.execute_multi(
 
 **Presenter:**
 
-> "Let's look at what we built, layer by layer."
+> "Let's map what we built back to the limitations from Part 1."
 
-`[DRAW]` the final architecture progression or reference the summary in cell 56:
+`[DRAW]` the architecture progression or reference cell 56:
 
 ```
 Step 1: Raw SDK                Step 2: Single Orchestrator
@@ -848,15 +818,20 @@ Step 3: Multi-Genie Synthesis
    Unified Answer
 ```
 
-> "We started with a single SDK call. We wrapped it in utilities. We added an LLM router to rewrite questions. We scaled to multiple spaces. And we built a decompose-synthesize pipeline for cross-domain questions. Each layer added exactly one capability."
+| Part 1 Limitation | How we solved it |
+|---|---|
+| Schema mismatch | LLM router rewrites user language to match column names (Step 2) |
+| 25 table limit | Domain-specific Spaces, LLM routes to the right one (Step 3) |
+| No multi-step reasoning | Decomposer splits complex questions into sub-queries (Step 3) |
+| No cross-domain analysis | Synthesizer combines results from multiple Spaces (Step 3) |
 
-Key takeaways to leave the audience with:
-- **Genie is a text-to-SQL engine**, not a chatbot. Its quality depends on metadata quality.
-- **The LLM router is the bridge** between user language and schema language. It doesn't touch the data.
-- **Decompose-synthesize is the pattern** for multi-domain questions. It's the same pattern used in production multi-agent systems.
+Key takeaways:
+- **Genie is a text-to-SQL tool, not a chatbot.** Its quality depends on metadata quality. Treat it as a building block.
+- **The LLM router bridges user language and schema language.** It never touches the data — only rewrites the question.
+- **Decompose-synthesize is the core pattern** for multi-domain questions. Same pattern used in production multi-agent systems.
 - **Everything composes**: `WorkspaceClient` > `GenieUtils` > `ask_router` > `GenieOrchestrator` > `execute_multi`. Each layer uses the one below.
 
-> "If you want to see the production version of this with retries, circuit breakers, parallel execution, and LangGraph orchestration — check out the `src/agents/` directory. The concepts are identical, the resilience is higher."
+> "The production version in `src/agents/` adds retries, circuit breakers, parallel execution, and LangGraph orchestration. The concepts are identical — the resilience is higher."
 
 ---
 
@@ -877,9 +852,9 @@ Key takeaways to leave the audience with:
 
 | Section | Inside functions | Usage cells | Total |
 |---|---|---|---|
-| Step 1: Connect to Genie | 7 | 6 | 13 |
-| Step 2: Single Orchestrator | 4 | 7 | 11 |
-| Step 3: Multi-Genie + Synthesis | 5 | 0 | 5 |
+| Step 1: Genie SDK | 7 | 6 | 13 |
+| Step 2: LLM Router + Orchestrator | 4 | 7 | 11 |
+| Step 3: Decompose + Synthesize | 5 | 0 | 5 |
 | **Total** | **16** | **13** | **29** |
 
 ### Architecture Progression (ASCII)

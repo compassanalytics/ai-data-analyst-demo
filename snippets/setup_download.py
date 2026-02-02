@@ -49,7 +49,6 @@ expected = {
     "notebooks",
     "config",
     "infra",
-    "data",
     "docs",
     "pyproject.toml",
     "README.md",
