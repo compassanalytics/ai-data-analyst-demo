@@ -86,13 +86,80 @@ Open each setup notebook in order and click **Run All**:
 | 2 | `notebooks/00b_setup_rag.ipynb` | Creates Vector Search index for policy documents |
 | 3 | `notebooks/00c_setup_genie.ipynb` | Deploys Genie Spaces via Infrastructure-as-Code |
 
+**Or run all setup as a single job** — paste this into a new notebook cell:
+
+```python
+# Run Workshop Setup as a Databricks Job (serverless)
+import time
+from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.jobs import NotebookTask, RunIf, Source, SubmitTask, TaskDependency
+
+CATALOG = "workshop"
+DATASET = "velocity_motors"  # velocity_motors | star_schema | super_table | all
+GENIE_SPACES = "all"         # domain | unified | all
+SETUP_RAG = False             # Set True to include RAG Vector Search setup
+EXISTING_CLUSTER_ID = ""      # Leave empty for serverless
+
+w = WorkspaceClient()
+user = w.current_user.me().user_name
+nb = f"/Workspace/Users/{user}/ai-data-analyst-workshop/notebooks"
+parent_path = f"{nb}/genie-space"
+
+# Auto-discover a SQL Warehouse
+warehouse_id = ""
+for wh in w.warehouses.list():
+    if str(wh.state).replace("State.", "") == "RUNNING":
+        warehouse_id, _ = wh.id, print(f"Auto-selected warehouse: {wh.name} ({wh.id})")
+        break
+if not warehouse_id:
+    whs = list(w.warehouses.list())
+    if whs:
+        warehouse_id, _ = whs[0].id, print(f"Defaulting to: {whs[0].name}")
+if not warehouse_id:
+    raise ValueError("No SQL Warehouse found. Set warehouse_id manually.")
+
+ck = {"existing_cluster_id": EXISTING_CLUSTER_ID} if EXISTING_CLUSTER_ID else {}
+
+tasks = [SubmitTask(task_key="setup_data", notebook_task=NotebookTask(
+    notebook_path=f"{nb}/00a_setup_data", source=Source.WORKSPACE,
+    base_parameters={"1_dataset": DATASET, "2_catalog": CATALOG}), timeout_seconds=1800, **ck)]
+
+if SETUP_RAG:
+    tasks.append(SubmitTask(task_key="setup_rag", depends_on=[TaskDependency(task_key="setup_data")],
+        notebook_task=NotebookTask(notebook_path=f"{nb}/00b_setup_rag", source=Source.WORKSPACE,
+        base_parameters={"1_catalog": CATALOG, "2_schema": "rag",
+        "3_endpoint_name": "rag-workshop-endpoint", "4_embedding_model": "databricks-bge-large-en"}),
+        timeout_seconds=1800, **ck))
+
+tasks.append(SubmitTask(task_key="setup_genie",
+    depends_on=[TaskDependency(task_key="setup_rag" if SETUP_RAG else "setup_data")],
+    run_if=RunIf.NONE_FAILED, notebook_task=NotebookTask(
+    notebook_path=f"{nb}/00c_setup_genie", source=Source.WORKSPACE,
+    base_parameters={"1_warehouse_id": warehouse_id, "2_catalog": CATALOG,
+    "3_parent_path": parent_path, "4_spaces": GENIE_SPACES}), timeout_seconds=600, **ck))
+
+run_name = f"workshop-setup-{int(time.time())}"
+print(f"\nSubmitting '{run_name}' with {len(tasks)} tasks...")
+waiter = w.jobs.submit(run_name=run_name, tasks=tasks)
+print(f"Run submitted! run_id = {waiter.run_id}")
+print(f"Monitor: {w.jobs.get_run(waiter.run_id).run_page_url}")
+print("Waiting for completion...")
+
+result = waiter.result()
+state = result.state.result_state.value if result.state.result_state else "UNKNOWN"
+print(f"\nSETUP {'COMPLETE' if state == 'SUCCESS' else 'FAILED'}")
+for t in result.tasks or []:
+    s = t.state.result_state.value if t.state and t.state.result_state else "SKIPPED"
+    print(f"  [{'+'if s=='SUCCESS' else 'x'}] {t.task_key}: {s}")
+```
+
 ### Step 3: Run Workshop Notebooks
 
-| Part | Notebook | Focus |
-|------|----------|-------|
-| 1 | `01_agent_basics.ipynb` | Genie + RAG multi-agent with progressive query difficulty |
-| 2 | `02_multi_genie_orchestration.ipynb` | Parallel multi-Genie queries with report generation |
-| 3 | `03_build_your_agent.ipynb` | Build your own LangGraph agent from scratch |
+| Part | Notebook | Type | Focus |
+|------|----------|------|-------|
+| 1 | `01_agent_basics.ipynb` | Interactive | Genie + RAG multi-agent with progressive query difficulty |
+| 2 | `02_multi_genie_orchestration.ipynb` | Showcase | Parallel multi-Genie queries, LangGraph concepts, report generation |
+| 3 | `03_build_your_agent.ipynb` | Take-home (optional) | Build your own Genie + RAG agent from scratch |
 
 See [WORKSHOP_GUIDE.md](WORKSHOP_GUIDE.md) for the full step-by-step guide with configuration details.
 
