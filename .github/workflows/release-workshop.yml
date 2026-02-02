@@ -37,14 +37,8 @@ jobs:
           cp -r config workshop-bundle/
           cp -r infra workshop-bundle/
 
-          # --- Remove download-only notebook (not needed in bundle) ---
-          # (no exclusions needed — 00a_setup_download was removed from source)
-
-          # --- Data: only RAG documents ---
-          if [ -d data/documents ]; then
-            mkdir -p workshop-bundle/data
-            cp -r data/documents workshop-bundle/data/
-          fi
+          # --- Remove internal-only files from notebooks/data/ ---
+          rm -rf workshop-bundle/notebooks/data/demo_fallbacks
 
           # --- Docs: only workshop-essential docs ---
           mkdir -p workshop-bundle/docs
@@ -79,7 +73,7 @@ jobs:
           echo "=== Verification ==="
           CONTENTS=$(tar -tzf workshop-materials-${{ steps.version.outputs.VERSION }}.tar.gz)
           PASS=true
-          for item in src notebooks config infra data/documents docs docs/demo pyproject.toml README.md databricks.yml .env.example; do
+          for item in src notebooks config infra docs docs/demo pyproject.toml README.md databricks.yml .env.example; do
             if echo "$CONTENTS" | grep -q "workshop-bundle/$item"; then
               echo "[OK] $item"
             else
@@ -87,7 +81,7 @@ jobs:
               PASS=false
             fi
           done
-          for excluded in snippets/ benchmark.py upload_to_azure.py test_planner.py test_multi_genie.py test_synthesizer.py test_report_writer.py; do
+          for excluded in snippets/ demo_fallbacks/ benchmark.py upload_to_azure.py test_planner.py test_multi_genie.py test_synthesizer.py test_report_writer.py; do
             if echo "$CONTENTS" | grep -q "$excluded"; then
               echo "[LEAKED] $excluded found in bundle!"
               PASS=false

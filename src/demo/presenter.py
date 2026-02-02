@@ -283,7 +283,7 @@ class FallbackOutputManager:
         >>> result = manager.get("basic_query")
     """
 
-    DEFAULT_DIR = "data/demo_fallbacks"
+    DEFAULT_DIR = "notebooks/data/demo_fallbacks"
 
     def __init__(self, fallback_dir: str | None = None) -> None:
         """Initialize the fallback manager.

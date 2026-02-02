@@ -396,7 +396,7 @@ def main():
     documents = read_markdown_files(args.docs_dir)
 
     if not documents:
-        print("❌ No documents found. Create markdown files in data/documents/")
+        print("❌ No documents found. Create markdown files in notebooks/data/documents/")
         sys.exit(1)
 
     print(f"   Found {len(documents)} documents")

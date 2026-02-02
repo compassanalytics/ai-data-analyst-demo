@@ -114,7 +114,6 @@ ai-data-analyst-workshop/
 ├── tests/                        # Test suite
 ├── infra/                        # Genie Space IaC
 ├── config/                       # Dataset schemas
-├── data/documents/               # Sample documents for RAG
 └── docs/                         # Documentation
 ```
 

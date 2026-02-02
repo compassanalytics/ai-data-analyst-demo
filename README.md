@@ -108,7 +108,6 @@ ai-data-analyst-workshop/
 ├── snippets/               # Condensed copy-paste setup scripts for Databricks
 ├── scripts/                # Setup, deployment, and testing scripts
 ├── tests/                  # Unit tests
-├── data/documents/         # Sample documents for RAG demo
 ├── docs/                   # Workshop documentation
 └── databricks.yml          # Databricks Asset Bundle config
 ```

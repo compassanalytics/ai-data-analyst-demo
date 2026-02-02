@@ -37,9 +37,7 @@ build/
 
 # Generated data files (not tracked - participants generate locally)
 dataset_generators/data/
-data/*
-!data/demo_fallbacks/
-!data/documents/
+data/
 
 # Benchmark outputs (generated locally)
 benchmarks/
