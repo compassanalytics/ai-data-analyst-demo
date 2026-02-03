@@ -248,6 +248,9 @@ class PlannerAgent:
     def execute_plan(self, plan: Plan, orchestrator: MultiGenieOrchestrator) -> MultiGenieResult:
         """Execute a plan using the MultiGenieOrchestrator.
 
+        Sends each Genie Space its domain-specific sub-query from the plan
+        rather than the original broad question.
+
         Args:
             plan: The decomposed query plan
             orchestrator: MultiGenieOrchestrator instance to execute queries
@@ -255,17 +258,7 @@ class PlannerAgent:
         Returns:
             MultiGenieResult with results from all targeted spaces
         """
-        if not plan.sub_queries:
-            from src.agents.multi_genie_orchestrator import MultiGenieResult
-
-            return MultiGenieResult(errors=["No sub-queries in plan"])
-
-        # Group queries by target space and execute
-        # For now, use query_spaces with all unique target spaces
-        return orchestrator.query_spaces(
-            plan.original_question,
-            space_names=plan.target_spaces,
-        )
+        return orchestrator.query_from_plan(plan)
 
     def _build_system_prompt(self) -> str:
         """Build system prompt with available space context.

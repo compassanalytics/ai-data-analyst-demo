@@ -8,10 +8,16 @@ from __future__ import annotations
 
 import random
 import time
+import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.agents.planner_agent import Plan
+
+logger = logging.getLogger(__name__)
 
 from src.agents.genie_agent import GenieDataAgent, GenieResult
 from src.config import Config
@@ -481,6 +487,157 @@ class MultiGenieOrchestrator:
             return result
 
         return self._execute_parallel_queries(question, configs_to_query)
+
+    def query_from_plan(self, plan: Plan) -> MultiGenieResult:
+        """Execute plan sub-queries, sending each space its specific question.
+
+        Groups sub-queries by target_space and joins multiple sub-queries for the
+        same space into a single numbered prompt. Each space receives only its
+        domain-specific question(s) rather than the original broad question.
+
+        Args:
+            plan: A Plan with domain-specific sub-queries
+
+        Returns:
+            MultiGenieResult keyed by space name
+        """
+        if not plan.sub_queries:
+            return MultiGenieResult(errors=["No sub-queries in plan"])
+
+        # Group sub-queries by target space
+        space_queries: dict[str, list[str]] = {}
+        for sq in plan.sub_queries:
+            space_queries.setdefault(sq.target_space, []).append(sq.query)
+
+        result = MultiGenieResult()
+
+        # Build (config, question) pairs, skipping unknown spaces
+        configs_and_questions: list[tuple[GenieSpaceConfig, str]] = []
+        for space_name, queries in space_queries.items():
+            config = self._configs.get(space_name)
+            if config is None:
+                msg = f"Space '{space_name}' from plan not found in orchestrator configs"
+                logger.warning(msg)
+                result.errors.append(msg)
+                continue
+
+            # Join multiple sub-queries for the same space
+            if len(queries) == 1:
+                question = queries[0]
+            else:
+                question = "\n".join(f"{i}. {q}" for i, q in enumerate(queries, 1))
+
+            configs_and_questions.append((config, question))
+
+        if not configs_and_questions:
+            if not result.errors:
+                result.errors.append("No matching spaces found for plan sub-queries")
+            return result
+
+        # Check circuit breakers and submit queries in parallel
+        configs_to_query: list[tuple[GenieSpaceConfig, str]] = []
+        for config, question in configs_and_questions:
+            if self._circuit_breaker_registry is not None:
+                cb = self._circuit_breaker_registry.get(config.space_id)
+                if not cb.can_execute():
+                    cb.record_rejection()
+                    remaining = cb.get_remaining_timeout()
+                    error_msg = f"Circuit open for '{config.name}'. Retry in {remaining:.1f}s"
+                    circuit_error = classify_error(
+                        CircuitOpenError(config.name, remaining),
+                        context={"space_name": config.name, "space_id": config.space_id},
+                    )
+                    result.errors.append(error_msg)
+                    result.results[config.name] = GenieResult(
+                        success=False,
+                        error=error_msg,
+                        error_details=circuit_error,
+                    )
+                    result.metadata[config.name] = ResultMetadata(
+                        space_id=config.space_id,
+                        space_name=config.name,
+                        domain=config.domain,
+                        query_time_seconds=0,
+                        success=False,
+                        retries_used=0,
+                        error_category=circuit_error.category,
+                        error_retryable=True,
+                    )
+                    result.classified_errors[config.name] = circuit_error
+                    continue
+            configs_to_query.append((config, question))
+
+        if not configs_to_query:
+            return result
+
+        with ThreadPoolExecutor(max_workers=self._max_concurrency) as executor:
+            future_to_config = {
+                executor.submit(
+                    self._query_space_with_retry,
+                    config,
+                    question,
+                ): config
+                for config, question in configs_to_query
+            }
+
+            for future in as_completed(future_to_config):
+                config = future_to_config[future]
+
+                try:
+                    query_result, elapsed, retries, classified_error = future.result()
+
+                    result.results[config.name] = query_result
+                    result.metadata[config.name] = ResultMetadata(
+                        space_id=config.space_id,
+                        space_name=config.name,
+                        domain=config.domain,
+                        query_time_seconds=elapsed,
+                        success=query_result.success,
+                        retries_used=retries,
+                        error_category=classified_error.category if classified_error else None,
+                        error_retryable=classified_error.retryable if classified_error else None,
+                        cached=query_result.from_cache,
+                    )
+
+                    if classified_error:
+                        result.classified_errors[config.name] = classified_error
+
+                    if self._circuit_breaker_registry is not None:
+                        cb = self._circuit_breaker_registry.get(config.space_id)
+                        if query_result.success:
+                            cb.record_success()
+                        else:
+                            cb.record_failure()
+
+                except Exception as e:
+                    classified_error = classify_error(
+                        e,
+                        context={"space_name": config.name, "space_id": config.space_id},
+                    )
+                    error_msg = f"Space '{config.name}' failed: {e}"
+                    result.errors.append(error_msg)
+                    result.results[config.name] = GenieResult(
+                        success=False,
+                        error=str(e),
+                        error_details=classified_error,
+                    )
+                    result.metadata[config.name] = ResultMetadata(
+                        space_id=config.space_id,
+                        space_name=config.name,
+                        domain=config.domain,
+                        query_time_seconds=0,
+                        success=False,
+                        retries_used=0,
+                        error_category=classified_error.category,
+                        error_retryable=classified_error.retryable,
+                    )
+                    result.classified_errors[config.name] = classified_error
+
+                    if self._circuit_breaker_registry is not None:
+                        cb = self._circuit_breaker_registry.get(config.space_id)
+                        cb.record_failure()
+
+        return result
 
     def _execute_parallel_queries(
         self,
