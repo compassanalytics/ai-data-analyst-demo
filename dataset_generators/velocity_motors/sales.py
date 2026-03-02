@@ -15,16 +15,24 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
+from collections.abc import Callable
+
 from .utils import (
     FEATURE_CATEGORIES,
+    MODEL_TREND_PROFILES,
     PRICE_CHANGE_REASONS,
+    SALESPERSON_PERFORMANCE_TIERS,
     TERRITORY_DIVISIONS,
     TERRITORY_REGIONS,
+    TERRITORY_STRENGTH,
+    TREND_MULTIPLIERS,
+    economic_downturn_trend,
     generate_dates_with_seasonality,
     generate_email,
     generate_person_name,
     generate_vehicle_data,
     get_null_rate,
+    get_quarter_index,
     inject_nulls,
     scale_count,
 )
@@ -45,13 +53,15 @@ def generate_territories() -> pd.DataFrame:
             # 2 territories per region
             for i in range(2):
                 suffix = "North" if i == 0 else "South"
+                territory_name = f"{region} {suffix}"
                 records.append(
                     {
                         "territory_id": f"TER-{territory_id:03d}",
-                        "territory_name": f"{region} {suffix}",
+                        "territory_name": territory_name,
                         "region_name": region,
                         "division_name": division,
                         "is_active": random.random() > 0.05,  # 95% active
+                        "market_strength": TERRITORY_STRENGTH.get(territory_name, 1.0),
                     }
                 )
                 territory_id += 1
@@ -103,6 +113,11 @@ def generate_salespersons(
         else:
             territory_id = f"TER-{(i % 18) + 1:03d}"
 
+        # Assign performance tier using weighted random selection
+        tier_names = list(SALESPERSON_PERFORMANCE_TIERS.keys())
+        tier_fractions = [SALESPERSON_PERFORMANCE_TIERS[t]["fraction"] for t in tier_names]
+        performance_tier = random.choices(tier_names, weights=tier_fractions)[0]
+
         records.append(
             {
                 "salesperson_id": f"SP-{i:04d}",
@@ -115,6 +130,7 @@ def generate_salespersons(
                 "territory_id": territory_id,
                 "quota": quota,
                 "commission_rate": commission_rate,
+                "performance_tier": performance_tier,
                 "manager_id": None,  # Placeholder, will be filled below
             }
         )
@@ -226,6 +242,9 @@ def generate_orders(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     cleanliness: int = 100,
+    vehicles_df: pd.DataFrame | None = None,
+    salespersons_df: pd.DataFrame | None = None,
+    trend_fn: Callable[[datetime], float] | None = economic_downturn_trend,
 ) -> pd.DataFrame:
     """
     Generate orders table with seasonal date distribution.
@@ -238,6 +257,9 @@ def generate_orders(
         start_date: Start of date range (default: 2 years ago)
         end_date: End of date range (default: today)
         cleanliness: Data cleanliness level 0-100 (100=pristine, 0=messy)
+        vehicles_df: Vehicles DataFrame for model trend weighting
+        salespersons_df: Salespersons DataFrame for performance tier weighting
+        trend_fn: Optional economic trend function applied to date weights
 
     Returns:
         DataFrame with order data
@@ -247,9 +269,37 @@ def generate_orders(
     if end_date is None:
         end_date = datetime.now()
 
-    # Generate seasonal dates
-    order_dates = generate_dates_with_seasonality(n, start_date, end_date)
+    # Generate seasonal dates with economic trend
+    order_dates = generate_dates_with_seasonality(n, start_date, end_date, trend_fn=trend_fn)
     order_dates.sort()
+
+    # --- Vehicle weight pre-computation by quarter ---
+    vehicle_weights_by_quarter: dict[int, list[float]] | None = None
+    if vehicles_df is not None and vehicle_ids:
+        vid_to_make_model: dict[str, tuple[str, str]] = {}
+        for _, row in vehicles_df.iterrows():
+            vid_to_make_model[row["vehicle_id"]] = (row["make"], row["model"])
+
+        vehicle_weights_by_quarter = {}
+        for qi in range(8):
+            weights: list[float] = []
+            for vid in vehicle_ids:
+                make_model = vid_to_make_model.get(vid)
+                if make_model:
+                    profile = MODEL_TREND_PROFILES.get(make_model, "flat")
+                else:
+                    profile = "flat"
+                weights.append(TREND_MULTIPLIERS[profile][qi])
+            vehicle_weights_by_quarter[qi] = weights
+
+    # --- Salesperson weight pre-computation ---
+    sp_weights: list[float] | None = None
+    if salespersons_df is not None and salesperson_ids:
+        sp_tier_map = salespersons_df.set_index("salesperson_id")["performance_tier"].to_dict()
+        sp_weights = []
+        for sp_id in salesperson_ids:
+            tier = sp_tier_map.get(sp_id, "average")
+            sp_weights.append(SALESPERSON_PERFORMANCE_TIERS[tier]["weight"])
 
     # Order statuses
     statuses = [
@@ -273,10 +323,27 @@ def generate_orders(
     for i in range(1, n + 1):
         order_date = order_dates[i - 1]
 
-        # Select foreign keys
+        # Select customer (uniform)
         customer_id = random.choice(customer_ids) if customer_ids else f"CUST-{random.randint(1, 50000):05d}"
-        vehicle_id = random.choice(vehicle_ids) if vehicle_ids else f"VH-{random.randint(1, 5000):06d}"
-        salesperson_id = random.choice(salesperson_ids) if salesperson_ids else f"SP-{random.randint(1, 50):04d}"
+
+        # Weighted vehicle selection by model trend profile
+        if vehicle_ids:
+            if vehicle_weights_by_quarter is not None:
+                qi = get_quarter_index(order_date)
+                vehicle_id = random.choices(vehicle_ids, weights=vehicle_weights_by_quarter[qi])[0]
+            else:
+                vehicle_id = random.choice(vehicle_ids)
+        else:
+            vehicle_id = f"VH-{random.randint(1, 5000):06d}"
+
+        # Weighted salesperson selection by performance tier
+        if salesperson_ids:
+            if sp_weights is not None:
+                salesperson_id = random.choices(salesperson_ids, weights=sp_weights)[0]
+            else:
+                salesperson_id = random.choice(salesperson_ids)
+        else:
+            salesperson_id = f"SP-{random.randint(1, 50):04d}"
 
         status = random.choices(status_names, weights=status_weights)[0]
         payment_method = random.choices(payment_names, weights=payment_weights)[0]
@@ -296,7 +363,11 @@ def generate_orders(
     return pd.DataFrame(records)
 
 
-def generate_order_items(orders_df: pd.DataFrame, vehicles_df: pd.DataFrame) -> pd.DataFrame:
+def generate_order_items(
+    orders_df: pd.DataFrame,
+    vehicles_df: pd.DataFrame,
+    territory_strength_lookup: dict[str, float] | None = None,
+) -> pd.DataFrame:
     """
     Generate order line items (vehicle + optional accessories/services).
 
@@ -308,6 +379,8 @@ def generate_order_items(orders_df: pd.DataFrame, vehicles_df: pd.DataFrame) -> 
     Args:
         orders_df: Orders DataFrame with order_id and vehicle_id
         vehicles_df: Vehicles DataFrame with pricing info
+        territory_strength_lookup: Optional mapping of salesperson_id -> market_strength
+                                   float for territory-based price adjustment
 
     Returns:
         DataFrame with order item data
@@ -351,8 +424,12 @@ def generate_order_items(orders_df: pd.DataFrame, vehicles_df: pd.DataFrame) -> 
         order_id = order["order_id"]
         vehicle_id = order["vehicle_id"]
 
-        # Get vehicle price
+        # Get vehicle price (adjusted by territory market strength)
         vehicle_price = vehicle_prices.get(vehicle_id, random.randint(25000, 60000))
+        if territory_strength_lookup is not None:
+            sp_id = order["salesperson_id"]
+            market_strength = territory_strength_lookup.get(sp_id, 1.0)
+            vehicle_price = int(vehicle_price * market_strength)
 
         # Add vehicle line item
         records.append(
@@ -656,6 +733,14 @@ def generate_sales_domain(
     print("  Generating price_history...")
     price_history = generate_price_history(vehicles)
 
+    # Build territory strength lookup: salesperson_id -> market_strength
+    territory_strength_lookup: dict[str, float] = {}
+    if "market_strength" in territories.columns:
+        territory_strength_map = territories.set_index("territory_id")["market_strength"].to_dict()
+        for _, sp in salespersons.iterrows():
+            tid = sp["territory_id"]
+            territory_strength_lookup[sp["salesperson_id"]] = territory_strength_map.get(tid, 1.0)
+
     print("  Generating orders...")
     orders = generate_orders(
         n=scale_count(100000, scale),
@@ -663,10 +748,12 @@ def generate_sales_domain(
         vehicle_ids=vehicles["vehicle_id"].tolist(),
         salesperson_ids=salespersons["salesperson_id"].tolist(),
         cleanliness=cleanliness,
+        vehicles_df=vehicles,
+        salespersons_df=salespersons,
     )
 
     print("  Generating order_items...")
-    order_items = generate_order_items(orders, vehicles)
+    order_items = generate_order_items(orders, vehicles, territory_strength_lookup=territory_strength_lookup)
 
     # Add order totals after order_items are generated
     print("  Adding order totals...")

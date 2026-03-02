@@ -267,10 +267,18 @@ def main():
         all_data["crm"] = crm_data
         save_domain(crm_data, output_dir, "crm", args.dry_run)
 
+        # Build territory strength lookup: salesperson_id -> market_strength
+        territory_strength_lookup = {}
+        if "market_strength" in territories_df.columns:
+            territory_strength_map = territories_df.set_index("territory_id")["market_strength"].to_dict()
+            for _, sp in salespersons_df.iterrows():
+                tid = sp["territory_id"]
+                territory_strength_lookup[sp["salesperson_id"]] = territory_strength_map.get(tid, 1.0)
+
         print("\n[Phase C] Generating Sales Orders (with customer FK)...")
         print("-" * 70)
 
-        # Step 8: Generate orders with VALID customer_ids
+        # Step 8: Generate orders with VALID customer_ids + weighted selection
         print("  Generating orders...")
         orders_df = generate_orders(
             n=scale_count(100000, args.scale),
@@ -278,11 +286,13 @@ def main():
             vehicle_ids=vehicle_ids,
             salesperson_ids=salesperson_ids,
             cleanliness=args.cleanliness,
+            vehicles_df=vehicles_df,
+            salespersons_df=salespersons_df,
         )
 
-        # Step 9: Generate order_items
+        # Step 9: Generate order_items with territory strength multiplier
         print("  Generating order_items...")
-        order_items_df = generate_order_items(orders_df, vehicles_df)
+        order_items_df = generate_order_items(orders_df, vehicles_df, territory_strength_lookup=territory_strength_lookup)
 
         # Step 10: Add order totals after order_items are generated
         print("  Adding order totals...")

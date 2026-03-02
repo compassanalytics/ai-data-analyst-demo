@@ -6,6 +6,7 @@ Provides shared utilities for generating consistent, realistic automotive data.
 """
 
 import random
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -194,6 +195,83 @@ MSRP_RANGES: dict[str, tuple[int, int]] = {
     "Chevrolet": (26000, 90000),
     "BMW": (45000, 150000),
     "Mercedes-Benz": (48000, 180000),
+}
+
+
+# Vehicle model trend profiles: (make, model) -> trend type
+# Determines how each model's popularity changes over Q1 2024 - Q4 2025
+MODEL_TREND_PROFILES: dict[tuple[str, str], str] = {
+    # Sharp decline — compact SUVs losing ground
+    ("Ford", "Escape"): "sharp_decline",
+    ("Honda", "HR-V"): "sharp_decline",
+    # Declining — luxury sedans and sports cars fading
+    ("Chevrolet", "Camaro"): "declining",
+    ("BMW", "7 Series"): "declining",
+    ("Mercedes-Benz", "S-Class"): "declining",
+    # Growing — mid-size SUVs gaining
+    ("Toyota", "RAV4"): "growing",
+    ("Ford", "Bronco"): "growing",
+    ("Chevrolet", "Equinox"): "growing",
+    # Surging — specific hot models
+    ("Toyota", "Tacoma"): "surging",
+    ("BMW", "X3"): "surging",
+    # Flat — everything else (20 models)
+    ("Ford", "F-150"): "flat",
+    ("Ford", "Mustang"): "flat",
+    ("Ford", "Explorer"): "flat",
+    ("Toyota", "Camry"): "flat",
+    ("Toyota", "Corolla"): "flat",
+    ("Toyota", "Highlander"): "flat",
+    ("Honda", "Civic"): "flat",
+    ("Honda", "Accord"): "flat",
+    ("Honda", "CR-V"): "flat",
+    ("Honda", "Pilot"): "flat",
+    ("Chevrolet", "Silverado"): "flat",
+    ("Chevrolet", "Tahoe"): "flat",
+    ("Chevrolet", "Colorado"): "flat",
+    ("BMW", "3 Series"): "flat",
+    ("BMW", "5 Series"): "flat",
+    ("BMW", "X5"): "flat",
+    ("Mercedes-Benz", "C-Class"): "flat",
+    ("Mercedes-Benz", "E-Class"): "flat",
+    ("Mercedes-Benz", "GLC"): "flat",
+    ("Mercedes-Benz", "GLE"): "flat",
+}
+
+# Quarter-based weight multipliers for each trend profile
+# 8 quarters: Q1 2024 (index 0) through Q4 2025 (index 7)
+TREND_MULTIPLIERS: dict[str, list[float]] = {
+    "surging": [0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.15, 1.25],
+    "growing": [0.90, 0.92, 0.95, 0.98, 1.00, 1.03, 1.08, 1.12],
+    "flat": [1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00],
+    "declining": [1.10, 1.05, 1.00, 0.95, 0.90, 0.85, 0.80, 0.75],
+    "sharp_decline": [1.15, 1.10, 1.00, 0.90, 0.80, 0.70, 0.55, 0.45],
+}
+
+
+def get_quarter_index(date: datetime) -> int:
+    """
+    Map a date to quarter index 0-7 (Q1 2024 through Q4 2025).
+
+    Clamps to 0 for dates before Q1 2024 and 7 for dates after Q4 2025.
+
+    Args:
+        date: Datetime to map
+
+    Returns:
+        Integer index 0-7
+    """
+    q = (date.year - 2024) * 4 + (date.month - 1) // 3
+    return max(0, min(7, q))
+
+
+# Salesperson performance tiers with order volume weights and population fractions
+SALESPERSON_PERFORMANCE_TIERS: dict[str, dict[str, float]] = {
+    "star": {"weight": 2.00, "fraction": 0.10},
+    "above_average": {"weight": 1.40, "fraction": 0.20},
+    "average": {"weight": 1.00, "fraction": 0.40},
+    "below_average": {"weight": 0.65, "fraction": 0.20},
+    "underperformer": {"weight": 0.35, "fraction": 0.10},
 }
 
 
@@ -403,10 +481,39 @@ SEASONAL_MULTIPLIERS: dict[int, float] = {
 }
 
 
+def economic_downturn_trend(date: datetime) -> float:
+    """
+    Multiplier encoding a Q4 2025 slowdown and Jan 2026+ market downturn.
+
+    Applied on top of seasonal weights to create a visible economic trend:
+    - Before Oct 2025: 1.0 (no effect)
+    - Oct-Nov 2025: linear ramp from 1.0 down to 0.75
+    - Dec 2025: 0.70
+    - Jan 2026+: 0.65
+
+    Args:
+        date: Datetime to evaluate
+
+    Returns:
+        Multiplier float (0.65 to 1.0)
+    """
+    if date < datetime(2025, 10, 1):
+        return 1.0
+    elif date < datetime(2025, 12, 1):
+        # Oct-Nov 2025: linear ramp from 1.0 down to 0.75
+        days_in = (date - datetime(2025, 10, 1)).days
+        return 1.0 - 0.25 * (days_in / 61.0)
+    elif date < datetime(2026, 1, 1):
+        return 0.70  # Dec 2025
+    else:
+        return 0.65  # Jan 2026+
+
+
 def generate_dates_with_seasonality(
     n: int,
     start_date: datetime,
     end_date: datetime,
+    trend_fn: Callable[[datetime], float] | None = None,
 ) -> list[datetime]:
     """
     Generate dates with seasonal weighting (Q4 has higher volume).
@@ -415,6 +522,8 @@ def generate_dates_with_seasonality(
         n: Number of dates to generate
         start_date: Start of date range
         end_date: End of date range
+        trend_fn: Optional callable (date) -> float applied multiplicatively
+                  on top of seasonal weights (e.g., economic_downturn_trend)
 
     Returns:
         List of datetime objects with seasonal distribution
@@ -426,10 +535,12 @@ def generate_dates_with_seasonality(
         date_range.append(current)
         current += timedelta(days=1)
 
-    # Calculate weights based on seasonal multipliers
+    # Calculate weights based on seasonal multipliers (and optional trend)
     weights = []
     for d in date_range:
         weight = SEASONAL_MULTIPLIERS.get(d.month, 1.0)
+        if trend_fn is not None:
+            weight *= trend_fn(d)
         weights.append(weight)
 
     # Normalize weights
@@ -586,6 +697,32 @@ TERRITORY_REGIONS: dict[str, list[str]] = {
     "West": ["Pacific", "Mountain", "Southwest"],
     "Central": ["Midwest", "Great Plains", "Gulf Coast"],
 }
+
+# Per-region economic strength (before North/South split)
+_TERRITORY_BASE_STRENGTH: dict[str, float] = {
+    # Strong markets
+    "Pacific": 1.30,
+    "Mid-Atlantic": 1.28,
+    "Northeast": 1.22,
+    # Baseline markets
+    "Southeast": 1.05,
+    "Southwest": 1.02,
+    "Mountain": 0.98,
+    "Midwest": 0.95,
+    # Weak markets
+    "Great Plains": 0.80,
+    "Gulf Coast": 0.78,
+}
+
+# Full territory strength mapping — derived from TERRITORY_REGIONS to ensure name consistency
+# Adds slight North/South variation (±0.03) for per-territory differentiation
+TERRITORY_STRENGTH: dict[str, float] = {}
+for _div in TERRITORY_DIVISIONS:
+    for _region in TERRITORY_REGIONS[_div]:
+        _base = _TERRITORY_BASE_STRENGTH.get(_region, 1.0)
+        TERRITORY_STRENGTH[f"{_region} North"] = round(_base + 0.03, 2)
+        TERRITORY_STRENGTH[f"{_region} South"] = round(_base - 0.03, 2)
+
 
 # Vehicle features by category
 FEATURE_CATEGORIES: dict[str, list[str]] = {
