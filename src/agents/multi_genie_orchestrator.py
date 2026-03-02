@@ -6,18 +6,13 @@ in parallel, with support for retries, timeouts, and progress tracking.
 
 from __future__ import annotations
 
+import logging
 import random
 import time
-import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from src.agents.planner_agent import Plan
-
-logger = logging.getLogger(__name__)
 
 from src.agents.genie_agent import GenieDataAgent, GenieResult
 from src.config import Config
@@ -27,6 +22,11 @@ from src.utils.circuit_breaker import (
     CircuitOpenError,
 )
 from src.utils.errors import AgentError, ErrorCategory, classify_error
+
+if TYPE_CHECKING:
+    from src.agents.planner_agent import Plan
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

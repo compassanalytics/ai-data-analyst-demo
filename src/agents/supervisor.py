@@ -173,10 +173,7 @@ def _mock_plan_tool_calls(
         domain_keywords = [kw.strip().lower() for kw in sc.domain.split(",")]
         # Check if any domain keyword appears in the question OR
         # any question word starts with a domain keyword (or vice versa)
-        if any(
-            kw in q_lower or any(w.startswith(kw) or kw.startswith(w) for w in q_words)
-            for kw in domain_keywords
-        ):
+        if any(kw in q_lower or any(w.startswith(kw) or kw.startswith(w) for w in q_words) for kw in domain_keywords):
             matched_spaces.append(sc)
 
     # If no match, default to first space
@@ -185,10 +182,12 @@ def _mock_plan_tool_calls(
 
     # Add a query_genie call per matched space
     for sc in matched_spaces:
-        calls.append({
-            "name": "query_genie",
-            "args": {"space_name": sc.name, "question": question},
-        })
+        calls.append(
+            {
+                "name": "query_genie",
+                "args": {"space_name": sc.name, "question": question},
+            }
+        )
 
     # Add calculator if math keywords present
     math_keywords = [
@@ -205,10 +204,12 @@ def _mock_plan_tool_calls(
         "margin",
     ]
     if any(kw in q_lower for kw in math_keywords):
-        calls.append({
-            "name": "calculator",
-            "args": {"expression": "100 * 1.15"},  # placeholder demo calculation
-        })
+        calls.append(
+            {
+                "name": "calculator",
+                "args": {"expression": "100 * 1.15"},  # placeholder demo calculation
+            }
+        )
 
     return calls
 
@@ -290,11 +291,13 @@ def create_supervisor_agent(
                 next_call = plan[completed_tool_calls]
                 response = AIMessage(
                     content="",
-                    tool_calls=[{
-                        "id": f"call_{iteration}",
-                        "name": next_call["name"],
-                        "args": next_call["args"],
-                    }],
+                    tool_calls=[
+                        {
+                            "id": f"call_{iteration}",
+                            "name": next_call["name"],
+                            "args": next_call["args"],
+                        }
+                    ],
                 )
                 return {
                     "messages": [response],

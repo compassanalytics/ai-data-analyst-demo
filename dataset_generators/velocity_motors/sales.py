@@ -10,12 +10,11 @@ Generates sales-related tables:
 """
 
 import random
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
-
-from collections.abc import Callable
 
 from .utils import (
     FEATURE_CATEGORIES,

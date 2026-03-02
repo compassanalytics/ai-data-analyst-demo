@@ -292,7 +292,9 @@ def main():
 
         # Step 9: Generate order_items with territory strength multiplier
         print("  Generating order_items...")
-        order_items_df = generate_order_items(orders_df, vehicles_df, territory_strength_lookup=territory_strength_lookup)
+        order_items_df = generate_order_items(
+            orders_df, vehicles_df, territory_strength_lookup=territory_strength_lookup
+        )
 
         # Step 10: Add order totals after order_items are generated
         print("  Adding order totals...")
