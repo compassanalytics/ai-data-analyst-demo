@@ -260,7 +260,9 @@ def build_territory_comparison(
         return None
 
     territory_stats = (
-        merged.groupby(["territory_name", "division_name"] + (["market_strength"] if has_strength else []))["order_total"]
+        merged.groupby(["territory_name", "division_name"] + (["market_strength"] if has_strength else []))[
+            "order_total"
+        ]
         .mean()
         .reset_index()
     )
@@ -277,7 +279,11 @@ def build_territory_comparison(
             y="order_total",
             color="market_label",
             title="Territory Comparison — Average Deal Value",
-            labels={"territory_name": "Territory", "order_total": "Avg Deal Value ($)", "market_label": "Market Strength"},
+            labels={
+                "territory_name": "Territory",
+                "order_total": "Avg Deal Value ($)",
+                "market_label": "Market Strength",
+            },
             color_discrete_map=color_map,
         )
     else:
